@@ -1,0 +1,85 @@
+/*************************************************************************
+ * vga.c -- This file is part of OS/0.                                   *
+ * Copyright (C) 2020 XNSC                                               *
+ *                                                                       *
+ * OS/0 is free software: you can redistribute it and/or modify          *
+ * it under the terms of the GNU General Public License as published by  *
+ * the Free Software Foundation, either version 3 of the License, or     *
+ * (at your option) any later version.                                   *
+ *                                                                       *
+ * OS/0 is distributed in the hope that it will be useful,               *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the          *
+ * GNU General Public License for more details.                          *
+ *                                                                       *
+ * You should have received a copy of the GNU General Public License     *
+ * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
+ *************************************************************************/
+
+#include "vga.h"
+
+static size_t vga_row;
+static size_t vga_column;
+static uint8_t vga_color;
+static uint16_t *vga_buffer;
+
+void
+vga_init (void)
+{
+  size_t x;
+  size_t y;
+
+  vga_color = vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+  vga_buffer = (uint16_t *) VGA_BUFFER;
+
+  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
+    {
+      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	vga_buffer[vga_getindex (x, y)] = vga_mkentry (' ', vga_color);
+    }
+}
+
+uint8_t
+vga_getcolor (void)
+{
+  return vga_color;
+}
+
+void
+vga_setcolor (uint8_t color)
+{
+  vga_color = color;
+}
+
+void
+vga_putentry (char c, size_t x, size_t y)
+{
+  vga_buffer[vga_getindex (x, y)] = vga_mkentry (c, vga_color);
+}
+
+void
+vga_putchar (char c)
+{
+  vga_putentry (c, vga_column, vga_row);
+  if (++vga_column == VGA_SCREEN_WIDTH)
+    {
+      vga_column = 0;
+      if (++vga_row == VGA_SCREEN_HEIGHT)
+	vga_row = 0;
+    }
+}
+
+void
+vga_write (const char *s, size_t size)
+{
+  size_t i;
+  for (i = 0; i < size; i++)
+    vga_putchar (s[i]);
+}
+
+void
+vga_puts (const char *s)
+{
+  for (; *s != '\0'; s++)
+    vga_putchar (*s);
+}

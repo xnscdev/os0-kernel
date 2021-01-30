@@ -1,0 +1,17 @@
+kernel_src = [
+  'boot.s',
+  'main.c'
+]
+
+kernel = executable('kernel', kernel_src, link_args: [
+		      '-T',
+		      meson.current_source_dir() / 'linker.ld',
+		      '-nostdlib',
+		    ], link_with: [drivers],
+		    include_directories: kernel_inc,
+		    link_depends: files('linker.ld'), install: true,
+		    install_dir: '/boot')
+
+if grub_file.found()
+  test('x86 multiboot', grub_file, args: ['--is-x86-multiboot', kernel])
+endif
