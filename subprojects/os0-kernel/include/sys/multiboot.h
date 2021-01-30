@@ -19,7 +19,9 @@
 #ifndef _SYS_MULTIBOOT_H
 #define _SYS_MULTIBOOT_H
 
+#ifndef _ASM
 #include <stdint.h>
+#endif
 
 #define MULTIBOOT_MAGIC 0x1badb002
 
@@ -36,6 +38,8 @@
 #define MULTIBOOT_FLAG_APMTBL   (1 << 10)
 #define MULTIBOOT_FLAG_VBETBL   (1 << 11)
 #define MULTIBOOT_FLAG_FBTBL    (1 << 12)
+
+#ifndef _ASM
 
 struct MultibootInfo
 {
@@ -68,5 +72,7 @@ struct MultibootInfo
   uint8_t mi_fbtype;
   uint8_t mi_fbcolinfo[6];
 } __attribute__ ((packed));
+
+#endif
 
 #endif

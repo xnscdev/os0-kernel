@@ -1,5 +1,5 @@
 /*************************************************************************
- * boot.s -- This file is part of OS/0.                                  *
+ * boot.S -- This file is part of OS/0.                                  *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,10 +16,14 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#define _ASM
+
+#include <sys/multiboot.h>
+
 	.set ALIGN, 1 << 0
 	.set MEMINFO, 1 << 1
 	.set FLAGS, ALIGN | MEMINFO
-	.set MAGIC, 0x1badb002
+	.set MAGIC, MULTIBOOT_MAGIC
 	.set CHECKSUM, -(MAGIC + FLAGS)
 
 	.section .multiboot

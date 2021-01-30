@@ -1,5 +1,5 @@
 kernel_src = [
-  'boot.s',
+  'boot.S',
   'main.c'
 ]
 
