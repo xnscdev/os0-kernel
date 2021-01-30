@@ -16,10 +16,11 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <sys/multiboot.h>
 #include <video/vga.h>
 
 void
-main (void)
+main (struct MultibootInfo *info)
 {
   vga_init ();
   vga_puts ("Hello, World!\n");
