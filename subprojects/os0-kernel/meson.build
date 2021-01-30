@@ -9,3 +9,4 @@ includedir = include_directories('include')
 
 subdir('drivers')
 subdir('kernel')
+subdir('libk')
