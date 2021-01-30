@@ -8,5 +8,6 @@ grub_file = find_program('grub-file', required: false)
 includedir = include_directories('include')
 
 subdir('drivers')
-subdir('kernel')
 subdir('libk')
+
+subdir('kernel')

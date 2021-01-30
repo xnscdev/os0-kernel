@@ -18,6 +18,13 @@
 
 #include <libk/stdlib.h>
 
+static char *digits[] = {
+  "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz",
+  "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+};
+
+static int itoa_case;
+
 char *
 itoa (int value, char *result, int base)
 {
@@ -36,8 +43,7 @@ itoa (int value, char *result, int base)
     {
       temp = value;
       value /= base;
-      *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210"
-	"123456789abcdefghijklmnopqrstuvwxyz"[35 + (temp - value * base)];
+      *ptr++ = digits[itoa_case][35 + (temp - value * base)];
     }
   while (value != 0);
 
@@ -51,4 +57,10 @@ itoa (int value, char *result, int base)
       *rev++ = c;
     }
   return result;
+}
+
+void
+itoa_setcase (int uppercase)
+{
+  itoa_case = uppercase != 0;
 }
