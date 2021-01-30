@@ -69,7 +69,15 @@ vga_putchar (char c)
     wrap:
       vga_column = 0;
       if (++vga_row == VGA_SCREEN_HEIGHT)
-	vga_row = 0;
+	{
+	  size_t i;
+	  for (i = VGA_SCREEN_WIDTH; i < VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT;
+	       i++)
+	    vga_buffer[i - VGA_SCREEN_WIDTH] = vga_buffer[i];
+	  for (i = 0; i < VGA_SCREEN_WIDTH; i++)
+	    vga_putentry (' ', i, VGA_SCREEN_HEIGHT - 1);
+	  vga_row--;
+	}
     }
   vga_setcurs (vga_column, vga_row);
 }
