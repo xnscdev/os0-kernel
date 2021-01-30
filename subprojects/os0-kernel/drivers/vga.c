@@ -83,3 +83,13 @@ vga_puts (const char *s)
   for (; *s != '\0'; s++)
     vga_putchar (*s);
 }
+
+void
+vga_setcurs (size_t x, size_t y)
+{
+  uint16_t pos = vga_getindex (x, y);
+  outb (0x0f, VGA_PORT_INDEX);
+  outb ((uint8_t) (pos & 0xff), VGA_PORT_DATA);
+  outb (0x0e, VGA_PORT_INDEX);
+  outb ((uint8_t) ((pos >> 8) & 0xff), VGA_PORT_DATA);
+}

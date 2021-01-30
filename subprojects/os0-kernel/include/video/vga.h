@@ -27,6 +27,9 @@
 #define VGA_SCREEN_HEIGHT 25
 #define VGA_BUFFER 0xb8000
 
+#define VGA_PORT_INDEX 0x3d4
+#define VGA_PORT_DATA 0x3d5
+
 #define vga_mkcolor(fg, bg) ((uint8_t) (fg | bg << 4))
 #define vga_mkentry(c, color) ((uint16_t) c | (uint16_t) color << 8)
 #define vga_getindex(x, y) (y * VGA_SCREEN_WIDTH + x)
@@ -60,6 +63,7 @@ void vga_putentry (char c, size_t x, size_t y);
 void vga_putchar (char c);
 void vga_write (const char *s, size_t size);
 void vga_puts (const char *s);
+void vga_setcurs (size_t x, size_t y);
 
 __END_DECLS
 
