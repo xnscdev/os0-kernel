@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <sys/io.h>
 #include <video/vga.h>
 
 static size_t vga_row;
@@ -60,13 +61,17 @@ vga_putentry (char c, size_t x, size_t y)
 void
 vga_putchar (char c)
 {
+  if (c == '\n')
+    goto wrap;
   vga_putentry (c, vga_column, vga_row);
   if (++vga_column == VGA_SCREEN_WIDTH)
     {
+    wrap:
       vga_column = 0;
       if (++vga_row == VGA_SCREEN_HEIGHT)
 	vga_row = 0;
     }
+  vga_setcurs (vga_column, vga_row);
 }
 
 void
