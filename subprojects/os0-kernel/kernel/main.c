@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include "vga.h"
+#include <video/vga.h>
 
 void
 main (void)

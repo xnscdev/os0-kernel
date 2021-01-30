@@ -5,7 +5,7 @@ add_project_arguments('-DVERSION="@0@"'.format(meson.project_version()),
 
 grub_file = find_program('grub-file', required: false)
 
-kernel_inc = include_directories(['drivers', 'kernel'])
+includedir = include_directories('include')
 
 subdir('drivers')
 subdir('kernel')

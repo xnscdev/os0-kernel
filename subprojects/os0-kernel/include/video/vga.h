@@ -16,9 +16,10 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VGA_H
-#define _VGA_H
+#ifndef _VIDEO_VGA_H
+#define _VIDEO_VGA_H
 
+#include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -50,6 +51,8 @@ typedef enum
   VGA_COLOR_WHITE
 } VGAColor;
 
+__BEGIN_DECLS
+
 void vga_init (void);
 uint8_t vga_getcolor (void);
 void vga_setcolor (uint8_t color);
@@ -57,5 +60,7 @@ void vga_putentry (char c, size_t x, size_t y);
 void vga_putchar (char c);
 void vga_write (const char *s, size_t size);
 void vga_puts (const char *s);
+
+__END_DECLS
 
 #endif

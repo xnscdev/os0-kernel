@@ -8,9 +8,8 @@ kernel = executable('kernel', kernel_src, link_args: [
 		      meson.current_source_dir() / 'linker.ld',
 		      '-nostdlib',
 		    ], link_with: [drivers],
-		    include_directories: kernel_inc,
-		    link_depends: files('linker.ld'), install: true,
-		    install_dir: '/boot')
+		    include_directories: includedir, install_dir: '/boot',
+		    link_depends: files('linker.ld'), install: true)
 
 if grub_file.found()
   test('x86 multiboot', grub_file, args: ['--is-x86-multiboot', kernel])

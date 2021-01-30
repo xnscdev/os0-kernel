@@ -3,4 +3,4 @@ drivers_src = [
 ]
 
 drivers = static_library('drivers', drivers_src,
-			 include_directories: kernel_inc)
+			 include_directories: includedir)
