@@ -16,11 +16,12 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/stdio.h>
-#include <libk/string.h>
+#include <libk/libk.h>
 #include <video/vga.h>
 #include <limits.h>
 #include <stdarg.h>
+
+static char itoa_buffer[32];
 
 int
 printk (const char *__restrict fmt, ...)
@@ -64,6 +65,28 @@ printk (const char *__restrict fmt, ...)
 	  if (maxrem < len)
 	    return -1;
 	  vga_write (s, len);
+	  fmt++;
+	}
+      else if (*fmt == 'd' || *fmt == 'i')
+	{
+	  int n = va_arg (args, int);
+	  size_t len;
+	  itoa (n, itoa_buffer, 10);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
+	  fmt++;
+	}
+      else if (*fmt == 'x')
+	{
+	  int n = va_arg (args, int);
+	  size_t len;
+	  itoa (n, itoa_buffer, 16);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
 	  fmt++;
 	}
       else

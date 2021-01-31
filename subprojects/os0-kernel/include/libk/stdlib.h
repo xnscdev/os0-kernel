@@ -24,7 +24,6 @@
 __BEGIN_DECLS
 
 char *itoa (int value, char *result, int base);
-void itoa_setcase (int uppercase);
 
 __END_DECLS
 
