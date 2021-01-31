@@ -21,10 +21,31 @@
 #include <sys/multiboot.h>
 #include <video/vga.h>
 
+static void
+pass (void)
+{
+  u8 *ptr = (u8 *) 0x100f00;
+  int i;
+  for (i = 0; i < 0x20; i++)
+    {
+      int j;
+      for (j = 0; j < 0x10; j++)
+	{
+	  u8 byte = ptr[i * 0x10 + j];
+	  if (byte < 0x10)
+	    printk ("0%x ", byte);
+	  else
+	    printk ("%x ", byte);
+	}
+      printk ("\n");
+    }
+}
+
 void
 main (struct MultibootInfo *info)
 {
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   memory_init (info->mi_memhigh);
+  pass ();
 }

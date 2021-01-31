@@ -22,7 +22,7 @@
 #include <libk/types.h>
 #include <sys/cdefs.h>
 
-#define MEMORY_MAGIC 0xdeadbeef
+#define MEMORY_MAGIC 0xefbeadde
 
 #define MEMORY_START 0x101000
 
