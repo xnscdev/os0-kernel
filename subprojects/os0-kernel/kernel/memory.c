@@ -22,5 +22,9 @@
 void
 memory_init (u32 mem)
 {
-  printk ("Detected %d KiB of upper memory\n", mem);
+  u16 order = 0;
+  printk ("Detected %dK of upper memory\n", mem);
+  while (1 << (order + 3) < mem)
+    order++;
+  printk ("Max block order: %d (size %dK)\n", order, 1 << (order + 2));
 }

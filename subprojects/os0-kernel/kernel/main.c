@@ -27,5 +27,4 @@ main (struct MultibootInfo *info)
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   memory_init (info->mi_memhigh);
-  printk ("Hello, World!\n");
 }
