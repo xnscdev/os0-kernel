@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * string.h -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,14 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STDIO_H
-#define _LIBK_STDIO_H
+#ifndef _LIBK_STRING_H
+#define _LIBK_STRING_H
 
 #include <sys/cdefs.h>
+#include <stddef.h>
 
 __BEGIN_DECLS
 
-int printk (const char *__restrict fmt, ...);
+size_t strlen (const char *s);
 
 __END_DECLS
 

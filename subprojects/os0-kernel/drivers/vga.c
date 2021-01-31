@@ -85,7 +85,7 @@ vga_putchar (char c)
 void
 vga_write (const char *s, size_t size)
 {
-  size_t i;
+  int i;
   for (i = 0; i < size; i++)
     vga_putchar (s[i]);
 }
@@ -93,7 +93,8 @@ vga_write (const char *s, size_t size)
 void
 vga_puts (const char *s)
 {
-  for (; *s != '\0'; s++)
+  int written = 0;
+  for (; *s != '\0'; s++, written++)
     vga_putchar (*s);
 }
 

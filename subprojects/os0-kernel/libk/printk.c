@@ -17,8 +17,68 @@
  *************************************************************************/
 
 #include <libk/stdio.h>
+#include <libk/string.h>
+#include <video/vga.h>
+#include <limits.h>
+#include <stdarg.h>
 
-void
+int
 printk (const char *__restrict fmt, ...)
 {
+  va_list args;
+  int written = 0;
+  va_start (args, fmt);
+
+  while (*fmt != '\0')
+    {
+      size_t maxrem = INT_MAX - written;
+      const char *fmt_begin;
+      if (fmt[0] != '%' || fmt[1] == '%')
+	{
+	  size_t amt = 1;
+	  if (*fmt == '%')
+	    fmt++;
+	  while (fmt[amt] != '\0' && fmt[amt] != '%')
+	    amt++;
+	  if (maxrem < amt)
+	    return -1;
+	  vga_write (fmt, amt);
+	  fmt += amt;
+	  written += amt;
+	  continue;
+	}
+
+      fmt_begin = fmt++;
+      if (*fmt == 'c')
+	{
+	  char c = (char) va_arg (args, int);
+	  if (maxrem == 0)
+	    return -1;
+	  vga_putchar (c);
+	  fmt++;
+	}
+      else if (*fmt == 's')
+	{
+	  const char *s = va_arg (args, const char *);
+	  size_t len = strlen (s);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (s, len);
+	  fmt++;
+	}
+      else
+	{
+	  size_t len;
+	  fmt = fmt_begin;
+	  len = strlen (fmt);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (fmt, len);
+	  written += len;
+	  fmt += len;
+	}
+    }
+
+  va_end (args);
+  return written;
 }

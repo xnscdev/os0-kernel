@@ -16,16 +16,14 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/stdlib.h>
+#include <libk/libk.h>
 #include <sys/multiboot.h>
 #include <video/vga.h>
 
 void
 main (struct MultibootInfo *info)
 {
-  char buffer[6];
   vga_init ();
-  vga_puts ("Hello, World!\n");
-  itoa (12345, buffer, 10);
-  vga_puts (buffer);
+  if (info->mi_flags & MULTIBOOT_FLAG_MEMORY)
+    printk ("Hello, World!\n");
 }
