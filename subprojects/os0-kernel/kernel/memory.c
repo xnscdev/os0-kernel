@@ -22,9 +22,22 @@
 void
 memory_init (u32 mem)
 {
-  u16 order = 0;
+  u32 addr = MEMORY_START;
+  mem -= (addr - 0x100000) / 1024; /* Reserved first page */
   printk ("Detected %dK of upper memory\n", mem);
-  while (1 << (order + 3) < mem)
-    order++;
-  printk ("Max block order: %d (size %dK)\n", order, 1 << (order + 2));
+  while (mem > 0)
+    {
+      struct MemoryHeader *header;
+      u16 order = 0;
+      u32 size;
+      while (1 << (order + 3) <= mem)
+	order++;
+      size = 1 << (order + 2);
+      mem -= size;
+      header = (struct MemoryHeader *) (addr - sizeof (struct MemoryHeader));
+      header->mh_magic = MEMORY_MAGIC;
+      header->mh_order = order;
+      header->mh_alloc = 0;
+      addr += size << 10;
+    }
 }

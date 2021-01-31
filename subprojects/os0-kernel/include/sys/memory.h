@@ -24,7 +24,7 @@
 
 #define MEMORY_MAGIC 0xdeadbeef
 
-#define MEMORY_START 0x100000
+#define MEMORY_START 0x101000
 
 struct MemoryHeader
 {
