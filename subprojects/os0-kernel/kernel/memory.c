@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * memory.c -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -18,14 +18,9 @@
 
 #include <libk/libk.h>
 #include <sys/memory.h>
-#include <sys/multiboot.h>
-#include <video/vga.h>
 
 void
-main (struct MultibootInfo *info)
+memory_init (u32 mem)
 {
-  vga_init ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  memory_init (info->mi_memhigh);
-  printk ("Hello, World!\n");
+  printk ("Detected %d KiB of upper memory\n", mem);
 }

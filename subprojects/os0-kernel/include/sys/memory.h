@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * memory.h -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,16 +16,27 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/libk.h>
-#include <sys/memory.h>
-#include <sys/multiboot.h>
-#include <video/vga.h>
+#ifndef _SYS_MEMORY_H
+#define _SYS_MEMORY_H
 
-void
-main (struct MultibootInfo *info)
+#include <libk/types.h>
+#include <sys/cdefs.h>
+
+#define MEMORY_MAGIC 0xdeadbeef
+
+#define MEMORY_START 0x100000
+
+struct MemoryHeader
 {
-  vga_init ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  memory_init (info->mi_memhigh);
-  printk ("Hello, World!\n");
-}
+  u32 mh_magic;
+  u16 mh_order;
+  u16 mh_alloc;
+} __attribute__ ((packed));
+
+__BEGIN_DECLS
+
+void memory_init (u32 mem);
+
+__END_DECLS
+
+#endif

@@ -1,6 +1,7 @@
 kernel_src = [
   'boot.S',
-  'main.c'
+  'main.c',
+  'memory.c'
 ]
 
 kernel = executable('kernel', kernel_src, link_args: [
