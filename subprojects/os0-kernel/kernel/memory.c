@@ -19,12 +19,14 @@
 #include <libk/libk.h>
 #include <sys/memory.h>
 
+extern void *_kernel_end;
+
 void
 memory_init (u32 mem)
 {
-  u32 addr = MEMORY_START;
-  mem -= (addr - 0x100000) / 1024; /* Reserved first page */
-  printk ("Detected %dK of upper memory\n", mem);
+  u32 addr = (u32) &_kernel_end;
+  mem -= (addr - 0x100000) / 1024; /* Skip kernel code */
+  printk ("Detected %dK of available upper memory\n", mem);
   while (mem > 0)
     {
       struct MemoryHeader *header;
@@ -38,6 +40,8 @@ memory_init (u32 mem)
       header->mh_magic = MEMORY_MAGIC;
       header->mh_order = order;
       header->mh_alloc = 0;
+      header->mh_flags = 0;
+      header->mh_reserved = 0;
       addr += size << 10;
     }
 }

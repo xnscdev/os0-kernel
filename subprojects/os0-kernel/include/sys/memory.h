@@ -31,6 +31,8 @@ struct MemoryHeader
   u32 mh_magic;
   u16 mh_order;
   u16 mh_alloc;
+  u32 mh_flags;
+  u32 mh_reserved;
 } __attribute__ ((packed));
 
 __BEGIN_DECLS

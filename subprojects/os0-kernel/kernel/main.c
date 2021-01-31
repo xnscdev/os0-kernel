@@ -21,12 +21,14 @@
 #include <sys/multiboot.h>
 #include <video/vga.h>
 
+extern void *_kernel_end;
+
 static void
 pass (void)
 {
-  u8 *ptr = (u8 *) 0x100f00;
+  u8 *ptr = (u8 *) ((u32) &_kernel_end - 0x10);
   int i;
-  for (i = 0; i < 0x20; i++)
+  for (i = 0; i < 0x11; i++)
     {
       int j;
       for (j = 0; j < 0x10; j++)
