@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * types.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,13 +16,19 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_LIBK_H
-#define _LIBK_LIBK_H
+#ifndef _LIBK_TYPES_H
+#define _LIBK_TYPES_H
 
-#include <libk/assert.h>
-#include <libk/stdio.h>
-#include <libk/stdlib.h>
-#include <libk/string.h>
-#include <libk/types.h>
+#include <stdint.h>
+
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 
 #endif

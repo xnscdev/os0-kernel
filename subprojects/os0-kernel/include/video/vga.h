@@ -19,6 +19,7 @@
 #ifndef _VIDEO_VGA_H
 #define _VIDEO_VGA_H
 
+#include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -30,8 +31,8 @@
 #define VGA_PORT_INDEX 0x3d4
 #define VGA_PORT_DATA 0x3d5
 
-#define vga_mkcolor(fg, bg) ((uint8_t) (fg | bg << 4))
-#define vga_mkentry(c, color) ((uint16_t) c | (uint16_t) color << 8)
+#define vga_mkcolor(fg, bg) ((u8) (fg | bg << 4))
+#define vga_mkentry(c, color) ((u16) c | (u16) color << 8)
 #define vga_getindex(x, y) (y * VGA_SCREEN_WIDTH + x)
 
 typedef enum
@@ -57,8 +58,8 @@ typedef enum
 __BEGIN_DECLS
 
 void vga_init (void);
-uint8_t vga_getcolor (void);
-void vga_setcolor (uint8_t color);
+u8 vga_getcolor (void);
+void vga_setcolor (u8 color);
 void vga_putentry (char c, size_t x, size_t y);
 void vga_putchar (char c);
 void vga_write (const char *s, size_t size);
