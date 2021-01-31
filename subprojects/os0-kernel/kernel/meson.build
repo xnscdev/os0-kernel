@@ -7,7 +7,7 @@ kernel = executable('kernel', kernel_src, link_args: [
 		      '-T',
 		      meson.current_source_dir() / 'linker.ld',
 		      '-nostdlib',
-		    ], link_with: [drivers, libk],
+		    ], link_with: [arch, drivers, libk],
 		    include_directories: includedir, install_dir: '/boot',
 		    link_depends: files('linker.ld'), install: true)
 

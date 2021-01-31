@@ -1,5 +1,6 @@
 libk_src = [
   'itoa.c',
+  'panic.c',
   'printk.c',
   'string.c'
 ]

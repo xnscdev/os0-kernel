@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * panic.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -17,13 +17,14 @@
  *************************************************************************/
 
 #include <libk/libk.h>
-#include <sys/multiboot.h>
-#include <video/vga.h>
+
+void halt (void) __attribute__ ((noreturn));
 
 void
-main (struct MultibootInfo *info)
+panic (const char *msg)
 {
-  vga_init ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  printk ("Hello, World!\n");
+  printk ("============[ KERNEL PANIC ]============\n");
+  printk ("%s\n", msg);
+  printk ("==========[ END KERNEL PANIC ]==========\n");
+  halt ();
 }

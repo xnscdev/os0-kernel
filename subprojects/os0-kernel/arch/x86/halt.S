@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * halt.S -- This file is part of OS/0.                                  *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,14 +16,13 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/libk.h>
-#include <sys/multiboot.h>
-#include <video/vga.h>
+#define _ASM
 
-void
-main (struct MultibootInfo *info)
-{
-  vga_init ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  printk ("Hello, World!\n");
-}
+	.section .text
+	.align 16
+	.global halt
+halt:
+	cli
+1:
+	hlt
+	jmp	1b
