@@ -54,6 +54,31 @@ memmove (void *dest, const void *src, size_t len)
   return dest;
 }
 
+void *
+memset (void *ptr, int c, size_t len)
+{
+  size_t i;
+  for (i = 0; i < len; i++)
+    ((u8 *) ptr)[i] = c;
+  return ptr;
+}
+
+int
+memcmp (const void *a, const void *b, size_t len)
+{
+  u8 *ca = (u8 *) a;
+  u8 *cb = (u8 *) b;
+  size_t i;
+  for (i = 0; i < len; i++)
+    {
+      if (ca[i] > cb[i])
+	return 1;
+      else if (ca[i] < cb[i])
+	return -1;
+    }
+  return 0;
+}
+
 size_t
 strlen (const char *s)
 {
