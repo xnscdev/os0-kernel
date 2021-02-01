@@ -20,6 +20,10 @@
 #define _LIBK_STDLIB_H
 
 #include <sys/cdefs.h>
+#include <stddef.h>
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 __BEGIN_DECLS
 
@@ -27,6 +31,9 @@ char *itoa (int value, char *result, int base);
 char *itoa_u (int value, char *result, int base);
 char *utoa (unsigned int value, char *result, int base);
 char *utoa_u (unsigned int value, char *result, int base);
+
+void qsort (void *base, size_t len, size_t width,
+	    int (*compare) (const void *, const void *));
 
 void panic (const char *msg) __attribute__ ((noreturn)) __attribute__ ((cold));
 

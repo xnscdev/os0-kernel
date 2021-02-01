@@ -21,8 +21,6 @@
 #include <sys/multiboot.h>
 #include <video/vga.h>
 
-extern void *_kernel_end;
-
 void
 kmain (struct MultibootInfo *info)
 {

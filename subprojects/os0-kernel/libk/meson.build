@@ -2,6 +2,7 @@ libk_src = [
   'itoa.c',
   'panic.c',
   'printk.c',
+  'qsort.c',
   'string.c'
 ]
 
