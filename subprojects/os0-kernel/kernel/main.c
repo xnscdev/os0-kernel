@@ -26,20 +26,14 @@ extern void *_kernel_end;
 static void
 pass (void)
 {
-  u8 *ptr = (u8 *) ((u32) &_kernel_end - 0x10);
-  int i;
-  for (i = 0; i < 0x11; i++)
+  u32 addr = (u32) &_kernel_end;
+  struct MemoryHeader *header = (struct MemoryHeader *) (addr - 0x10);
+  while (header->mh_magic == MEMORY_MAGIC)
     {
-      int j;
-      for (j = 0; j < 0x10; j++)
-	{
-	  u8 byte = ptr[i * 0x10 + j];
-	  if (byte < 0x10)
-	    printk ("0%x ", byte);
-	  else
-	    printk ("%x ", byte);
-	}
-      printk ("\n");
+      printk ("Block at 0x%x: order %d, allocated %d\n", addr, header->mh_order,
+	      header->mh_alloc);
+      addr += 1 << (header->mh_order + 12);
+      header = (struct MemoryHeader *) (addr - 0x10);
     }
 }
 
@@ -49,5 +43,6 @@ main (struct MultibootInfo *info)
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   memory_init (info->mi_memhigh);
+  kmalloc (0x8000, 0);
   pass ();
 }
