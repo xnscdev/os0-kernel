@@ -26,6 +26,7 @@
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
 
+#define MEM_MAX_BLOCK_ORDER 19 /* 2 GiB blocks */
 #define MEM_PAGESIZE 0x1000
 
 #define MEM_PAGEALIGN (1 << 0)
