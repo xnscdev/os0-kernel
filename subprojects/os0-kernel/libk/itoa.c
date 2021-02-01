@@ -18,8 +18,10 @@
 
 #include <libk/stdlib.h>
 
-static char *digits =
+static char *lower_digits =
   "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz";
+static char *upper_digits =
+  "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 char *
 itoa (int value, char *result, int base)
@@ -39,12 +41,44 @@ itoa (int value, char *result, int base)
     {
       temp = value;
       value /= base;
-      *ptr++ = digits[35 + (temp - value * base)];
+      *ptr++ = lower_digits[35 + (temp - value * base)];
     }
   while (value != 0);
 
   if (temp < 0)
     *ptr++ = '-';
+  *ptr-- = '\0';
+  while (rev < ptr)
+    {
+      c = *ptr;
+      *ptr-- = *rev;
+      *rev++ = c;
+    }
+  return result;
+}
+
+char *
+utoa (unsigned int value, char *result, int base)
+{
+  char *ptr = result;
+  char *rev = result;
+  unsigned int temp;
+  char c;
+
+  if (base < 2 || base > 36)
+    {
+      *result = '\0';
+      return result;
+    }
+
+  do
+    {
+      temp = value;
+      value /= base;
+      *ptr++ = lower_digits[35 + (temp - value * base)];
+    }
+  while (value != 0);
+
   *ptr-- = '\0';
   while (rev < ptr)
     {

@@ -80,9 +80,9 @@ printk (const char *__restrict fmt, ...)
 	}
       else if (*fmt == 'x')
 	{
-	  int n = va_arg (args, int);
+	  unsigned int n = va_arg (args, unsigned int);
 	  size_t len;
-	  itoa (n, itoa_buffer, 16);
+	  utoa (n, itoa_buffer, 16);
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
