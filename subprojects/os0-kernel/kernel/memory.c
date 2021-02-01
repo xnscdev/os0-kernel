@@ -53,7 +53,7 @@ kmalloc (size_t size, u32 flags)
 
   /* Determine the minimum order block to fit size bytes */
   u32 order = 0;
-  while (1 << (order + 13) <= size)
+  while (1 << (order + 12) < size)
     order++;
 
   while (1)

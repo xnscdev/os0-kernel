@@ -43,6 +43,6 @@ main (struct MultibootInfo *info)
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   memory_init (info->mi_memhigh);
-  kmalloc (0x8000, 0);
+  kmalloc (0x1000, 0);
   pass ();
 }
