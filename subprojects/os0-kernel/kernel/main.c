@@ -21,17 +21,10 @@
 #include <sys/multiboot.h>
 #include <video/vga.h>
 
-static void
-pass (void)
-{
-  printk ("0x%x\n", (u32) kmalloc (1, MEM_PAGEALIGN));
-}
-
 void
 kmain (MultibootInfo *info)
 {
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
-  pass ();
 }

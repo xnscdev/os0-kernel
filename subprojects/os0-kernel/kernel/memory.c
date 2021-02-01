@@ -20,48 +20,27 @@
 #include <sys/memory.h>
 #include <limits.h>
 
-#undef  MEM_MAX_BLOCK_ORDER
-#define MEM_MAX_BLOCK_ORDER 3
-
 extern void *_kernel_end;
 
-static u8 o3[1];
-static u8 o2[2];
-static u8 o1[4];
-static u8 o0[8];
-static u8 *block_list[] = {o0, o1, o2, o3};
-
-static void
-mem_print_bits (u8 n, u32 spaces)
-{
-  int i;
-  for (i = 0; i < CHAR_BIT; i++)
-    {
-      u32 j;
-      printk (n & (1 << (CHAR_BIT - i - 1)) ? "x" : ".");
-      for (j = 0; j < spaces; j++)
-	printk (" ");
-    }
-}
-
-static void
-mem_dump (void)
-{
-  int i;
-  printk ("x - Used\n. - Free\n0 ");
-  for (i = 0; i < 8; i++)
-    mem_print_bits (o0[i], 0);
-  printk ("\n1 ");
-  for (i = 0; i < 4; i++)
-    mem_print_bits (o1[i], 1);
-  printk ("\n2 ");
-  for (i = 0; i < 2; i++)
-    mem_print_bits (o2[i], 3);
-  printk ("\n3 ");
-  for (i = 0; i < 1; i++)
-    mem_print_bits (o3[i], 7);
-  printk ("\n");
-}
+static u8 o16[0x1];
+static u8 o15[0x2];
+static u8 o14[0x4];
+static u8 o13[0x8];
+static u8 o12[0x10];
+static u8 o11[0x20];
+static u8 o10[0x40];
+static u8 o9[0x80];
+static u8 o8[0x100];
+static u8 o7[0x200];
+static u8 o6[0x400];
+static u8 o5[0x800];
+static u8 o4[0x1000];
+static u8 o3[0x2000];
+static u8 o2[0x4000];
+static u8 o1[0x8000];
+static u8 o0[0x10000];
+static u8 *block_list[] =
+  {o0, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12, o13, o14, o15, o16};
 
 static int
 mem_search_free (u32 order, int *index, int *bit)
@@ -102,11 +81,11 @@ kmalloc (size_t size, u32 flags)
 
   while (1 << (order + 12) < size)
     order++;
-  printk ("Minimum order for requested size: %d\n", order);
+  if (order > MEM_MAX_BLOCK_ORDER)
+    return NULL; /* Requested too much memory */
 
   if (mem_search_free (order, &index, &bit) != 0)
     return NULL; /* No blocks that can fit size bytes are available */
-  printk ("Found available block: %d\n", index * CHAR_BIT + bit);
 
   addr = (1 << (order + 12)) * (index * CHAR_BIT + bit);
   save_index = index;
@@ -142,6 +121,5 @@ kmalloc (size_t size, u32 flags)
       bit = offset - index * CHAR_BIT;
     }
 
-  mem_dump ();
   return (void *) ((u32) &_kernel_end + addr);
 }
