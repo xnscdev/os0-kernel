@@ -1,5 +1,6 @@
 libk_src = [
   'array.c',
+  'bitsearch.c',
   'itoa.c',
   'panic.c',
   'printk.c',

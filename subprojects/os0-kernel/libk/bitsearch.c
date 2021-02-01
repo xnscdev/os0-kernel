@@ -1,5 +1,5 @@
 /*************************************************************************
- * string.h -- This file is part of OS/0.                                *
+ * bitsearch.c -- This file is part of OS/0.                             *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,28 +16,77 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STRING_H
-#define _LIBK_STRING_H
+#include <libk/string.h>
+#include <limits.h>
 
-#include <sys/cdefs.h>
-#include <stddef.h>
+int
+ffs (int value)
+{
+  int i;
+  for (i = 0; i < CHAR_BIT * sizeof (int); i++)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
 
-__BEGIN_DECLS
+int
+ffsl (long value)
+{
+  int i;
+  for (i = 0; i < CHAR_BIT * sizeof (long); i++)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
 
-int ffs (int value);
-int ffsl (long value);
-int ffsll (long long value);
-int fls (int value);
-int flsl (long value);
-int flsll (long long value);
+int
+ffsll (long long value)
+{
+  int i;
+  for (i = 0; i < CHAR_BIT * sizeof (long long); i++)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
 
-void *memcpy (void *__restrict dest, const void *__restrict src, size_t len);
-void *memmove (void *dest, const void *src, size_t len);
-void *memset (void *ptr, int c, size_t len);
-int memcmp (const void *a, const void *b, size_t len);
+int
+fls (int value)
+{
+  int i;
+  for (i = CHAR_BIT * sizeof (int) - 1; i >= 0; i--)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
 
-size_t strlen (const char *s);
+int
+flsl (long value)
+{
+  int i;
+  for (i = CHAR_BIT * sizeof (long) - 1; i >= 0; i--)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
 
-__END_DECLS
-
-#endif
+int
+flsll (long long value)
+{
+  int i;
+  for (i = CHAR_BIT * sizeof (long long) - 1; i >= 0; i--)
+    {
+      if (value & (1 << i))
+	return i + 1;
+    }
+  return 0;
+}
