@@ -78,11 +78,14 @@ printk (const char *__restrict fmt, ...)
 	  vga_write (itoa_buffer, len);
 	  fmt++;
 	}
-      else if (*fmt == 'x')
+      else if (*fmt == 'x' || *fmt == 'X')
 	{
 	  unsigned int n = va_arg (args, unsigned int);
 	  size_t len;
-	  utoa (n, itoa_buffer, 16);
+	  if (*fmt == 'x')
+	    utoa (n, itoa_buffer, 16);
+	  else
+	    utoa_u (n, itoa_buffer, 16);
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;

@@ -24,7 +24,9 @@
 __BEGIN_DECLS
 
 char *itoa (int value, char *result, int base);
+char *itoa_u (int value, char *result, int base);
 char *utoa (unsigned int value, char *result, int base);
+char *utoa_u (unsigned int value, char *result, int base);
 
 void panic (const char *msg) __attribute__ ((noreturn)) __attribute__ ((cold));
 

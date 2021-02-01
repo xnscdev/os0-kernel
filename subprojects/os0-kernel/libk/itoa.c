@@ -23,8 +23,8 @@ static char *lower_digits =
 static char *upper_digits =
   "ZYXWVUTSRQPONMLKJIHGFEDCBA9876543210123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-char *
-itoa (int value, char *result, int base)
+static char *
+_itoa (int value, char *result, int base, char *digits)
 {
   char *ptr = result;
   char *rev = result;
@@ -41,7 +41,7 @@ itoa (int value, char *result, int base)
     {
       temp = value;
       value /= base;
-      *ptr++ = lower_digits[35 + (temp - value * base)];
+      *ptr++ = digits[35 + (temp - value * base)];
     }
   while (value != 0);
 
@@ -57,8 +57,8 @@ itoa (int value, char *result, int base)
   return result;
 }
 
-char *
-utoa (unsigned int value, char *result, int base)
+static char *
+_utoa (unsigned int value, char *result, int base, char *digits)
 {
   char *ptr = result;
   char *rev = result;
@@ -87,4 +87,28 @@ utoa (unsigned int value, char *result, int base)
       *rev++ = c;
     }
   return result;
+}
+
+char *
+itoa (int value, char *result, int base)
+{
+  return _itoa (value, result, base, lower_digits);
+}
+
+char *
+itoa_u (int value, char *result, int base)
+{
+  return _itoa (value, result, base, upper_digits);
+}
+
+char *
+utoa (unsigned int value, char *result, int base)
+{
+  return _utoa (value, result, base, lower_digits);
+}
+
+char *
+utoa_u (unsigned int value, char *result, int base)
+{
+  return _utoa (value, result, base, upper_digits);
 }
