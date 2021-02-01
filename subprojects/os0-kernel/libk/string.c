@@ -35,6 +35,25 @@ memcpy (void *__restrict dest, const void *__restrict src, size_t len)
   return dest;
 }
 
+void *
+memmove (void *dest, const void *src, size_t len)
+{
+  size_t i;
+  if (dest < src)
+    return memcpy (dest, src, len);
+  if ((u32) dest % 2 == 0 && (u32) src % 2 == 0 && len % 2 == 0)
+    {
+      for (i = len / 2; i > 0; i--)
+	((u16 *) dest)[i - 1] = ((u16 *) src)[i - 1];
+    }
+  else
+    {
+      for (i = len; i > 0; i--)
+	((u8 *) dest)[i - 1] = ((u8 *) src)[i - 1];
+    }
+  return dest;
+}
+
 size_t
 strlen (const char *s)
 {
