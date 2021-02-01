@@ -24,6 +24,8 @@
 
 __BEGIN_DECLS
 
+void *memcpy (void *__restrict dest, const void *__restrict src, size_t len);
+
 size_t strlen (const char *s);
 
 __END_DECLS

@@ -16,7 +16,24 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/string.h>
+#include <libk/libk.h>
+
+void *
+memcpy (void *__restrict dest, const void *__restrict src, size_t len)
+{
+  size_t i;
+  if ((u32) dest % 2 == 0 && (u32) src % 2 == 0 && len % 2 == 0)
+    {
+      for (i = 0; i < len / 2; i++)
+	((u16 *) dest)[i] = ((u16 *) src)[i];
+    }
+  else
+    {
+      for (i = 0; i < len; i++)
+	((u8 *) dest)[i] = ((u8 *) src)[i];
+    }
+  return dest;
+}
 
 size_t
 strlen (const char *s)
