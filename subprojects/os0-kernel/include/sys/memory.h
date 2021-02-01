@@ -19,12 +19,16 @@
 #ifndef _SYS_MEMORY_H
 #define _SYS_MEMORY_H
 
-#include <libk/types.h>
+#include <libk/array.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
 
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
+
+#define MEM_PAGESIZE 0x1000
+
+#define MEM_PAGEALIGN (1 << 0)
 
 typedef struct
 {
@@ -40,9 +44,21 @@ typedef struct
   u32 mf_header;
 } __attribute__ ((packed)) MemFooter;
 
+typedef struct
+{
+  SortedArray mh_index;
+  u32 mh_saddr;
+  u32 mh_eaddr;
+  u32 mh_maddr;
+  u16 mh_supvsr;
+  u16 mh_rdonly;
+} __attribute__ ((packed)) MemHeap;
+
 __BEGIN_DECLS
 
 void mem_init (u32 mem);
+
+void *kmalloc (size_t size, u32 flags);
 
 __END_DECLS
 

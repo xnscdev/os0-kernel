@@ -28,3 +28,9 @@ mem_init (u32 mem)
   mem -= (addr - 0x100000) / 1024; /* Skip kernel code */
   printk ("Detected %dK of available upper memory\n", mem);
 }
+
+void *
+kmalloc (size_t size, u32 flags)
+{
+  return NULL;
+}
