@@ -22,6 +22,8 @@
 
 extern void *_kernel_end;
 
+static u32 mem_maxaddr;
+
 static u8 o16[0x1];
 static u8 o15[0x2];
 static u8 o14[0x4];
@@ -62,9 +64,9 @@ mem_search_free (u32 order, int *index, int *bit)
 void
 mem_init (u32 mem)
 {
-  u32 addr = (u32) &_kernel_end;
-  mem -= (addr - 0x100000) / 1024; /* Skip kernel code */
-  printk ("Detected %dK of available upper memory\n", mem);
+  mem_maxaddr = mem * 1024 + 0x100000;
+  printk ("Detected %dK of available upper memory\n",
+	  mem - ((u32) &_kernel_end - 0x100000) / 1024);
 }
 
 void *
@@ -87,7 +89,9 @@ kmalloc (size_t size, u32 flags)
   if (mem_search_free (order, &index, &bit) != 0)
     return NULL; /* No blocks that can fit size bytes are available */
 
-  addr = (1 << (order + 12)) * (index * CHAR_BIT + bit);
+  addr = (u32) &_kernel_end + (1 << (order + 12)) * (index * CHAR_BIT + bit);
+  if (addr > mem_maxaddr)
+    return NULL; /* System does not have enough memory */
   save_index = index;
   save_bit = bit;
 
@@ -114,12 +118,12 @@ kmalloc (size_t size, u32 flags)
 	  int to = offset + k;
 	  int ti = to / CHAR_BIT;
 	  int tb = to - ti * CHAR_BIT;
-	  block_list[i][ti] |= (1 << (CHAR_BIT - tb - 1));
+	  block_list[i][ti] |= 1 << (CHAR_BIT - tb - 1);
 	}
       offset <<= 1;
       index = offset / CHAR_BIT;
       bit = offset - index * CHAR_BIT;
     }
 
-  return (void *) ((u32) &_kernel_end + addr);
+  return (void *) addr;
 }
