@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * array.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,26 +16,24 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STDLIB_H
-#define _LIBK_STDLIB_H
+#ifndef _LIBK_ARRAY_H
+#define _LIBK_ARRAY_H
 
 #include <libk/types.h>
 #include <sys/cdefs.h>
-#include <stddef.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+typedef struct
+{
+  void **sa_elems;
+  u32 sa_size;
+  u32 sa_max;
+  ComparePredicate sa_cmp;
+} SortedArray;
 
 __BEGIN_DECLS
 
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
-
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
-
-void panic (const char *msg) __attribute__ ((noreturn)) __attribute__ ((cold));
+SortedArray sorted_array_place (void *addr, u32 maxsize, ComparePredicate cmp);
+void sorted_array_destroy (SortedArray *array);
 
 __END_DECLS
 

@@ -19,6 +19,7 @@
 #ifndef _LIBK_LIBK_H
 #define _LIBK_LIBK_H
 
+#include <libk/array.h>
 #include <libk/assert.h>
 #include <libk/stdio.h>
 #include <libk/stdlib.h>

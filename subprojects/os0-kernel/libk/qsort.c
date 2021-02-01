@@ -54,8 +54,7 @@ typedef struct
 #define	STACK_NOT_EMPTY	(stack < top)
 
 void
-qsort (void *const pbase, size_t len, size_t size,
-       int (*cmp) (const void *, const void *))
+qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp)
 {
   char *base_ptr = (char *) pbase;
   const size_t max_thresh = MAX_THRESH * size;

@@ -1,4 +1,5 @@
 libk_src = [
+  'array.c',
   'itoa.c',
   'panic.c',
   'printk.c',
