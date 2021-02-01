@@ -26,19 +26,19 @@
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
 
-struct MemHeader
+typedef struct
 {
   u32 mh_magic;
   u32 mh_size;
   u8 mh_alloc;
   u8 mh_reserved[7];
-} __attribute__ ((packed));
+} __attribute__ ((packed)) MemHeader;
 
-struct MemFooter
+typedef struct
 {
-  u32 mh_cigam;
-  u32 mh_header;
-} __attribute__ ((packed));
+  u32 mf_cigam;
+  u32 mf_header;
+} __attribute__ ((packed)) MemFooter;
 
 __BEGIN_DECLS
 

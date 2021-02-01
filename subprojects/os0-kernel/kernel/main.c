@@ -22,7 +22,7 @@
 #include <video/vga.h>
 
 void
-kmain (struct MultibootInfo *info)
+kmain (MultibootInfo *info)
 {
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);

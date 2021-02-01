@@ -41,7 +41,7 @@
 
 #ifndef _ASM
 
-struct MultibootInfo
+typedef struct
 {
   u32 mi_flags;
   u32 mi_memlow;
@@ -71,7 +71,7 @@ struct MultibootInfo
   u8 mi_fbbpp;
   u8 mi_fbtype;
   u8 mi_fbcolinfo[6];
-} __attribute__ ((packed));
+} __attribute__ ((packed)) MultibootInfo;
 
 #endif
 
