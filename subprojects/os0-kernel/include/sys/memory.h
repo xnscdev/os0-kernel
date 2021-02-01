@@ -21,10 +21,9 @@
 
 #include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stddef.h>
 
 #define MEMORY_MAGIC 0xefbeadde
-
-#define MEMORY_START 0x101000
 
 struct MemoryHeader
 {
@@ -38,6 +37,8 @@ struct MemoryHeader
 __BEGIN_DECLS
 
 void memory_init (u32 mem);
+
+void *kmalloc (size_t size, u32 flags);
 
 __END_DECLS
 

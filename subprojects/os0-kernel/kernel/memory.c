@@ -45,3 +45,52 @@ memory_init (u32 mem)
       addr += size << 10;
     }
 }
+
+void *
+kmalloc (size_t size, u32 flags)
+{
+  u32 addr = (u32) &_kernel_end;
+
+  /* Determine the minimum order block to fit size bytes */
+  u32 order = 0;
+  while (1 << (order + 13) <= size)
+    order++;
+
+  while (1)
+    {
+      struct MemoryHeader *header =
+	(struct MemoryHeader *) (addr - sizeof (struct MemoryHeader));
+      if (header->mh_magic != MEMORY_MAGIC)
+	break;
+      if (header->mh_order == order)
+	{
+	  header->mh_alloc = 1;
+	  header->mh_flags = flags;
+	  return (void *) addr;
+	}
+      else if (header->mh_order > order)
+	{
+	  /* Split the block, then split the first sub-block until the correct
+	     order block is created */
+	  while (header->mh_order > order)
+	    {
+	      struct MemoryHeader *temp;
+	      header->mh_order--;
+	      temp = (struct MemoryHeader *)
+		(addr + (1 << (header->mh_order + 12)) -
+		 sizeof (struct MemoryHeader));
+	      /* TODO Use memcpy() */
+	      temp->mh_magic = header->mh_magic;
+	      temp->mh_order = header->mh_order;
+	      temp->mh_flags = header->mh_flags;
+	      temp->mh_reserved = header->mh_reserved;
+	      temp->mh_alloc = 0;
+	    }
+	  header->mh_alloc = 1;
+	  header->mh_flags = flags;
+	  return (void *) addr;
+	}
+      addr += 1 << (header->mh_order + 12);
+    }
+  return NULL;
+}
