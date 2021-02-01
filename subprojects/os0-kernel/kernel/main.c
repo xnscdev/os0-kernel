@@ -23,26 +23,10 @@
 
 extern void *_kernel_end;
 
-static void
-pass (void)
-{
-  u32 addr = (u32) &_kernel_end;
-  struct MemoryHeader *header = (struct MemoryHeader *) (addr - 0x10);
-  while (header->mh_magic == MEMORY_MAGIC)
-    {
-      printk ("Block at 0x%x: order %d, allocated %d\n", addr, header->mh_order,
-	      header->mh_alloc);
-      addr += 1 << (header->mh_order + 12);
-      header = (struct MemoryHeader *) (addr - 0x10);
-    }
-}
-
 void
 kmain (struct MultibootInfo *info)
 {
   vga_init ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  memory_init (info->mi_memhigh);
-  kmalloc (0x1000000, 0);
-  pass ();
+  mem_init (info->mi_memhigh);
 }

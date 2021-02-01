@@ -23,22 +23,26 @@
 #include <sys/cdefs.h>
 #include <stddef.h>
 
-#define MEMORY_MAGIC 0xefbeadde
+#define MEM_MAGIC 0xefbeadde
+#define MEM_CIGAM 0xdeadbeef
 
-struct MemoryHeader
+struct MemHeader
 {
   u32 mh_magic;
-  u16 mh_order;
-  u16 mh_alloc;
-  u32 mh_flags;
-  u32 mh_reserved;
+  u32 mh_size;
+  u8 mh_alloc;
+  u8 mh_reserved[7];
+} __attribute__ ((packed));
+
+struct MemFooter
+{
+  u32 mh_cigam;
+  u32 mh_header;
 } __attribute__ ((packed));
 
 __BEGIN_DECLS
 
-void memory_init (u32 mem);
-
-void *kmalloc (size_t size, u32 flags);
+void mem_init (u32 mem);
 
 __END_DECLS
 
