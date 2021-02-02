@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * kconfig.h -- This file is part of OS/0.                               *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,23 +16,11 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/libk.h>
-#include <sys/memory.h>
-#include <sys/multiboot.h>
-#include <video/vga.h>
-#include <kconfig.h>
+#ifndef _KCONFIG_H
+#define _KCONFIG_H
 
-static void
-splash (void)
-{
-  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2020\n\n");
-}
+#define VERSION @VERSION@
 
-void
-kmain (MultibootInfo *info)
-{
-  vga_init ();
-  splash ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  mem_init (info->mi_memhigh);
-}
+#define KERNEL_ARCH @KERNEL_ARCH@
+
+#endif
