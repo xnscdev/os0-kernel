@@ -1,5 +1,7 @@
 arch_src = [
-  'halt.S'
+  'halt.S',
+  'paging.c',
+  'paging.S'
 ]
 
 arch = static_library('arch', arch_src, include_directories: includedir)
