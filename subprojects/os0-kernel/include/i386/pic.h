@@ -20,24 +20,14 @@
 #define _I386_PIC_H
 
 #include <libk/types.h>
+#include <sys/cdefs.h>
 
 #define PIC_MASTER_COMMAND 0x20
 #define PIC_MASTER_DATA    0x21
 #define PIC_SLAVE_COMMAND  0xa0
 #define PIC_SLAVE_DATA     0xa1
 
-#define GDT_SIZE 5
 #define IDT_SIZE 256
-
-typedef struct
-{
-  u16 ge_liml;
-  u16 ge_basel;
-  u8 ge_basem;
-  u8 ge_access;
-  u8 ge_gran;
-  u8 ge_baseh;
-} __attribute__ ((packed)) GDTEntry;
 
 typedef struct
 {
@@ -48,15 +38,10 @@ typedef struct
   u16 ie_baseh;
 } __attribute__ ((packed)) IDTEntry;
 
-typedef struct
-{
-  u16 dp_limit;
-  u32 dp_base;
-} __attribute__ ((packed)) DTPtr;
+__BEGIN_DECLS
 
-void gdt_load (u32 addr);
 void idt_load (u32 addr);
 
-void gdt_set_gate (u32 n, u32 base, u32 limit, u8 access, u8 granularity);
+__END_DECLS
 
 #endif

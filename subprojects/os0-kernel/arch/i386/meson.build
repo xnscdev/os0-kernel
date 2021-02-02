@@ -1,4 +1,5 @@
 arch_src = [
+  'gdt.c',
   'halt.S',
   'paging.c',
   'paging.S',

@@ -1,5 +1,5 @@
 /*************************************************************************
- * pic.c -- This file is part of OS/0.                                   *
+ * gdt.c -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -17,46 +17,33 @@
  *************************************************************************/
 
 #include <i386/gdt.h>
-#include <i386/pic.h>
 #include <sys/io.h>
 
-static IDTEntry idt_entries[IDT_SIZE];
-static DTPtr idt;
-
-#define IRQ(x) void irq ## x (void);
-#include "irq.inc"
-#undef IRQ
+static GDTEntry gdt_entries[GDT_SIZE];
+static DTPtr gdt;
 
 void
-idt_init (void)
+gdt_set_gate (u32 n, u32 base, u32 limit, u8 access, u8 granularity)
 {
-#define IRQ(x) u32 irq ## x ## _addr;
-#include "irq.inc"
-#undef IRQ
+  gdt_entries[n].ge_basel = base & 0xffff;
+  gdt_entries[n].ge_basem = (base >> 16) & 0xff;
+  gdt_entries[n].ge_baseh = (base >> 24) & 0xff;
+  gdt_entries[n].ge_liml = limit & 0xffff;
+  gdt_entries[n].ge_gran = ((limit >> 16) & 0x0f) | (granularity & 0xf0);
+  gdt_entries[n].ge_access = access;
+}
 
-  /* Remap PIC */
-  outb (0x11, PIC_MASTER_COMMAND);
-  outb (0x11, PIC_SLAVE_COMMAND);
-  outb (0x20, PIC_MASTER_DATA);
-  outb (0x28, PIC_SLAVE_DATA);
-  outb (4, PIC_MASTER_DATA);
-  outb (2, PIC_SLAVE_DATA);
-  outb (1, PIC_MASTER_DATA);
-  outb (1, PIC_SLAVE_DATA);
-  outb (0, PIC_MASTER_DATA);
-  outb (0, PIC_SLAVE_DATA);
+void
+gdt_init (void)
+{
+  gdt.dp_limit = sizeof (GDTEntry) * GDT_SIZE - 1;
+  gdt.dp_base = (u32) &gdt_entries;
 
-  idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
-  idt.dp_base = (u32) &idt_entries;
+  gdt_set_gate (0, 0, 0, 0, 0); /* Null segment */
+  gdt_set_gate (1, 0, 0xffffffff, 0x9a, 0xcf); /* Code segment */
+  gdt_set_gate (2, 0, 0xffffffff, 0x92, 0xcf); /* Data segment */
+  gdt_set_gate (3, 0, 0xffffffff, 0xfa, 0xcf); /* User mode code segment */
+  gdt_set_gate (4, 0, 0xffffffff, 0xf2, 0xcf); /* User mode data segment */
 
-#define IRQ(x) irq ## x ## _addr = (u32) irq ## x;			\
-  idt_entries[x + 32].ie_basel = irq ## x ## _addr & 0xffff;		\
-  idt_entries[x + 32].ie_sel = 0x08;					\
-  idt_entries[x + 32].ie_reserved = 0;					\
-  idt_entries[x + 32].ie_flags = 0x8e;					\
-  idt_entries[x + 32].ie_baseh = (irq ## x ## _addr & 0xffff0000) >> 16;
-#include "irq.inc"
-#undef IRQ
-
-  /* idt_load ((u32) &idt); */
+  /* gdt_load ((u32) &gdt); */
 }

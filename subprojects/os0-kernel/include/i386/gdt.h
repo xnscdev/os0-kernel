@@ -1,5 +1,5 @@
 /*************************************************************************
- * pic.c -- This file is part of OS/0.                                   *
+ * gdt.h -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,47 +16,36 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/gdt.h>
-#include <i386/pic.h>
-#include <sys/io.h>
+#ifndef _I386_GDT_H
+#define _I386_GDT_H
 
-static IDTEntry idt_entries[IDT_SIZE];
-static DTPtr idt;
+#include <libk/types.h>
+#include <sys/cdefs.h>
 
-#define IRQ(x) void irq ## x (void);
-#include "irq.inc"
-#undef IRQ
+#define GDT_SIZE 5
 
-void
-idt_init (void)
+typedef struct
 {
-#define IRQ(x) u32 irq ## x ## _addr;
-#include "irq.inc"
-#undef IRQ
+  u16 ge_liml;
+  u16 ge_basel;
+  u8 ge_basem;
+  u8 ge_access;
+  u8 ge_gran;
+  u8 ge_baseh;
+} __attribute__ ((packed)) GDTEntry;
 
-  /* Remap PIC */
-  outb (0x11, PIC_MASTER_COMMAND);
-  outb (0x11, PIC_SLAVE_COMMAND);
-  outb (0x20, PIC_MASTER_DATA);
-  outb (0x28, PIC_SLAVE_DATA);
-  outb (4, PIC_MASTER_DATA);
-  outb (2, PIC_SLAVE_DATA);
-  outb (1, PIC_MASTER_DATA);
-  outb (1, PIC_SLAVE_DATA);
-  outb (0, PIC_MASTER_DATA);
-  outb (0, PIC_SLAVE_DATA);
+typedef struct
+{
+  u16 dp_limit;
+  u32 dp_base;
+} __attribute__ ((packed)) DTPtr;
 
-  idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
-  idt.dp_base = (u32) &idt_entries;
+__BEGIN_DECLS
 
-#define IRQ(x) irq ## x ## _addr = (u32) irq ## x;			\
-  idt_entries[x + 32].ie_basel = irq ## x ## _addr & 0xffff;		\
-  idt_entries[x + 32].ie_sel = 0x08;					\
-  idt_entries[x + 32].ie_reserved = 0;					\
-  idt_entries[x + 32].ie_flags = 0x8e;					\
-  idt_entries[x + 32].ie_baseh = (irq ## x ## _addr & 0xffff0000) >> 16;
-#include "irq.inc"
-#undef IRQ
+void gdt_load (u32 addr);
 
-  /* idt_load ((u32) &idt); */
-}
+void gdt_set_gate (u32 n, u32 base, u32 limit, u8 access, u8 granularity);
+
+__END_DECLS
+
+#endif
