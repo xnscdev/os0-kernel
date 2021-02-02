@@ -18,15 +18,22 @@
 
 #define _ASM
 
+#include <kconfig.h>
+
 	.section .text
 	.align 16
-	.global flush_tlb_page
-	.type flush_tlb_page, @function
-flush_tlb_page:
+	.global vm_page_inval
+	.type vm_page_inval, @function
+vm_page_inval:
 	push	%ebp
 	mov	%esp, %ebp
+#ifdef INVLPG_SUPPORT
+	/* Avoid the expensive CR3 reload */
 	mov	4(%esp), %eax
-	/* TODO invlpg is only supported on i486 and up */
 	invlpg	(%eax)
+#else
+	mov	%cr3, %eax
+	mov	%eax, %cr3
+#endif
 	pop	%ebp
 	ret

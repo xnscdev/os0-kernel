@@ -21,6 +21,6 @@
 
 #define VERSION @VERSION@
 
-#define KERNEL_ARCH @KERNEL_ARCH@
+#mesondefine INVLPG_SUPPORT
 
 #endif

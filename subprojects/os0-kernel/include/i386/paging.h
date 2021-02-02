@@ -43,7 +43,7 @@
 
 __BEGIN_DECLS
 
-void flush_tlb_page (void *vaddr);
+void vm_page_inval (void *vaddr);
 
 __END_DECLS
 

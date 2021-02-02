@@ -69,5 +69,5 @@ map_page (void *paddr, void *vaddr, u32 flags)
   table = (u32 *) (page_dir[pdi] & 0xfffff000);
   /* TODO Check if table entry is present */
   table[pti] = (u32) paddr | PAGE_DFLAG_PRESENT | (flags & 0xfff);
-  flush_tlb_page (vaddr);
+  vm_page_inval (vaddr);
 }

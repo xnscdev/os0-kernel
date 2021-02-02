@@ -11,7 +11,8 @@ kernel_conf.set_quoted('VERSION', meson.project_version())
 
 if host_machine.cpu_family() == 'x86'
   subdir('arch/i386')
-  kernel_conf.set('KERNEL_ARCH', 'KERNEL_ARCH_' + host_machine.cpu().to_upper())
+  kernel_conf.set10('INVLPG_SUPPORT',
+		    host_machine.cpu().version_compare('>= i386'))
 else
   error('host CPU type not supported or invalid')
 endif
