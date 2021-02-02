@@ -24,6 +24,10 @@ static IDTEntry idt_entries[IDT_SIZE];
 static DTPtr gdt;
 static DTPtr idt;
 
+#define IRQ(x) void irq ## x (void);
+#include "irq.inc"
+#undef IRQ
+
 static void
 gdt_init (void)
 {
@@ -42,6 +46,35 @@ gdt_init (void)
 static void
 idt_init (void)
 {
+#define IRQ(x) u32 irq ## x ## _addr;
+#include "irq.inc"
+#undef IRQ
+
+  /* Remap PIC */
+  outb (0x11, PIC_MASTER_COMMAND);
+  outb (0x11, PIC_SLAVE_COMMAND);
+  outb (0x20, PIC_MASTER_DATA);
+  outb (0x28, PIC_SLAVE_DATA);
+  outb (4, PIC_MASTER_DATA);
+  outb (2, PIC_SLAVE_DATA);
+  outb (1, PIC_MASTER_DATA);
+  outb (1, PIC_SLAVE_DATA);
+  outb (0, PIC_MASTER_DATA);
+  outb (0, PIC_SLAVE_DATA);
+
+  idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
+  idt.dp_base = (u32) &idt_entries;
+
+#define IRQ(x) irq ## x ## _addr = (u32) irq ## x;			\
+  idt_entries[x + 32].ie_basel = irq ## x ## _addr & 0xffff;		\
+  idt_entries[x + 32].ie_sel = 0x08;					\
+  idt_entries[x + 32].ie_reserved = 0;					\
+  idt_entries[x + 32].ie_flags = 0x8e;					\
+  idt_entries[x + 32].ie_baseh = (irq ## x ## _addr & 0xffff0000) >> 16;
+#include "irq.inc"
+#undef IRQ
+
+  /* load_idt ((u32) &idt); */
 }
 
 void
