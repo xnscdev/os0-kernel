@@ -16,13 +16,30 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VM_PAGING_H
-#define _VM_PAGING_H
+#ifndef _I386_PAGING_H
+#define _I386_PAGING_H
 
 #include <sys/cdefs.h>
 
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
+
+/* Page directory entry flags */
+
+#define PAGE_DFLAG_PRESENT (1 << 0)
+#define PAGE_DFLAG_WRITE   (1 << 1)
+#define PAGE_DFLAG_USER    (1 << 2)
+#define PAGE_DFLAG_WTHRU   (1 << 3)
+#define PAGE_DFLAG_NOCACHE (1 << 4)
+#define PAGE_DFLAG_ACCESS  (1 << 5)
+#define PAGE_DFLAG_4M      (1 << 6)
+
+/* Page table entry flags */
+
+#define PAGE_TFLAG_MEMTYPE (1 << 0)
+#define PAGE_TFLAG_DIRTY   (1 << 1)
+#define PAGE_TFLAG_GLOBAL  (1 << 2)
+#define PAGE_TFLAG_CACHE   (1 << 3)
 
 __BEGIN_DECLS
 

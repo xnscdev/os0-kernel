@@ -18,7 +18,7 @@
 
 #include <libk/types.h>
 #include <sys/memory.h>
-#include <vm/paging.h>
+#include <i386/paging.h>
 
 extern void *_kernel_end;
 
@@ -29,12 +29,12 @@ void
 paging_init (void)
 {
   int i;
-  page_dir[0] = (u32) page_table0 | 3;
+  page_dir[0] = (u32) page_table0 | PAGE_DFLAG_WRITE | PAGE_DFLAG_PRESENT;
   for (i = 1; i < PAGE_DIR_SIZE; i++)
     page_dir[i] = 2;
   /* Identity map the first 4 MiB */
   for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table0[i] = (i * MEM_PAGESIZE) | 3;
+    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_TFLAG_DIRTY | PAGE_TFLAG_MEMTYPE;
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
