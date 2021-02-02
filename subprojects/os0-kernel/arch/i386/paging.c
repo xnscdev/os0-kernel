@@ -43,5 +43,11 @@ paging_init (void)
 void *
 get_paddr (void *vaddr)
 {
-  return vaddr; /* TODO Implement */
+  u32 pdi = (u32) vaddr >> 22;
+  u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
+  u32 *table;
+  if (!(page_dir[pdi] & PAGE_DFLAG_PRESENT))
+    return NULL;
+  table = (u32 *) (page_dir[pdi] & 0xfffff000);
+  return (void *) ((table[pti] & 0xfffff000) + ((u32) vaddr & 0xfff));
 }
