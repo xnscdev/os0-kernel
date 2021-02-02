@@ -1,6 +1,6 @@
 /*************************************************************************
  * main.c -- This file is part of OS/0.                                  *
- * Copyright (C) 2020 XNSC                                               *
+ * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
  * it under the terms of the GNU General Public License as published by  *
@@ -25,7 +25,7 @@
 static void
 splash (void)
 {
-  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2020\n\n");
+  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
 }
 
 void
