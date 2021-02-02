@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * timer.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,28 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/libk.h>
-#include <sys/memory.h>
-#include <sys/multiboot.h>
-#include <sys/timer.h>
-#include <video/vga.h>
-#include <kconfig.h>
+#ifndef _SYS_TIMER_H
+#define _SYS_TIMER_H
 
-static void
-splash (void)
-{
-  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
-}
+#include <libk/types.h>
+#include <sys/cdefs.h>
 
-void
-kmain (MultibootInfo *info)
-{
-  timer_set_freq (1000);
-  vga_init ();
-  splash ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  mem_init (info->mi_memhigh);
+__BEGIN_DECLS
 
-  msleep (5000);
-  printk ("Hello, World!\n");
-}
+void timer_set_freq (u32 freq);
+
+void msleep (u32 ms);
+
+__END_DECLS
+
+#endif

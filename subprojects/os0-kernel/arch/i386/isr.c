@@ -17,11 +17,13 @@
  *************************************************************************/
 
 #include <i386/pic.h>
+#include <i386/timer.h>
 #include <sys/io.h>
 
 void
 irq0_handler (void)
 {
+  timer_tick ();
   outb (PIC_EOI, PIC_MASTER_COMMAND);
 }
 
