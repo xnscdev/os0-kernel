@@ -24,6 +24,10 @@
 
 #define MEM_PAGEALIGN (1 << 0)
 
+#define KERNEL_HEAP_ADDR  0xc0000000
+#define KERNEL_HEAP_INDEX 0x8000
+#define KERNEL_HEAP_SIZE  0x10000000
+
 typedef struct
 {
   u32 mh_magic;
@@ -41,19 +45,17 @@ typedef struct
 typedef struct
 {
   SortedArray mh_index;
-  u32 mh_isize;
-  u32 mh_saddr;
-  u32 mh_eaddr;
-  u32 mh_maddr;
+  u32 mh_addr;
+  u32 mh_size;
   u16 mh_supvsr;
   u16 mh_rdonly;
 } MemHeap;
 
 __BEGIN_DECLS
 
-MemHeap *heap_new (u32 indexsize, u32 heapsize, u32 maxsize, u8 supervisor,
-		   u8 readonly);
-void *heap_get_index (MemHeap *heap);
+int heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
+	      u8 supervisor, u8 readonly);
+void heap_init (void);
 
 __END_DECLS
 

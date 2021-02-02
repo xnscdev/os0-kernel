@@ -17,10 +17,10 @@
  *************************************************************************/
 
 #include <libk/libk.h>
-#include <sys/memory.h>
 #include <sys/multiboot.h>
 #include <sys/timer.h>
 #include <video/vga.h>
+#include <vm/heap.h>
 #include <kconfig.h>
 
 static void
@@ -37,4 +37,5 @@ kmain (MultibootInfo *info)
   splash ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
+  heap_init ();
 }
