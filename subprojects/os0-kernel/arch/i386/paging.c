@@ -39,3 +39,9 @@ paging_init (void)
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
+
+void *
+get_paddr (void *vaddr)
+{
+  return vaddr; /* TODO Implement */
+}

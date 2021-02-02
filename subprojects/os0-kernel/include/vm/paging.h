@@ -27,7 +27,7 @@ __BEGIN_DECLS
 void paging_loaddir (u32 addr);
 void paging_enable (void);
 
-paddr_t get_paddr (vaddr_t vaddr);
+void *get_paddr (void *vaddr);
 
 __END_DECLS
 

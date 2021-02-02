@@ -42,7 +42,4 @@ typedef int32_t time_t; /* Year 2038 problem */
 typedef int32_t timer_t;
 typedef uint16_t uid_t;
 
-typedef uint32_t paddr_t;
-typedef uint32_t vaddr_t;
-
 #endif
