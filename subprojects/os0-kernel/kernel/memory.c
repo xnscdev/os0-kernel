@@ -70,7 +70,7 @@ mem_init (u32 mem)
 }
 
 void *
-kmalloc (size_t size, u32 flags)
+mem_alloc (size_t size, u32 flags)
 {
   u8 order = 0;
   u32 addr;
@@ -129,7 +129,7 @@ kmalloc (size_t size, u32 flags)
 }
 
 void
-kfree (void *ptr, size_t size)
+mem_free (void *ptr, size_t size)
 {
   u8 order = 0;
   int offset;
