@@ -8,7 +8,7 @@ grub_file = find_program('grub-file', required: false)
 includedir = include_directories('include')
 
 if host_machine.cpu_family() == 'x86'
-  subdir('arch/x86')
+  subdir('arch/i386')
 else
   error('host CPU type not supported or invalid')
 endif
