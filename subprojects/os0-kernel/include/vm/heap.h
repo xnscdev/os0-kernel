@@ -1,5 +1,5 @@
 /*************************************************************************
- * boot.S -- This file is part of OS/0.                                  *
+ * heap.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,41 +16,35 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#define _ASM
+#ifndef _VM_HEAP_H
+#define _VM_HEAP_H
 
-#include <sys/multiboot.h>
+#include <sys/memory.h>
 
-	.set ALIGN, 1 << 0
-	.set MEMINFO, 1 << 1
-	.set FLAGS, ALIGN | MEMINFO
-	.set MAGIC, MULTIBOOT_MAGIC
-	.set CHECKSUM, -(MAGIC + FLAGS)
+#define MEM_PAGEALIGN (1 << 0)
 
-	.section .multiboot
-	.align 4
-	.long MAGIC
-	.long FLAGS
-	.long CHECKSUM
+typedef struct
+{
+  u32 mh_magic;
+  u32 mh_size;
+  u8 mh_alloc;
+  u8 mh_reserved[7];
+} __attribute__ ((packed)) MemHeader;
 
-	.section .bss
-	.align 16
-stack_bottom:
-	.skip 16384
-stack_top:
+typedef struct
+{
+  u32 mf_cigam;
+  u32 mf_header;
+} __attribute__ ((packed)) MemFooter;
 
-	.section .text
-	.global _start
-	.type _start, @function
-_start:
-	mov	$stack_top, %esp
-	call	paging_init
+typedef struct
+{
+  SortedArray mh_index;
+  u32 mh_saddr;
+  u32 mh_eaddr;
+  u32 mh_maddr;
+  u16 mh_supvsr;
+  u16 mh_rdonly;
+} __attribute__ ((packed)) MemHeap;
 
-	push	%ebx
-	call	kmain
-
-	cli
-1:
-	hlt
-	jmp	1b
-
-	.size _start, . - _start
+#endif

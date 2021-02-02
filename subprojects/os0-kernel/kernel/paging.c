@@ -1,5 +1,5 @@
 /*************************************************************************
- * boot.S -- This file is part of OS/0.                                  *
+ * paging.c -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,41 +16,16 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#define _ASM
+#include <libk/types.h>
+#include <sys/memory.h>
+#include <vm/paging.h>
 
-#include <sys/multiboot.h>
+static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 
-	.set ALIGN, 1 << 0
-	.set MEMINFO, 1 << 1
-	.set FLAGS, ALIGN | MEMINFO
-	.set MAGIC, MULTIBOOT_MAGIC
-	.set CHECKSUM, -(MAGIC + FLAGS)
-
-	.section .multiboot
-	.align 4
-	.long MAGIC
-	.long FLAGS
-	.long CHECKSUM
-
-	.section .bss
-	.align 16
-stack_bottom:
-	.skip 16384
-stack_top:
-
-	.section .text
-	.global _start
-	.type _start, @function
-_start:
-	mov	$stack_top, %esp
-	call	paging_init
-
-	push	%ebx
-	call	kmain
-
-	cli
-1:
-	hlt
-	jmp	1b
-
-	.size _start, . - _start
+void
+paging_init (void)
+{
+  int i;
+  for (i = 0; i < PAGE_DIR_SIZE; i++)
+    page_dir[i] = 2;
+}

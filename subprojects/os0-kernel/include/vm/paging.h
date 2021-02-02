@@ -1,5 +1,5 @@
 /*************************************************************************
- * heap.h -- This file is part of OS/0.                                  *
+ * paging.h -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,35 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_HEAP_H
-#define _SYS_HEAP_H
+#ifndef _VM_PAGING_H
+#define _VM_PAGING_H
 
-#include <sys/memory.h>
+#include <sys/cdefs.h>
 
-#define MEM_PAGEALIGN (1 << 0)
+#define PAGE_DIR_SIZE 1024
+#define PAGE_TABLE_SIZE 1024
 
-typedef struct
-{
-  u32 mh_magic;
-  u32 mh_size;
-  u8 mh_alloc;
-  u8 mh_reserved[7];
-} __attribute__ ((packed)) MemHeader;
+__BEGIN_DECLS
 
-typedef struct
-{
-  u32 mf_cigam;
-  u32 mf_header;
-} __attribute__ ((packed)) MemFooter;
+void paging_init (void);
 
-typedef struct
-{
-  SortedArray mh_index;
-  u32 mh_saddr;
-  u32 mh_eaddr;
-  u32 mh_maddr;
-  u16 mh_supvsr;
-  u16 mh_rdonly;
-} __attribute__ ((packed)) MemHeap;
+__END_DECLS
 
 #endif
