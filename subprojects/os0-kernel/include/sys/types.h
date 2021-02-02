@@ -1,5 +1,5 @@
 /*************************************************************************
- * paging.c -- This file is part of OS/0.                                *
+ * types.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,26 +16,33 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/paging.h>
-#include <libk/types.h>
-#include <sys/memory.h>
-#include <vm/paging.h>
+#ifndef _SYS_TYPES_H
+#define _SYS_TYPES_H
 
-extern void *_kernel_end;
+#include <stdint.h>
 
-static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+/* POSIX types */
 
-void
-paging_init (void)
-{
-  int i;
-  page_dir[0] = (u32) page_table0 | PAGE_DFLAG_WRITE | PAGE_DFLAG_PRESENT;
-  for (i = 1; i < PAGE_DIR_SIZE; i++)
-    page_dir[i] = 2;
-  /* Identity map the first 4 MiB */
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_TFLAG_DIRTY | PAGE_TFLAG_MEMTYPE;
-  paging_loaddir ((u32) page_dir);
-  paging_enable ();
-}
+typedef int32_t blkcnt_t;
+typedef int32_t blksize_t;
+typedef int32_t clock_t;
+typedef int32_t clockid_t;
+typedef uint16_t dev_t;
+typedef uint32_t fsblkcnt_t;
+typedef uint32_t fsfilcnt_t;
+typedef uint16_t gid_t;
+typedef uint16_t id_t;
+typedef uint32_t ino_t;
+typedef int32_t key_t;
+typedef uint32_t mode_t;
+typedef uint32_t nlink_t;
+typedef int32_t off_t;
+typedef uint16_t pid_t;
+typedef int32_t time_t; /* Year 2038 problem */
+typedef int32_t timer_t;
+typedef uint16_t uid_t;
+
+typedef uint32_t paddr_t;
+typedef uint32_t vaddr_t;
+
+#endif

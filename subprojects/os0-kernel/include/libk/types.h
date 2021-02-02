@@ -19,7 +19,7 @@
 #ifndef _LIBK_TYPES_H
 #define _LIBK_TYPES_H
 
-#include <stdint.h>
+#include <sys/types.h>
 
 typedef int8_t s8;
 typedef int16_t s16;

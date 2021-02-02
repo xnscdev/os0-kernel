@@ -1,5 +1,5 @@
 /*************************************************************************
- * paging.c -- This file is part of OS/0.                                *
+ * paging.h -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,26 +16,19 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/paging.h>
+#ifndef _VM_PAGING_H
+#define _VM_PAGING_H
+
 #include <libk/types.h>
-#include <sys/memory.h>
-#include <vm/paging.h>
+#include <sys/cdefs.h>
 
-extern void *_kernel_end;
+__BEGIN_DECLS
 
-static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+void paging_loaddir (u32 addr);
+void paging_enable (void);
 
-void
-paging_init (void)
-{
-  int i;
-  page_dir[0] = (u32) page_table0 | PAGE_DFLAG_WRITE | PAGE_DFLAG_PRESENT;
-  for (i = 1; i < PAGE_DIR_SIZE; i++)
-    page_dir[i] = 2;
-  /* Identity map the first 4 MiB */
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_TFLAG_DIRTY | PAGE_TFLAG_MEMTYPE;
-  paging_loaddir ((u32) page_dir);
-  paging_enable ();
-}
+paddr_t get_paddr (vaddr_t vaddr);
+
+__END_DECLS
+
+#endif
