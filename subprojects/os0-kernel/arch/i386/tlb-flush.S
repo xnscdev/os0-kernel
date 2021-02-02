@@ -37,3 +37,5 @@ vm_page_inval:
 #endif
 	pop	%ebp
 	ret
+
+	.size vm_page_inval, . - vm_page_inval

@@ -58,5 +58,5 @@ idt_init (void)
 #include "irq.inc"
 #undef IRQ
 
-  /* idt_load ((u32) &idt); */
+  idt_load ((u32) &idt);
 }

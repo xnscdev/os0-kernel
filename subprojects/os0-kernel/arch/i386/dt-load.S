@@ -1,5 +1,5 @@
 /*************************************************************************
- * gdt.c -- This file is part of OS/0.                                   *
+ * dt-load.S -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,32 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/gdt.h>
-#include <sys/io.h>
+#define _ASM
 
-static GDTEntry gdt_entries[GDT_SIZE];
-static DTPtr gdt;
+	.section .text
+	.align 16
+	.global gdt_load
+	.type gdt_load, @function
+gdt_load:
+	mov	4(%esp), %eax
+	lgdt	(%eax)
+	mov	$0x10, %ax
+	mov	%ax, %ds
+	mov	%ax, %es
+	mov	%ax, %fs
+	mov	%ax, %gs
+	mov	%ax, %ss
+	ljmp	$0x08, $.flush
+.flush:
+	ret
 
-void
-gdt_set_gate (u32 n, u32 base, u32 limit, u8 access, u8 granularity)
-{
-  gdt_entries[n].ge_basel = base & 0xffff;
-  gdt_entries[n].ge_basem = (base >> 16) & 0xff;
-  gdt_entries[n].ge_baseh = (base >> 24) & 0xff;
-  gdt_entries[n].ge_liml = limit & 0xffff;
-  gdt_entries[n].ge_gran = ((limit >> 16) & 0x0f) | (granularity & 0xf0);
-  gdt_entries[n].ge_access = access;
-}
+	.size gdt_load, . - gdt_load
 
-void
-gdt_init (void)
-{
-  gdt.dp_limit = sizeof (GDTEntry) * GDT_SIZE - 1;
-  gdt.dp_base = (u32) &gdt_entries;
+	.global idt_load
+	.type idt_load, @function
+idt_load:
+	mov	4(%esp), %eax
+	lidt	(%eax)
+	ret
 
-  gdt_set_gate (0, 0, 0, 0, 0); /* Null segment */
-  gdt_set_gate (1, 0, 0xffffffff, 0x9a, 0xcf); /* Code segment */
-  gdt_set_gate (2, 0, 0xffffffff, 0x92, 0xcf); /* Data segment */
-  gdt_set_gate (3, 0, 0xffffffff, 0xfa, 0xcf); /* User mode code segment */
-  gdt_set_gate (4, 0, 0xffffffff, 0xf2, 0xcf); /* User mode data segment */
-
-  gdt_load ((u32) &gdt);
-}
+	.size idt_load, . - idt_load
