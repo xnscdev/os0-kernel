@@ -18,8 +18,52 @@
 
 #include <vm/heap.h>
 
-MemHeap *
-heap_new (u32 size, u32 max, u8 supervisor, u8 readonly)
+static int
+heap_cmp (const void *a, const void *b)
 {
-  return NULL; /* TODO Implement */
+  return ((const MemHeader *) a)->mh_size < ((const MemHeader *) b)->mh_size;
+}
+
+MemHeap *
+heap_new (u32 indexsize, u32 heapsize, u32 maxsize, u8 supervisor, u8 readonly)
+{
+  MemHeap *heap = mem_alloc (sizeof (MemHeap) + indexsize + maxsize, 0);
+  MemHeader *hole;
+  u32 start;
+
+  if (heap == NULL)
+    return NULL;
+
+  if (sorted_array_place (&heap->mh_index, heap_get_index (heap), indexsize,
+			  heap_cmp) != 0)
+    {
+      mem_free (heap, sizeof (MemHeap) + indexsize + maxsize);
+      return NULL;
+    }
+
+  start = (u32) heap + sizeof (void *) * indexsize;
+  if (start & 0xfffff000)
+    {
+      start &= 0xfffff000;
+      start += MEM_PAGESIZE;
+    }
+
+  heap->mh_saddr = start;
+  heap->mh_eaddr = start + heapsize;
+  heap->mh_maddr = start + maxsize;
+  heap->mh_supvsr = supervisor;
+  heap->mh_rdonly = readonly;
+
+  hole = (MemHeader *) start;
+  hole->mh_magic = MEM_MAGIC;
+  hole->mh_size = heapsize;
+  hole->mh_alloc = 0;
+  sorted_array_insert (&heap->mh_index, hole);
+  return heap;
+}
+
+void *
+heap_get_index (MemHeap *heap)
+{
+  return (SortedArray *) ((u32) heap + sizeof (MemHeap));
 }

@@ -19,7 +19,6 @@
 #ifndef _SYS_MEMORY_H
 #define _SYS_MEMORY_H
 
-#include <libk/array.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
 

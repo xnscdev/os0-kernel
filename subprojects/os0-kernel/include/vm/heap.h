@@ -19,6 +19,7 @@
 #ifndef _VM_HEAP_H
 #define _VM_HEAP_H
 
+#include <libk/array.h>
 #include <sys/memory.h>
 
 #define MEM_PAGEALIGN (1 << 0)
@@ -29,27 +30,30 @@ typedef struct
   u32 mh_size;
   u8 mh_alloc;
   u8 mh_reserved[7];
-} __attribute__ ((packed)) MemHeader;
+} MemHeader;
 
 typedef struct
 {
   u32 mf_cigam;
   u32 mf_header;
-} __attribute__ ((packed)) MemFooter;
+} MemFooter;
 
 typedef struct
 {
   SortedArray mh_index;
+  u32 mh_isize;
   u32 mh_saddr;
   u32 mh_eaddr;
   u32 mh_maddr;
   u16 mh_supvsr;
   u16 mh_rdonly;
-} __attribute__ ((packed)) MemHeap;
+} MemHeap;
 
 __BEGIN_DECLS
 
-MemHeap *heap_new (u32 size, u32 max, u8 supervisor, u8 readonly);
+MemHeap *heap_new (u32 indexsize, u32 heapsize, u32 maxsize, u8 supervisor,
+		   u8 readonly);
+void *heap_get_index (MemHeap *heap);
 
 __END_DECLS
 
