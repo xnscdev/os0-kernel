@@ -49,7 +49,7 @@ typedef struct
 
 __BEGIN_DECLS
 
-MemHeap *heap_new (u32 start, u32 end, u32 max, u8 supervisor, u8 readonly);
+MemHeap *heap_new (u32 size, u32 max, u8 supervisor, u8 readonly);
 
 __END_DECLS
 

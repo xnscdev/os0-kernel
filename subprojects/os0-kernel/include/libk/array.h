@@ -32,7 +32,8 @@ typedef struct
 
 __BEGIN_DECLS
 
-SortedArray sorted_array_place (void *addr, u32 maxsize, ComparePredicate cmp);
+int sorted_array_place (SortedArray *array, void *addr, u32 maxsize,
+			ComparePredicate cmp);
 void sorted_array_destroy (SortedArray *array);
 void sorted_array_insert (SortedArray *array, void *item);
 void *sorted_array_lookup (SortedArray *array, u32 i);

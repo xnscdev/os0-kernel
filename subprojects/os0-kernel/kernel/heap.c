@@ -19,7 +19,7 @@
 #include <vm/heap.h>
 
 MemHeap *
-heap_new (u32 start, u32 end, u32 max, u8 supervisor, u8 readonly)
+heap_new (u32 size, u32 max, u8 supervisor, u8 readonly)
 {
   return NULL; /* TODO Implement */
 }

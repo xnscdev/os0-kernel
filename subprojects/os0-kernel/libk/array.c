@@ -18,18 +18,18 @@
 
 #include <libk/libk.h>
 
-SortedArray
-sorted_array_place (void *addr, u32 max, ComparePredicate cmp)
+int
+sorted_array_place (SortedArray *array, void *addr, u32 max,
+		    ComparePredicate cmp)
 {
-  SortedArray self;
-  assert (addr != NULL);
-  assert (cmp != NULL);
-  self.sa_elems = (void **) addr;
-  memset (self.sa_elems, 0, max * sizeof (void *));
-  self.sa_size = 0;
-  self.sa_max = max;
-  self.sa_cmp = cmp;
-  return self;
+  if (array == NULL || addr == NULL || cmp == NULL)
+    return -1;
+  array->sa_elems = (void **) addr;
+  memset (array->sa_elems, 0, max * sizeof (void *));
+  array->sa_size = 0;
+  array->sa_max = max;
+  array->sa_cmp = cmp;
+  return 0;
 }
 
 void
