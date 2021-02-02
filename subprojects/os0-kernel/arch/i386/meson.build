@@ -2,6 +2,7 @@ arch_src = [
   'halt.S',
   'paging.c',
   'paging.S',
+  'pic.c',
   'tlb-flush.S'
 ]
 
