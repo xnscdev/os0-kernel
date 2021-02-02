@@ -20,12 +20,21 @@
 #include <sys/memory.h>
 #include <vm/paging.h>
 
+extern void *_kernel_end;
+
 static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 
 void
 paging_init (void)
 {
   int i;
-  for (i = 0; i < PAGE_DIR_SIZE; i++)
+  page_dir[0] = (u32) page_table0 | 3;
+  for (i = 1; i < PAGE_DIR_SIZE; i++)
     page_dir[i] = 2;
+  /* Identity map the first 4 MiB */
+  for (i = 0; i < PAGE_TBL_SIZE; i++)
+    page_table0[i] = (i * MEM_PAGESIZE) | 3;
+  paging_loaddir ((u32) page_dir);
+  paging_enable ();
 }

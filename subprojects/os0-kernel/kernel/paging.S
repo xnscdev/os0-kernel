@@ -1,5 +1,5 @@
 /*************************************************************************
- * paging.h -- This file is part of OS/0.                                *
+ * paging.S -- This file is part of OS/0.                                *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,20 +16,27 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VM_PAGING_H
-#define _VM_PAGING_H
+#define _ASM
 
-#include <sys/cdefs.h>
+	.section .text
+	.align 16
+	.global paging_loaddir
+	.type paging_loaddir, @function
+paging_loaddir:
+	push	%ebp
+	mov	%esp, %ebp
+	mov	8(%esp), %eax
+	mov	%eax, %cr3
+	pop	%ebp
+	ret
 
-#define PAGE_DIR_SIZE 1024
-#define PAGE_TBL_SIZE 1024
-
-__BEGIN_DECLS
-
-void paging_init (void);
-void paging_loaddir (u32 addr);
-void paging_enable (void);
-
-__END_DECLS
-
-#endif
+	.global paging_enable
+	.type paging_enable, @function
+paging_enable:
+	push	%ebp
+	mov	%esp, %ebp
+	mov	%cr0, %eax
+	or	$0x80000000, %eax
+	mov	%eax, %cr0
+	pop	%ebp
+	ret
