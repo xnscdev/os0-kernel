@@ -19,6 +19,8 @@
 #ifndef _I386_PAGING_H
 #define _I386_PAGING_H
 
+#include <sys/cdefs.h>
+
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
 
@@ -38,5 +40,11 @@
 #define PAGE_TFLAG_DIRTY   (1 << 1)
 #define PAGE_TFLAG_GLOBAL  (1 << 2)
 #define PAGE_TFLAG_CACHE   (1 << 3)
+
+__BEGIN_DECLS
+
+void flush_tlb_page (void *vaddr);
+
+__END_DECLS
 
 #endif

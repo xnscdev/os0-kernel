@@ -1,5 +1,5 @@
 /*************************************************************************
- * paging.h -- This file is part of OS/0.                                *
+ * tlb-flush.S -- This file is part of OS/0.                             *
  * Copyright (C) 2020 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,20 +16,17 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VM_PAGING_H
-#define _VM_PAGING_H
+#define _ASM
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-
-__BEGIN_DECLS
-
-void paging_loaddir (u32 addr);
-void paging_enable (void);
-
-void *get_paddr (void *vaddr);
-void map_page (void *paddr, void *vaddr, u32 flags);
-
-__END_DECLS
-
-#endif
+	.section .text
+	.align 16
+	.global flush_tlb_page
+	.type flush_tlb_page, @function
+flush_tlb_page:
+	push	%ebp
+	mov	%esp, %ebp
+	mov	4(%esp), %eax
+	/* TODO invlpg is only supported on i486 and up */
+	invlpg	(%eax)
+	pop	%ebp
+	ret
