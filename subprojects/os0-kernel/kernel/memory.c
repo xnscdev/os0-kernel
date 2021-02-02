@@ -127,3 +127,58 @@ kmalloc (size_t size, u32 flags)
 
   return (void *) addr;
 }
+
+void
+kfree (void *ptr, size_t size)
+{
+  u8 order = 0;
+  int offset;
+  int index;
+  int bit;
+  int save_index;
+  int save_bit;
+  int i;
+
+  if (ptr == NULL)
+    return;
+  if (((u32) ptr - (u32) &_kernel_end) % MEM_PAGESIZE != 0)
+    return; /* Bad address */
+
+  while (1 << (order + 12) < size)
+    order++;
+  if (order > MEM_MAX_BLOCK_ORDER)
+    return; /* Freeing too much memory */
+
+  offset = ((u32) ptr - (u32) &_kernel_end) >> 12;
+  index = offset / CHAR_BIT;
+  bit = offset - index * CHAR_BIT;
+  save_index = index;
+  save_bit = bit;
+
+  i = order;
+  while (i < MEM_MAX_BLOCK_ORDER)
+    {
+      block_list[i][index] &= ~(1 << (CHAR_BIT - bit - 1));
+      if (bit % 2 != 0 || (block_list[i][index] & 1 << (CHAR_BIT - bit)))
+	break;
+      offset = index * CHAR_BIT + bit;
+      offset >>= 1;
+      index = offset / CHAR_BIT;
+      bit = offset - index * CHAR_BIT;
+      block_list[++i][index] &= ~(1 << (CHAR_BIT - bit - 1));
+    }
+
+  index = save_index;
+  bit = save_bit;
+  for (i = 0; i < order; i++)
+    {
+      int k;
+      for (k = 0; k < 1 << (order - i); k++)
+	{
+	  int to = index * CHAR_BIT + bit + k;
+	  int ti = to / CHAR_BIT;
+	  int tb = to - ti * CHAR_BIT;
+	  block_list[i][ti] &= ~(1 << (CHAR_BIT - tb - 1));
+	}
+    }
+}

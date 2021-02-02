@@ -60,6 +60,7 @@ __BEGIN_DECLS
 void mem_init (u32 mem);
 
 void *kmalloc (size_t size, u32 flags);
+void kfree (void *ptr, size_t size);
 
 __END_DECLS
 
