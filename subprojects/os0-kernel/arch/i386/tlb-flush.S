@@ -22,18 +22,26 @@
 
 	.section .text
 	.align 16
+	.global vm_tlb_reset
+	.type vm_tlb_reset, @function
+vm_tlb_reset:
+	push	%ebp
+	mov	%esp, %ebp
+	mov	%cr3, %eax
+	mov	%eax, %cr3
+	pop	%ebp
+	ret
+
+	.size vm_tlb_reset, . - vm_tlb_reset
+
 	.global vm_page_inval
 	.type vm_page_inval, @function
 vm_page_inval:
 	push	%ebp
 	mov	%esp, %ebp
 #ifdef INVLPG_SUPPORT
-	/* Avoid the expensive CR3 reload */
 	mov	4(%esp), %eax
 	invlpg	(%eax)
-#else
-	mov	%cr3, %eax
-	mov	%eax, %cr3
 #endif
 	pop	%ebp
 	ret

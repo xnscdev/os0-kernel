@@ -16,12 +16,13 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <kconfig.h>
+
 #include <libk/libk.h>
 #include <sys/multiboot.h>
 #include <sys/timer.h>
 #include <video/vga.h>
 #include <vm/heap.h>
-#include <kconfig.h>
 
 static void
 splash (void)

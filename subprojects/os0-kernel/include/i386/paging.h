@@ -24,25 +24,19 @@
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
 
-/* Page directory entry flags */
+/* Page entry flags */
 
-#define PAGE_DFLAG_PRESENT (1 << 0)
-#define PAGE_DFLAG_WRITE   (1 << 1)
-#define PAGE_DFLAG_USER    (1 << 2)
-#define PAGE_DFLAG_WTHRU   (1 << 3)
-#define PAGE_DFLAG_NOCACHE (1 << 4)
-#define PAGE_DFLAG_ACCESS  (1 << 5)
-#define PAGE_DFLAG_4M      (1 << 6)
-
-/* Page table entry flags */
-
-#define PAGE_TFLAG_MEMTYPE (1 << 0)
-#define PAGE_TFLAG_DIRTY   (1 << 1)
-#define PAGE_TFLAG_GLOBAL  (1 << 2)
-#define PAGE_TFLAG_CACHE   (1 << 3)
+#define PAGE_FLAG_PRESENT (1 << 0)
+#define PAGE_FLAG_WRITE   (1 << 1)
+#define PAGE_FLAG_USER    (1 << 2)
+#define PAGE_FLAG_WTHRU   (1 << 3)
+#define PAGE_FLAG_NOCACHE (1 << 4)
+#define PAGE_FLAG_ACCESS  (1 << 5)
+#define PAGE_FLAG_4M      (1 << 6)
 
 __BEGIN_DECLS
 
+void vm_tlb_reset (void);
 void vm_page_inval (void *vaddr);
 
 __END_DECLS

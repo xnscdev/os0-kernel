@@ -30,12 +30,12 @@ void
 paging_init (void)
 {
   int i;
-  page_dir[0] = (u32) page_table0 | PAGE_DFLAG_WRITE | PAGE_DFLAG_PRESENT;
+  page_dir[0] = (u32) page_table0 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
   for (i = 1; i < PAGE_DIR_SIZE; i++)
     page_dir[i] = 2;
   /* Identity map the first 4 MiB */
   for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_TFLAG_DIRTY | PAGE_TFLAG_MEMTYPE;
+    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
@@ -46,7 +46,7 @@ get_paddr (void *vaddr)
   u32 pdi = (u32) vaddr >> 22;
   u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   u32 *table;
-  if (!(page_dir[pdi] & PAGE_DFLAG_PRESENT))
+  if (!(page_dir[pdi] & PAGE_FLAG_PRESENT))
     return NULL;
   table = (u32 *) (page_dir[pdi] & 0xfffff000);
   return (void *) ((table[pti] & 0xfffff000) + ((u32) vaddr & 0xfff));
@@ -58,16 +58,15 @@ map_page (void *paddr, void *vaddr, u32 flags)
   u32 pdi = (u32) vaddr >> 22;
   u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   u32 *table;
-  if (!(page_dir[pdi] & PAGE_DFLAG_PRESENT))
+  if (!(page_dir[pdi] & PAGE_FLAG_PRESENT))
     {
       u32 addr = (u32) mem_alloc (sizeof (u32) * PAGE_TBL_SIZE, 0);
       if (addr == 0)
 	return; /* TODO Cause a kernel panic */
       /* Should the page be writeable? */
-      page_dir[pdi] = addr | PAGE_DFLAG_WRITE | PAGE_DFLAG_PRESENT;
+      page_dir[pdi] = addr | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
     }
   table = (u32 *) (page_dir[pdi] & 0xfffff000);
   /* TODO Check if table entry is present */
-  table[pti] = (u32) paddr | PAGE_DFLAG_PRESENT | (flags & 0xfff);
-  vm_page_inval (vaddr);
+  table[pti] = (u32) paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
 }

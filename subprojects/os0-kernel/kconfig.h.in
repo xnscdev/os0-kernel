@@ -21,6 +21,10 @@
 
 #define VERSION @VERSION@
 
+#mesondefine ARCH_I386
+
+#ifdef ARCH_I386
 #mesondefine INVLPG_SUPPORT
+#endif
 
 #endif

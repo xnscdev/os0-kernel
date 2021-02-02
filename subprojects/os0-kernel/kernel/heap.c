@@ -16,8 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <kconfig.h>
+
+#ifdef ARCH_I386
+#include <i386/paging.h>
+#endif
+
 #include <libk/stdlib.h>
 #include <vm/heap.h>
+#include <vm/paging.h>
 
 static MemHeap kernel_heap;
 
@@ -32,17 +39,62 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 	  u8 supervisor, u8 readonly)
 {
   void *indexbuf;
+  void *heapbuf;
+  u32 flags = 0;
+  u32 i;
+
   if (heap == NULL || vaddr == NULL || indexsize == 0 || heapsize == 0)
     return -1;
+
+  /* Page align the index and heap sizes */
+  if (indexsize & (MEM_PAGESIZE - 1))
+    {
+      indexsize &= 0xfffff000;
+      indexsize += MEM_PAGESIZE;
+    }
+  if (heapsize & (MEM_PAGESIZE - 1))
+    {
+      heapsize &= 0xfffff000;
+      heapsize += MEM_PAGESIZE;
+    }
+
   indexbuf = mem_alloc (indexsize, 0);
   if (indexbuf == NULL)
     return -1;
+
   if (sorted_array_place (&heap->mh_index, indexbuf, indexsize, heap_cmp) != 0)
     {
       mem_free (indexbuf, indexsize);
       return -1;
     }
 
+  heapbuf = mem_alloc (heapsize, 0);
+  if (heapbuf == NULL)
+    {
+      mem_free (indexbuf, indexsize);
+      return -1;
+    }
+
+#ifdef ARCH_I386
+  if (!supervisor)
+    flags |= PAGE_FLAG_USER;
+  if (!readonly)
+    flags |= PAGE_FLAG_WRITE;
+  for (i = 0; i < indexsize / MEM_PAGESIZE; i++)
+    {
+      void *pvaddr = (void *) ((u32) vaddr + i * MEM_PAGESIZE);
+      map_page ((void *) ((u32) heapbuf + i * MEM_PAGESIZE), pvaddr, flags);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (pvaddr);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+#endif
+
+  heap->mh_addr = (u32) vaddr;
+  heap->mh_size = heapsize;
   heap->mh_supvsr = supervisor;
   heap->mh_rdonly = readonly;
   return 0;

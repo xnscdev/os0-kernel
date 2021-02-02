@@ -11,6 +11,7 @@ kernel_conf.set_quoted('VERSION', meson.project_version())
 
 if host_machine.cpu_family() == 'x86'
   subdir('arch/i386')
+  kernel_conf.set10('ARCH_I386', true)
   kernel_conf.set10('INVLPG_SUPPORT',
 		    host_machine.cpu().version_compare('>= i486'))
 else
