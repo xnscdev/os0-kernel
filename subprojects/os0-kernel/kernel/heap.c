@@ -1,5 +1,5 @@
 /*************************************************************************
- * heap.h -- This file is part of OS/0.                                  *
+ * heap.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,41 +16,10 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VM_HEAP_H
-#define _VM_HEAP_H
+#include <vm/heap.h>
 
-#include <sys/memory.h>
-
-#define MEM_PAGEALIGN (1 << 0)
-
-typedef struct
+MemHeap *
+heap_new (u32 start, u32 end, u32 max, u8 supervisor, u8 readonly)
 {
-  u32 mh_magic;
-  u32 mh_size;
-  u8 mh_alloc;
-  u8 mh_reserved[7];
-} __attribute__ ((packed)) MemHeader;
-
-typedef struct
-{
-  u32 mf_cigam;
-  u32 mf_header;
-} __attribute__ ((packed)) MemFooter;
-
-typedef struct
-{
-  SortedArray mh_index;
-  u32 mh_saddr;
-  u32 mh_eaddr;
-  u32 mh_maddr;
-  u16 mh_supvsr;
-  u16 mh_rdonly;
-} __attribute__ ((packed)) MemHeap;
-
-__BEGIN_DECLS
-
-MemHeap *heap_new (u32 start, u32 end, u32 max, u8 supervisor, u8 readonly);
-
-__END_DECLS
-
-#endif
+  return NULL; /* TODO Implement */
+}

@@ -37,7 +37,4 @@ kmain (MultibootInfo *info)
   splash ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
-
-  msleep (5000);
-  printk ("Hello, World!\n");
 }
