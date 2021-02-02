@@ -44,11 +44,13 @@ stack_top:
 _start:
 	mov	$stack_top, %esp
 	call	paging_init
+	call	gdt_init
+	call	idt_init
+
+	sti
 
 	push	%ebx
 	call	kmain
-
-	cli
 1:
 	hlt
 	jmp	1b

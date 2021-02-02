@@ -2,6 +2,8 @@ arch_src = [
   'dt-load.S',
   'gdt.c',
   'halt.S',
+  'isr.c',
+  'isr.S',
   'paging.c',
   'paging.S',
   'pic.c',

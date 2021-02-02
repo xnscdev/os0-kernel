@@ -1,5 +1,5 @@
 /*************************************************************************
- * pic.h -- This file is part of OS/0.                                   *
+ * isr.S -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_PIC_H
-#define _I386_PIC_H
+#define _ASM
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-
-#define PIC_MASTER_COMMAND 0x20
-#define PIC_MASTER_DATA    0x21
-#define PIC_SLAVE_COMMAND  0xa0
-#define PIC_SLAVE_DATA     0xa1
-
-#define PIC_EOI 0x20
-
-#define IDT_SIZE 256
-
-typedef struct
-{
-  u16 ie_basel;
-  u16 ie_sel;
-  u8 ie_reserved;
-  u8 ie_flags;
-  u16 ie_baseh;
-} __attribute__ ((packed)) IDTEntry;
-
-__BEGIN_DECLS
-
-void idt_load (u32 addr);
-
-__END_DECLS
-
-#endif
+	.section .text
+	.align 16
+#define IRQ(x)				\
+	.global irq ## x;		\
+	.type irq ## x, @function;	\
+irq ## x:				\
+	pusha;				\
+	call	irq ## x ## _handler;	\
+	popa;				\
+	iret;				\
+	.size irq ## x, . - irq ## x
+#include "irq.inc"
+#undef IRQ
