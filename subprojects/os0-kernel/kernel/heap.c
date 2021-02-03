@@ -22,7 +22,7 @@
 #include <i386/paging.h>
 #endif
 
-#include <libk/stdlib.h>
+#include <libk/libk.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 

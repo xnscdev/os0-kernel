@@ -85,8 +85,9 @@ printk (const char *__restrict fmt, ...)
 	  size_t len;
 	  utoa (addr, itoa_buffer, 16);
 	  len = strlen (itoa_buffer);
-	  if (maxrem < len)
+	  if (maxrem < len + 2)
 	    return -1;
+	  vga_puts ("0x");
 	  vga_write (itoa_buffer, len);
 	  fmt++;
 	}
