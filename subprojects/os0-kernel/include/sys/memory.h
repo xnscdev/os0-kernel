@@ -35,11 +35,7 @@ extern void *_kernel_end;
 
 #define KERNEL_PADDR 0x100000
 #define KERNEL_VADDR 0xc0000000
-#define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_PADDR)
-
-#define LOWMEM_PADDR 0x0
-#define LOWMEM_VADDR 0xc8000000
-#define LOWMEM_LEN   0x100000
+#define KERNEL_SIZE  ((u32) &_kernel_end - KERNEL_PADDR)
 
 __BEGIN_DECLS
 

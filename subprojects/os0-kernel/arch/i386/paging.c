@@ -28,7 +28,6 @@ static u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
 void
 paging_init (void)
 {
-  u32 addr;
   int i;
   int j;
 
@@ -43,16 +42,6 @@ paging_init (void)
 	page_table[i][j] = ((i * PAGE_DIR_SIZE + j) * PAGE_SIZE)
 	  | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
     }
-
-  /* Map low memory to LOWMEM_VADDR */
-  for (i = 0, addr = 0; addr < LOWMEM_LEN; i++, addr += PAGE_SIZE)
-    map_page ((void *) (addr + LOWMEM_PADDR), (void *) (addr + LOWMEM_VADDR),
-	      PAGE_FLAG_WRITE);
-
-  /* Map kernel to KERNEL_VADDR */
-  for (i = 0, addr = 0; addr < KERNEL_LEN; i++, addr += PAGE_SIZE)
-    map_page ((void *) (addr + KERNEL_PADDR), (void *) (addr + KERNEL_VADDR),
-	      PAGE_FLAG_WRITE);
 
   paging_loaddir ((u32) page_dir);
   paging_enable ();
