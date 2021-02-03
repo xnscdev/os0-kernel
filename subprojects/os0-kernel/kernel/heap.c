@@ -119,7 +119,6 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 void
 heap_init (void)
 {
-  return;
   if (heap_new (&kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
 		KERNEL_HEAP_SIZE, 1, 0) != 0)
     panic ("Failed to create kernel heap");

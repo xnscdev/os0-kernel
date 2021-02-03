@@ -24,10 +24,13 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
+extern void *_kernel_end;
+
 static void
 splash (void)
 {
   printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
+  printk ("First available page-aligned address: %p\n", &_kernel_end);
 }
 
 void
@@ -38,5 +41,5 @@ kmain (MultibootInfo *info)
   splash ();
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
-  heap_init ();
+  /* heap_init (); */
 }

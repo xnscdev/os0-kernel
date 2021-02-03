@@ -23,37 +23,17 @@
 
 static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table1[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table2[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table3[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table4[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 
 void
 paging_init (void)
 {
   int i;
   page_dir[0] = (u32) page_table0 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  page_dir[1] = (u32) page_table1 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  page_dir[2] = (u32) page_table2 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  page_dir[3] = (u32) page_table3 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  page_dir[4] = (u32) page_table4 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 5; i < PAGE_DIR_SIZE; i++)
+  for (i = 1; i < PAGE_DIR_SIZE; i++)
     page_dir[i] = PAGE_FLAG_WRITE;
-  /* Identity map the first 20 MiB */
+  /* Identity map the first 24 MiB */
   for (i = 0; i < PAGE_TBL_SIZE; i++)
     page_table0[i] = (i * MEM_PAGESIZE) | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table1[i] = ((i + PAGE_TBL_SIZE) * MEM_PAGESIZE)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table2[i] = ((i + PAGE_TBL_SIZE * 2) * MEM_PAGESIZE)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table3[i] = ((i + PAGE_TBL_SIZE * 3) * MEM_PAGESIZE)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table4[i] = ((i + PAGE_TBL_SIZE * 4) * MEM_PAGESIZE)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
