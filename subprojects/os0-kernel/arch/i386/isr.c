@@ -18,7 +18,128 @@
 
 #include <i386/pic.h>
 #include <i386/timer.h>
+#include <libk/stdlib.h>
 #include <sys/io.h>
+
+void
+exc0_handler (void)
+{
+  panic ("CPU Exception: Divide-by-zero Fault");
+}
+
+void
+exc1_handler (void)
+{
+  panic ("CPU Exception: Debug Trap");
+}
+
+void
+exc2_handler (void)
+{
+  panic ("CPU Exception: Non-maskable Interrupt");
+}
+
+void
+exc3_handler (void)
+{
+  panic ("CPU Exception: Breakpoint Trap");
+}
+
+void
+exc4_handler (void)
+{
+  panic ("CPU Exception: Overflow Trap");
+}
+
+void
+exc5_handler (void)
+{
+  panic ("CPU Exception: Bound Range Exceeded");
+}
+
+void
+exc6_handler (void)
+{
+  panic ("CPU Exception: Invalid Opcode");
+}
+
+void
+exc7_handler (void)
+{
+  panic ("CPU Exception: Device Not Available");
+}
+
+void
+exc8_handler (void)
+{
+  panic ("CPU Exception: Double Fault");
+}
+
+void
+exc10_handler (void)
+{
+  panic ("CPU Exception: Invalid TSS");
+}
+
+void
+exc11_handler (void)
+{
+  panic ("CPU Exception: Segment Not Present");
+}
+
+void
+exc12_handler (void)
+{
+  panic ("CPU Exception: Stack-Segment Fault");
+}
+
+void
+exc13_handler (void)
+{
+  panic ("CPU Exception: General Protection Fault");
+}
+
+void
+exc14_handler (void)
+{
+  panic ("CPU Exception: Page Fault");
+}
+
+void
+exc16_handler (void)
+{
+  panic ("CPU Exception: x87 Floating-Point Exception");
+}
+
+void
+exc17_handler (void)
+{
+  panic ("CPU Exception: Alignment Check");
+}
+
+void
+exc18_handler (void)
+{
+  panic ("CPU Exception: Machine Check");
+}
+
+void
+exc19_handler (void)
+{
+  panic ("CPU Exception: SIMD Floating-Point Exception");
+}
+
+void
+exc20_handler (void)
+{
+  panic ("CPU Exception: Virtualization Exception");
+}
+
+void
+exc30_handler (void)
+{
+  panic ("CPU Exception: Security Exception");
+}
 
 void
 irq0_handler (void)

@@ -20,6 +20,15 @@
 
 	.section .text
 	.align 16
+#define EXC(x)				\
+	.global exc ## x;		\
+	.type exc ## x, @function;	\
+exc ## x:				\
+	pusha;				\
+	call	exc ## x ## _handler;	\
+	popa;				\
+	iret;				\
+	.size exc ## x, . - exc ## x
 #define IRQ(x)				\
 	.global irq ## x;		\
 	.type irq ## x, @function;	\
@@ -30,4 +39,5 @@ irq ## x:				\
 	iret;				\
 	.size irq ## x, . - irq ## x
 #include "irq.inc"
+#undef EXC
 #undef IRQ
