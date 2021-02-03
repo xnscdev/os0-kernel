@@ -32,10 +32,13 @@ paging_init (void)
   int i;
   int j;
 
-  /* Identity map address space */
+  /* Fill page directory */
   for (i = 0; i < PAGE_DIR_SIZE; i++)
+    page_dir[i] = (u32) page_table[i] | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+
+  /* Identity mapping */
+  for (i = 0; i < 2; i++)
     {
-      page_dir[i] = (u32) page_table[i] | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
       for (j = 0; j < PAGE_TBL_SIZE; j++)
 	page_table[i][j] = ((i * PAGE_DIR_SIZE + j) * PAGE_SIZE)
 	  | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
