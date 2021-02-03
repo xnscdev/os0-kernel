@@ -18,6 +18,7 @@
 
 #define _ASM
 
+#include <sys/memory.h>
 #include <sys/multiboot.h>
 
 	.set ALIGN, 1 << 0

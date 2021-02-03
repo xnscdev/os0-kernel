@@ -19,10 +19,14 @@
 #ifndef _SYS_MEMORY_H
 #define _SYS_MEMORY_H
 
+#ifndef _ASM
+
 #include <sys/cdefs.h>
 #include <stddef.h>
 
 extern void *_kernel_end;
+
+#endif
 
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
@@ -35,11 +39,15 @@ extern void *_kernel_end;
 
 #define KERNEL_PADDR 0x100000
 #define KERNEL_VADDR 0xc0000000
+#ifndef _ASM
 #define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_PADDR)
+#endif
 
 #define LOWMEM_PADDR 0x0
 #define LOWMEM_VADDR 0xc8000000
 #define LOWMEM_LEN   0x100000
+
+#ifndef _ASM
 
 __BEGIN_DECLS
 
@@ -49,5 +57,7 @@ void *mem_alloc (size_t size, u32 flags);
 void mem_free (void *ptr, size_t size);
 
 __END_DECLS
+
+#endif
 
 #endif
