@@ -21,19 +21,22 @@
 #include <sys/memory.h>
 #include <vm/paging.h>
 
-static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
-static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
+static u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
 
 void
 paging_init (void)
 {
   int i;
-  page_dir[0] = (u32) page_table0 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 1; i < PAGE_DIR_SIZE; i++)
-    page_dir[i] = PAGE_FLAG_WRITE;
-  /* Identity map the first 24 MiB */
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    page_table0[i] = (i * MEM_PAGESIZE) | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  int j;
+  for (i = 0; i < PAGE_DIR_SIZE; i++)
+    {
+      page_dir[i] = (u32) page_table[i] | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+      for (j = 0; j < PAGE_TBL_SIZE; j++)
+	page_table[i][j] = ((i * PAGE_DIR_SIZE + j) * PAGE_SIZE)
+	  | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+    }
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
@@ -58,7 +61,7 @@ map_page (void *paddr, void *vaddr, u32 flags)
   u32 *table;
   if (!(page_dir[pdi] & PAGE_FLAG_PRESENT))
     {
-      void *addr = mem_alloc (MEM_PAGESIZE, 0);
+      void *addr = mem_alloc (PAGE_SIZE, 0);
       if (addr == NULL)
 	panic ("Failed to allocate page table");
       page_dir[pdi] = (u32) addr | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;

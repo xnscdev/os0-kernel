@@ -139,7 +139,7 @@ mem_free (void *ptr, size_t size)
 
   if (ptr == NULL)
     return;
-  if (((u32) ptr - MEM_STARTADDR) % MEM_PAGESIZE != 0)
+  if (((u32) ptr - MEM_STARTADDR) % PAGE_SIZE != 0)
     return; /* Bad address */
 
   while (1 << (order + 12) < size)
