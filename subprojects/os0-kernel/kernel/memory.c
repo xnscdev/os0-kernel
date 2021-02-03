@@ -20,8 +20,6 @@
 #include <sys/memory.h>
 #include <limits.h>
 
-extern void *_kernel_end;
-
 static u32 mem_maxaddr;
 
 static u8 o16[0x1];
@@ -66,7 +64,7 @@ mem_init (u32 mem)
 {
   mem_maxaddr = mem * 1024 + 0x100000;
   printk ("Detected %dK of available upper memory\n",
-	  mem - ((u32) &_kernel_end - 0x100000) / 1024);
+	  mem - (MEM_STARTADDR - 0x100000) / 1024);
 }
 
 void *
@@ -89,7 +87,7 @@ mem_alloc (size_t size, u32 flags)
   if (mem_search_free (order, &index, &bit) != 0)
     return NULL; /* No blocks that can fit size bytes are available */
 
-  addr = (u32) &_kernel_end + (1 << (order + 12)) * (index * CHAR_BIT + bit);
+  addr = MEM_STARTADDR + (1 << (order + 12)) * (index * CHAR_BIT + bit);
   if (addr > mem_maxaddr)
     return NULL; /* System does not have enough memory */
   save_index = index;
@@ -141,7 +139,7 @@ mem_free (void *ptr, size_t size)
 
   if (ptr == NULL)
     return;
-  if (((u32) ptr - (u32) &_kernel_end) % MEM_PAGESIZE != 0)
+  if (((u32) ptr - MEM_STARTADDR) % MEM_PAGESIZE != 0)
     return; /* Bad address */
 
   while (1 << (order + 12) < size)
@@ -149,7 +147,7 @@ mem_free (void *ptr, size_t size)
   if (order > MEM_MAX_BLOCK_ORDER)
     return; /* Freeing too much memory */
 
-  offset = ((u32) ptr - (u32) &_kernel_end) >> 12;
+  offset = ((u32) ptr - MEM_STARTADDR) >> 12;
   index = offset / CHAR_BIT;
   bit = offset - index * CHAR_BIT;
   save_index = index;

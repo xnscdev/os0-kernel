@@ -17,25 +17,38 @@
  *************************************************************************/
 
 #include <i386/paging.h>
-#include <libk/types.h>
+#include <libk/libk.h>
 #include <sys/memory.h>
 #include <vm/paging.h>
 
-extern void *_kernel_end;
-
 static u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 static u32 page_table0[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+static u32 page_table1[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+static u32 page_table2[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
+static u32 page_table3[PAGE_TBL_SIZE] __attribute__ ((aligned (MEM_PAGESIZE)));
 
 void
 paging_init (void)
 {
   int i;
   page_dir[0] = (u32) page_table0 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  for (i = 1; i < PAGE_DIR_SIZE; i++)
+  page_dir[1] = (u32) page_table1 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  page_dir[2] = (u32) page_table2 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  page_dir[3] = (u32) page_table3 | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  for (i = 4; i < PAGE_DIR_SIZE; i++)
     page_dir[i] = 2;
-  /* Identity map the first 4 MiB */
+  /* Identity map the first 16 MiB */
   for (i = 0; i < PAGE_TBL_SIZE; i++)
     page_table0[i] = (i * MEM_PAGESIZE) | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  for (i = 0; i < PAGE_TBL_SIZE; i++)
+    page_table1[i] = ((i + PAGE_TBL_SIZE) * MEM_PAGESIZE)
+      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  for (i = 0; i < PAGE_TBL_SIZE; i++)
+    page_table2[i] = ((i + PAGE_TBL_SIZE * 2) * MEM_PAGESIZE)
+      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  for (i = 0; i < PAGE_TBL_SIZE; i++)
+    page_table3[i] = ((i + PAGE_TBL_SIZE * 3) * MEM_PAGESIZE)
+      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
   paging_loaddir ((u32) page_dir);
   paging_enable ();
 }
@@ -60,11 +73,10 @@ map_page (void *paddr, void *vaddr, u32 flags)
   u32 *table;
   if (!(page_dir[pdi] & PAGE_FLAG_PRESENT))
     {
-      u32 addr = (u32) mem_alloc (sizeof (u32) * PAGE_TBL_SIZE, 0);
-      if (addr == 0)
-	return; /* TODO Cause a kernel panic */
-      /* Should the page be writeable? */
-      page_dir[pdi] = addr | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+      void *addr = mem_alloc (MEM_PAGESIZE, 0);
+      if (addr == NULL)
+	panic ("Failed to allocate page table");
+      page_dir[pdi] = (u32) addr | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
     }
   table = (u32 *) (page_dir[pdi] & 0xfffff000);
   /* TODO Check if table entry is present */

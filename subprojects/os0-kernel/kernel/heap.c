@@ -62,6 +62,22 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
   if (indexbuf == NULL)
     return -1;
 
+  /* Identity map the index buffer pages */
+#ifdef ARCH_I386
+  for (i = 0; i < indexsize / MEM_PAGESIZE; i++)
+    {
+      void *pvaddr = (void *) ((u32) indexbuf + i * MEM_PAGESIZE);
+      map_page (pvaddr, pvaddr, PAGE_FLAG_WRITE);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (pvaddr);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+#endif
+  return 0;
+
   if (sorted_array_place (&heap->mh_index, indexbuf, indexsize, heap_cmp) != 0)
     {
       mem_free (indexbuf, indexsize);
@@ -103,6 +119,7 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 void
 heap_init (void)
 {
+  return;
   if (heap_new (&kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
 		KERNEL_HEAP_SIZE, 1, 0) != 0)
     panic ("Failed to create kernel heap");
