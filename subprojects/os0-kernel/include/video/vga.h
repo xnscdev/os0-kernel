@@ -26,7 +26,7 @@
 
 #define VGA_SCREEN_WIDTH 80
 #define VGA_SCREEN_HEIGHT 25
-#define VGA_BUFFER 0xb8000
+#define VGA_BUFFER 0xc80b8000
 
 #define VGA_PORT_INDEX 0x3d4
 #define VGA_PORT_DATA 0x3d5

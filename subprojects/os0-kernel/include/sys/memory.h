@@ -22,13 +22,24 @@
 #include <sys/cdefs.h>
 #include <stddef.h>
 
+extern void *_kernel_end;
+
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
 
 #define MEM_MAX_BLOCK_ORDER 16 /* 256 MiB blocks */
-#define MEM_STARTADDR       0x400000
+
+#define MEM_STARTADDR 0x400000
 
 #define PAGE_SIZE 0x1000
+
+#define KERNEL_PADDR 0x100000
+#define KERNEL_VADDR 0xc0000000
+#define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_PADDR)
+
+#define LOWMEM_PADDR 0x0
+#define LOWMEM_VADDR 0xc8000000
+#define LOWMEM_LEN   0x100000
 
 __BEGIN_DECLS
 

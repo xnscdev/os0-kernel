@@ -24,13 +24,10 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
-extern void *_kernel_end;
-
 static void
 splash (void)
 {
   printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
-  printk ("First available page-aligned address: %p\n", &_kernel_end);
 }
 
 void

@@ -62,9 +62,8 @@ mem_search_free (u32 order, int *index, int *bit)
 void
 mem_init (u32 mem)
 {
-  mem_maxaddr = mem * 1024 + 0x100000;
-  printk ("Detected %dK of available upper memory\n",
-	  mem - (MEM_STARTADDR - 0x100000) / 1024);
+  mem_maxaddr = mem * 1024 + KERNEL_PADDR;
+  printk ("Detected %dK of available upper memory\n", mem);
 }
 
 void *
