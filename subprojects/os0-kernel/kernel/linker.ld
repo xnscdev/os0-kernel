@@ -1,30 +1,45 @@
 ENTRY (_start)
 
+OFFSET = 0xc0000000;
+
 SECTIONS
 {
   . = 1M;
 
-  .text BLOCK (4K) : ALIGN (4K)
+  .multiboot.data :
   {
-    *(.multiboot)
+    *(.multiboot.data)
+  }
+
+  .multiboot.text :
+  {
+    *(.multiboot.text)
+  }
+
+  . += OFFSET;
+  _kernel_start = .;
+
+  .text ALIGN (4K) : AT (ADDR (.text) - OFFSET)
+  {
     *(.text)
   }
 
-  .rodata BLOCK (4K) : ALIGN (4K)
+  .rodata ALIGN (4K) : AT (ADDR (.rodata) - OFFSET)
   {
     *(.rodata)
   }
 
-  .data BLOCK (4K) : ALIGN (4K)
+  .data ALIGN (4K) : AT (ADDR (.data) - OFFSET)
   {
     *(.data)
   }
 
-  .bss BLOCK (4K) : ALIGN (4K)
+  .bss ALIGN (4K) : AT (ADDR (.bss) - OFFSET)
   {
     *(COMMON)
     *(.bss)
+    *(.bootstrap_stack)
   }
 
-  _kernel_end = ALIGN (4K);
+  _kernel_end = .;
 }
