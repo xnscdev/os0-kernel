@@ -21,10 +21,9 @@
 
 #ifndef _ASM
 
+#include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
-
-extern void *_kernel_end;
 
 #endif
 
@@ -52,6 +51,9 @@ extern void *_kernel_end;
 #ifndef _ASM
 
 __BEGIN_DECLS
+
+extern void *_kernel_start;
+extern void *_kernel_end;
 
 void mem_init (u32 mem);
 

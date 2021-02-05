@@ -19,10 +19,18 @@
 #ifndef _VM_PAGING_H
 #define _VM_PAGING_H
 
+#ifdef ARCH_I386
+#include <i386/paging.h>
+#endif
+
 #include <libk/types.h>
 #include <sys/cdefs.h>
 
 __BEGIN_DECLS
+
+extern u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
+extern u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
 
 void paging_loaddir (u32 addr);
 void paging_enable (void);

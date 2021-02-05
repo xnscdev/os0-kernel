@@ -70,6 +70,8 @@ _start:
 
 	mov	$page_table, %edx
 	xor	%eax, %eax
+
+	/* Fill page directory */
 1:
 	mov	%edx, %ecx
 	add	$4096, %edx

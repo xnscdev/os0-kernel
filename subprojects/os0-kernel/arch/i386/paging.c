@@ -16,14 +16,14 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/paging.h>
+#include <kconfig.h>
+
 #include <libk/libk.h>
 #include <sys/memory.h>
 #include <vm/paging.h>
 
-u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
-u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
-  __attribute__ ((aligned (PAGE_SIZE)));
+u32 page_dir[PAGE_DIR_SIZE];
+u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE];
 
 void
 paging_init (void)

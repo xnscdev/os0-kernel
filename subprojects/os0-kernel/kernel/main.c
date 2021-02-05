@@ -23,6 +23,7 @@
 #include <sys/timer.h>
 #include <video/vga.h>
 #include <vm/heap.h>
+#include <vm/paging.h>
 
 static void
 splash (void)
