@@ -38,14 +38,16 @@ extern void *_kernel_end;
 #define PAGE_SIZE 0x1000
 
 #define KERNEL_PADDR 0x100000
-#define KERNEL_VADDR 0xc0000000
+#define KERNEL_VADDR 0xc0100000
 #ifndef _ASM
-#define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_PADDR)
+#define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_VADDR)
 #endif
 
-#define LOWMEM_PADDR 0x0
-#define LOWMEM_VADDR 0xc8000000
-#define LOWMEM_LEN   0x100000
+#define RELOC_PADDR 0
+#define RELOC_VADDR 0xc0000000
+#ifndef _ASM
+#define RELOC_LEN   ((u32) &_kernel_end - RELOC_VADDR)
+#endif
 
 #ifndef _ASM
 

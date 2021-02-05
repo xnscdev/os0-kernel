@@ -40,12 +40,20 @@ boot_page_tbl0:
 	.long paddr | 0x003
 	.set paddr, paddr + PAGE_SIZE
 	.endr
+boot_page_tbl1:
+	.set paddr, 1024 * PAGE_SIZE
+	.rept 1024
+	.long paddr | 0x003
+	.set paddr, paddr + PAGE_SIZE
+	.endr
 
 boot_page_dir:
 	.long boot_page_tbl0 + 0x003
-	.skip 3068
+	.long boot_page_tbl1 + 0x003
+	.skip 3064
 	.long boot_page_tbl0 + 0x003
-	.skip PAGE_SIZE - 3076
+	.long boot_page_tbl1 + 0x003
+	.skip PAGE_SIZE - 3080
 
 gdt_begin:
 .gdt_null:
@@ -103,13 +111,14 @@ _start:
 	.section .text
 higher_start:
 	movl	$0, boot_page_dir
+	movl	$0, boot_page_dir + 4
 	mov	%cr3, %ecx
 	mov	%ecx, %cr3
 
 	mov	$stack_top, %esp
-	jmp	1f // TODO Fix bootstrap paging code
-
 	call	paging_init
+	call	halt
+
 	call	gdt_init
 	call	idt_init
 
