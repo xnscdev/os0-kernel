@@ -68,18 +68,6 @@ _start:
 	mov	$boot_page_dir, %ecx
 	mov	%ecx, %cr3
 
-	/* Fill page directory */
-	mov	$page_table, %edx
-	xor	%eax, %eax
-1:
-	mov	%edx, %ecx
-	add	$4096, %edx
-	or	$3, %ecx
-	mov	%ecx, page_dir(,%eax,4)
-	add	$1, %eax
-	cmp	$1024, %eax
-	jne	1b
-
 	mov	%cr0, %ecx
 	or	$0x80010000, %ecx
 	mov	%ecx, %cr0

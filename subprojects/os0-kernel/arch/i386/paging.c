@@ -49,18 +49,15 @@ get_paddr (void *vaddr)
 {
   u32 pdi = (u32) vaddr >> 22;
   u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-  u32 *table;
-  if (!(page_dir[pdi] & PAGE_FLAG_PRESENT))
-    return NULL;
-  table = (u32 *) (page_dir[pdi] & 0xfffff000);
+  u32 *table = (u32 *) (page_dir[pdi] & 0xfffff000);
   return (void *) ((table[pti] & 0xfffff000) + ((u32) vaddr & 0xfff));
 }
 
 void
-map_page (void *paddr, void *vaddr, u32 flags)
+map_page (u32 paddr, u32 vaddr, u32 flags)
 {
-  u32 pdi = (u32) vaddr >> 22;
-  u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
+  u32 pdi = vaddr >> 22;
+  u32 pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   u32 *table = (u32 *) (page_dir[pdi] & 0xfffff000);
-  table[pti] = (u32) paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
+  table[pti] = paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
 }
