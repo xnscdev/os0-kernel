@@ -43,7 +43,7 @@ extern void *_kernel_end;
 #define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_VADDR)
 #endif
 
-#define RELOC_PADDR 0
+#define RELOC_PADDR 0x0
 #define RELOC_VADDR 0xc0000000
 #ifndef _ASM
 #define RELOC_LEN   ((u32) &_kernel_end - RELOC_VADDR)

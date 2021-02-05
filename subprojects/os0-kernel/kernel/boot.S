@@ -55,29 +55,6 @@ boot_page_dir:
 	.long boot_page_tbl1 + 0x003
 	.skip PAGE_SIZE - 3080
 
-gdt_begin:
-.gdt_null:
-	.quad 0
-.gdt_code:
-	.value 0xffff
-	.value 0x0000
-	.byte 0b00000000
-	.byte 0b10011010
-	.byte 0b11001111
-	.byte 0b00000000
-.gdt_data:
-	.value 0xffff
-	.value 0x0000
-	.byte 0b00000000
-	.byte 0b10010010
-	.byte 0b11001111
-	.byte 0b00000000
-gdt_end:
-
-gdt_desc:
-	.value gdt_end - gdt_begin - 1
-	.long gdt_begin
-
 	.section .bootstrap_stack, "aw", @nobits
 stack_bottom:
 	.skip 16384
@@ -90,6 +67,17 @@ _start:
 	cli
 	mov	$boot_page_dir, %ecx
 	mov	%ecx, %cr3
+
+	mov	$page_table, %edx
+	xor	%eax, %eax
+1:
+	mov	%edx, %ecx
+	add	$4096, %edx
+	or	$3, %ecx
+	mov	%ecx, page_dir(,%eax,4)
+	add	$1, %eax
+	cmp	$1024, %eax
+	jne	1b
 
 	mov	%cr0, %ecx
 	or	$0x80010000, %ecx
