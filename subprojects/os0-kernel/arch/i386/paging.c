@@ -37,8 +37,7 @@ paging_init (void)
 
   /* Map low memory + kernel to RELOC_VADDR */
   for (i = 0, addr = 0; addr < RELOC_LEN; i++, addr += PAGE_SIZE)
-    map_page ((void *) (addr + RELOC_PADDR), (void *) (addr + RELOC_VADDR),
-	      PAGE_FLAG_WRITE);
+    map_page (addr + RELOC_PADDR, addr + RELOC_VADDR, PAGE_FLAG_WRITE);
 
   /* paging_loaddir ((u32) page_dir); */
   /* paging_enable (); */
