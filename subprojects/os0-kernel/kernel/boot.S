@@ -88,16 +88,6 @@ stack_top:
 	.type _start, @function
 _start:
 	cli
-	lgdt	(gdt_desc)
-	jmp	$0x08, $.flush
-.flush:
-	mov	$0x10, %ax
-	mov	%ax, %ds
-	mov	%ax, %es
-	mov	%ax, %fs
-	mov	%ax, %gs
-	mov	%ax, %ss
-
 	mov	$boot_page_dir, %ecx
 	mov	%ecx, %cr3
 
@@ -110,20 +100,15 @@ _start:
 
 	.section .text
 higher_start:
-	movl	$0, boot_page_dir
-	movl	$0, boot_page_dir + 4
-	mov	%cr3, %ecx
-	mov	%ecx, %cr3
-
 	mov	$stack_top, %esp
-	call	paging_init
-	call	halt
 
+	call	paging_init
+/*
 	call	gdt_init
 	call	idt_init
 
 	sti
-
+*/
 	push	%ebx
 	call	kmain
 1:
