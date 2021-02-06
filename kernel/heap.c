@@ -1,5 +1,5 @@
 /*************************************************************************
- * heap.h -- This file is part of OS/0.                                  *
+ * heap.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,47 +16,24 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _VM_HEAP_H
-#define _VM_HEAP_H
+#include <kconfig.h>
 
-#include <libk/array.h>
-#include <sys/memory.h>
+#include <libk/libk.h>
+#include <vm/heap.h>
 
-#define MEM_PAGEALIGN (1 << 0)
+MemHeap kernel_heap;
 
-#define KERNEL_HEAP_ADDR  0xd0000000
-#define KERNEL_HEAP_INDEX 0x8000
-#define KERNEL_HEAP_SIZE  0x10000000
-
-typedef struct
+int
+heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
+	  u8 supervisor, u8 readonly)
 {
-  u32 mh_magic;
-  u32 mh_size;
-  u8 mh_alloc;
-  u8 mh_reserved[7];
-} MemHeader;
+  return 0;
+}
 
-typedef struct
+void
+heap_init (void)
 {
-  u32 mf_cigam;
-  u32 mf_header;
-} MemFooter;
-
-typedef struct
-{
-  SortedArray mh_index;
-  u32 mh_addr;
-  u32 mh_size;
-  u16 mh_supvsr;
-  u16 mh_rdonly;
-} MemHeap;
-
-__BEGIN_DECLS
-
-int heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
-	      u8 supervisor, u8 readonly);
-void heap_init (void);
-
-__END_DECLS
-
-#endif
+  if (heap_new (&kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
+		KERNEL_HEAP_SIZE, 1, 0) != 0)
+    panic ("Failed to create kernel heap");
+}

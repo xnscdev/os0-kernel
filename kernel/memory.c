@@ -20,7 +20,7 @@
 #include <sys/memory.h>
 #include <limits.h>
 
-static u32 mem_maxaddr;
+static u32 mem_maxaddr; /* Physical address of max memory location */
 
 static u8 o16[0x1];
 static u8 o15[0x2];
@@ -62,7 +62,7 @@ mem_search_free (u32 order, int *index, int *bit)
 void
 mem_init (u32 mem)
 {
-  mem_maxaddr = mem * 1024 + KERNEL_PADDR;
+  mem_maxaddr = mem * 1024 + 0x100000;
   printk ("Detected %dK of available upper memory\n", mem);
 }
 

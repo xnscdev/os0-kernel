@@ -1,5 +1,6 @@
 kernel_src = [
   'boot.S',
+  'heap.c',
   'main.c',
   'memory.c'
 ]
