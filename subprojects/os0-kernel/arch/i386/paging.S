@@ -18,6 +18,8 @@
 
 #define _ASM
 
+#include <sys/memory.h>
+
 	.section .text
 	.align 16
 	.global paging_loaddir

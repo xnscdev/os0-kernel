@@ -52,6 +52,7 @@ boot_page_tbl1:
 	.set paddr, paddr + PAGE_SIZE
 	.endr
 
+	.global boot_page_dir
 	.type boot_page_dir, @object
 	.size boot_page_dir, PAGE_SIZE * 4
 boot_page_dir:
@@ -92,8 +93,8 @@ higher_start:
 	mov	$stack_top, %esp
 
 	call	paging_init
-/*
 	call	gdt_init
+/*
 	call	idt_init
 
 	sti
