@@ -77,6 +77,11 @@ _start:
 
 	.section .text
 higher_start:
+	movl	$0, boot_page_dir
+	movl	$0, boot_page_dir+4
+	mov	%cr3, %ecx
+	mov	%ecx, %cr3
+
 	mov	$stack_top, %esp
 
 	call	paging_init
@@ -86,6 +91,8 @@ higher_start:
 
 	sti
 */
+
+	add	$RELOC_VADDR, %ebx
 	push	%ebx
 	call	kmain
 1:
