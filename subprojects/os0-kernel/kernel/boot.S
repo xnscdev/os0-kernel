@@ -34,12 +34,17 @@
 	.long CHECKSUM
 
 	.align PAGE_SIZE
+	.type boot_page_tbl0, @object
+	.size boot_page_tbl0, PAGE_SIZE * 4
 boot_page_tbl0:
 	.set paddr, 0
 	.rept 1024
 	.long paddr | 0x003
 	.set paddr, paddr + PAGE_SIZE
 	.endr
+
+	.type boot_page_tbl1, @object
+	.size boot_page_tbl1, PAGE_SIZE * 4
 boot_page_tbl1:
 	.set paddr, 1024 * PAGE_SIZE
 	.rept 1024
@@ -47,6 +52,8 @@ boot_page_tbl1:
 	.set paddr, paddr + PAGE_SIZE
 	.endr
 
+	.type boot_page_dir, @object
+	.size boot_page_dir, PAGE_SIZE * 4
 boot_page_dir:
 	.long boot_page_tbl0 + 0x003
 	.long boot_page_tbl1 + 0x003
