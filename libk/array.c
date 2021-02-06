@@ -25,7 +25,7 @@ sorted_array_place (SortedArray *array, void *addr, u32 max,
   if (array == NULL || addr == NULL || cmp == NULL)
     return -1;
   array->sa_elems = (void **) addr;
-  memset (array->sa_elems, 0, max * sizeof (void *));
+  memset (array->sa_elems, 0, sizeof (void *) * max);
   array->sa_size = 0;
   array->sa_max = max;
   array->sa_cmp = cmp;
