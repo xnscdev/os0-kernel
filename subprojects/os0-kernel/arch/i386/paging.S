@@ -33,16 +33,3 @@ paging_loaddir:
 	ret
 
 	.size paging_loaddir, . - paging_loaddir
-
-	.global paging_enable
-	.type paging_enable, @function
-paging_enable:
-	push	%ebp
-	mov	%esp, %ebp
-	mov	%cr0, %eax
-	or	$0x80000000, %eax
-	mov	%eax, %cr0
-	pop	%ebp
-	ret
-
-	.size paging_enable, . - paging_enable

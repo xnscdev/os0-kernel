@@ -41,7 +41,6 @@ paging_init (void)
     map_page (addr + RELOC_PADDR, addr + RELOC_VADDR, PAGE_FLAG_WRITE);
 
   paging_loaddir ((u32) page_dir - RELOC_VADDR);
-  /* paging_enable (); */
 }
 
 void *
