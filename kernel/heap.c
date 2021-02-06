@@ -22,7 +22,9 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
-MemHeap kernel_heap;
+static MemHeap _kernel_heap;
+
+MemHeap *kernel_heap;
 
 static int
 heap_cmp (const void *a, const void *b)
@@ -216,7 +218,8 @@ heap_free (MemHeap *heap, void *ptr)
 void
 heap_init (void)
 {
-  if (heap_new (&kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
+  kernel_heap = &_kernel_heap;
+  if (heap_new (kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
 		KERNEL_HEAP_SIZE, 1, 0) != 0)
     panic ("Failed to create kernel heap");
 }

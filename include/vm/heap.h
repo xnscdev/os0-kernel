@@ -53,6 +53,8 @@ typedef struct
 
 __BEGIN_DECLS
 
+extern MemHeap *kernel_heap;
+
 int heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 	      u8 supervisor, u8 readonly);
 void *heap_alloc (MemHeap *heap, u32 size, u8 aligned);
