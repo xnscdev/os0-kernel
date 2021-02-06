@@ -61,7 +61,13 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 	  u8 supervisor, u8 readonly)
 {
   void *indexaddr;
+  void *heapaddr;
   u32 addr;
+  u32 flags = 0;
+  if (!supervisor)
+    flags |= PAGE_FLAG_USER;
+  if (!readonly)
+    flags |= PAGE_FLAG_WRITE;
 
   /* Page-align indexsize and heapsize */
   if (indexsize & (PAGE_SIZE - 1))
@@ -83,6 +89,16 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
     map_page (addr + (u32) indexaddr, addr + (u32) indexaddr, PAGE_FLAG_WRITE);
   if (sorted_array_place (&heap->mh_index, indexaddr, indexsize, heap_cmp) != 0)
     return -1;
+
+  heapaddr = mem_alloc (heapsize, 0);
+  if (heapaddr == NULL)
+    {
+      mem_free (indexaddr, sizeof (void *) * indexsize);
+      return -1;
+    }
+  /* Map heap pages from the desired virtual address */
+  for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
+    map_page (addr + (u32) heapaddr, addr + (u32) vaddr, flags);
 
   heap->mh_addr = (u32) vaddr;
   heap->mh_size = heapsize;
