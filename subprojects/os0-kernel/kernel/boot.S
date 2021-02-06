@@ -89,11 +89,9 @@ higher_start:
 
 	call	paging_init
 	call	gdt_init
-/*
 	call	idt_init
 
 	sti
-*/
 
 	add	$RELOC_VADDR, %ebx
 	push	%ebx
