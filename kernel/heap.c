@@ -166,8 +166,51 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 void
 heap_free (MemHeap *heap, void *ptr)
 {
+  MemHeader *header;
+  MemFooter *footer;
+  MemHeader *hcheck;
+  MemFooter *fcheck;
+  int add_hole = 1;
+
   if (ptr == NULL)
     return;
+
+  header = (MemHeader *) ((u32) ptr - sizeof (MemHeader));
+  footer = (MemFooter *) ((u32) header + header->mh_size - sizeof (MemFooter));
+
+  assert (header->mh_magic == MEM_MAGIC);
+  assert (footer->mf_cigam == MEM_CIGAM);
+
+  header->mh_alloc = 0;
+
+  fcheck = (MemFooter *) ((u32) header - sizeof (MemFooter));
+  if (fcheck->mf_cigam == MEM_CIGAM
+      && !((MemHeader *) fcheck->mf_header)->mh_alloc)
+    {
+      u32 temp = header->mh_size;
+      header = (MemHeader *) fcheck->mf_header;
+      footer->mf_header = (u32) header;
+      header->mh_size += temp;
+      add_hole = 0;
+    }
+
+  hcheck = (MemHeader *) ((u32) footer + sizeof (MemFooter));
+  if (hcheck->mh_magic == MEM_MAGIC && !hcheck->mh_alloc)
+    {
+      u32 i = 0;
+      header->mh_size += hcheck->mh_size;
+      fcheck = (MemFooter *) ((u32) hcheck + hcheck->mh_size -
+			      sizeof (MemFooter));
+      footer = fcheck;
+      while (i < heap->mh_index.sa_size
+	     && sorted_array_lookup (&heap->mh_index, i) != hcheck)
+	i++;
+      assert (i < heap->mh_index.sa_size);
+      sorted_array_remove (&heap->mh_index, i);
+    }
+
+  if (add_hole)
+    sorted_array_insert (&heap->mh_index, header);
 }
 
 void
