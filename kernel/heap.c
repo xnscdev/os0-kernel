@@ -139,6 +139,7 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 		(MemFooter *) ((u32) page_header - sizeof (MemFooter));
 
 	      /* Change the footer to point to the new header */
+	      assert (footer->mf_cigam == MEM_CIGAM);
 	      footer->mf_header = (u32) page_header;
 
 	      /* Create a new header behind the page-aligned address */
@@ -208,9 +209,76 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 void
 heap_free (MemHeap *heap, void *ptr)
 {
+  MemHeader *header;
+  MemFooter *footer;
+  MemHeader *prev_header;
+  u32 i;
   assert (heap != NULL);
+
   if (ptr == NULL)
     return;
+
+  header = (MemHeader *) ((u32) ptr - sizeof (MemHeader));
+  assert (header->mh_magic == MEM_MAGIC);
+  for (i = 0; i < heap->mh_index.sa_size; i++)
+    {
+      if (sorted_array_lookup (&heap->mh_index, i) == header)
+        goto found;
+    }
+  panic ("Attempted to free memory header not in heap index");
+
+ found:
+  header->mh_alloc = 0;
+
+  /* Left unify with previous block, if possible */
+  footer = (MemFooter *) ((u32) header - sizeof (MemFooter));
+  if ((u32) footer >= heap->mh_addr)
+    {
+      prev_header = (MemHeader *) footer->mf_header;
+      if (footer->mf_cigam == MEM_CIGAM && prev_header->mh_magic == MEM_MAGIC
+	  && !prev_header->mh_alloc)
+	{
+	  /* Merge the two blocks into one */
+	  prev_header->mh_size += header->mh_size + sizeof (MemHeader) +
+	    sizeof (MemFooter);
+
+	  /* Invalidate header magic number and remove from index */
+	  header->mh_magic = 0;
+	  sorted_array_remove (&heap->mh_index, i);
+
+	  header = prev_header; /* For the right unification test */
+	}
+    }
+
+  /* Right unify with next block, if possible */
+  prev_header = (MemHeader *) ((u32) header + sizeof (MemHeader) +
+			       sizeof (MemFooter) + header->mh_size);
+  if ((u32) prev_header < heap->mh_addr + heap->mh_size
+      && prev_header->mh_magic == MEM_MAGIC && !prev_header->mh_alloc)
+    {
+      for (i = 0; i < heap->mh_index.sa_size; i++)
+	{
+	  if (sorted_array_lookup (&heap->mh_index, i) == prev_header)
+	    goto skip;
+	}
+      return;
+
+    skip:
+      footer = (MemFooter *) ((u32) prev_header + sizeof (MemHeader) +
+			      prev_header->mh_size);
+      if (footer->mf_cigam == MEM_CIGAM)
+	{
+	  /* Point to the new header */
+	  footer->mf_header = (u32) header;
+
+	  /* Update the new block size */
+	  header->mh_size += sizeof (MemHeader) + sizeof (MemFooter) +
+	    prev_header->mh_size;
+
+	  /* Delete the next header */
+	  sorted_array_remove (&heap->mh_index, i);
+	}
+    }
 }
 
 void *
