@@ -145,6 +145,20 @@ vprintk (const char *fmt, va_list args)
 	  vga_write (itoa_buffer, len);
 	  fmt += 2;
 	}
+      else if (strncmp (fmt, "lx", 2) == 0)
+	{
+	  unsigned long n = va_arg (args, unsigned long);
+	  size_t len;
+	  if (*fmt == 'x')
+	    utoa (n, itoa_buffer, 16);
+	  else
+	    utoa_u (n, itoa_buffer, 16);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
+	  fmt += 2;
+	}
       else
 	{
 	  size_t len;
