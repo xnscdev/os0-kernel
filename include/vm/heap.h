@@ -60,6 +60,11 @@ int heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 void *heap_alloc (MemHeap *heap, u32 size, u8 aligned);
 void heap_free (MemHeap *heap, void *ptr);
 
+void *kmalloc (size_t size);
+void *kvalloc (size_t size);
+void *kzalloc (size_t size);
+void kfree (void *ptr);
+
 void heap_init (void);
 
 __END_DECLS

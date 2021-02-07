@@ -98,6 +98,34 @@ heap_free (MemHeap *heap, void *ptr)
     return;
 }
 
+void *
+kmalloc (size_t size)
+{
+  return heap_alloc (kernel_heap, size, 0);
+}
+
+void *
+kvalloc (size_t size)
+{
+  return heap_alloc (kernel_heap, size, 1);
+}
+
+void *
+kzalloc (size_t size)
+{
+  void *ptr = kmalloc (size);
+  if (ptr == NULL)
+    return NULL;
+  memset (ptr, 0, size);
+  return ptr;
+}
+
+void
+kfree (void *ptr)
+{
+  heap_free (kernel_heap, ptr);
+}
+
 void
 heap_init (void)
 {
