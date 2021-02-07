@@ -106,8 +106,8 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
   for (i = 0; i < heap->mh_index.sa_size; i++)
     {
       MemHeader *header = sorted_array_lookup (&heap->mh_index, i);
-      /* Can't allocate an already-allocated block */
-      if (header->mh_alloc)
+      /* Bad magic number or already allocated? */
+      if (header->mh_magic != MEM_MAGIC || header->mh_alloc)
 	continue;
 
       if (header->mh_size >= size + sizeof (MemHeader) + sizeof (MemFooter))
@@ -115,7 +115,7 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 	  MemFooter *footer =
 	    (MemFooter *) ((u32) header + sizeof (MemHeader) + size);
 	  u32 new_size =
-	    header->mh_size - sizeof (MemHeader) - sizeof (MemFooter);
+	    header->mh_size - size - sizeof (MemHeader) - sizeof (MemFooter);
 
 	  /* Change the size and set the header to allocated */
 	  header->mh_size = size;
@@ -154,6 +154,12 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 	      new_footer->mf_cigam = MEM_CIGAM;
 	      new_footer->mf_header = (u32) new_header;
 	    }
+	  return (void *) ((u32) header + sizeof (MemHeader));
+	}
+      else if (header->mh_size >= size)
+	{
+	  /* Just allocate the entire block including the extra memory */
+	  header->mh_alloc = 1;
 	  return (void *) ((u32) header + sizeof (MemHeader));
 	}
     }

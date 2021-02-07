@@ -31,6 +31,14 @@ splash (void)
   printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
 }
 
+static void
+pass (void)
+{
+  void *a = kmalloc (0x40);
+  void *b = kmalloc (0x100);
+  printk ("%p\n%p\n", a, b);
+}
+
 void
 kmain (MultibootInfo *info)
 {
@@ -40,4 +48,6 @@ kmain (MultibootInfo *info)
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
   heap_init ();
+
+  pass ();
 }
