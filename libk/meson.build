@@ -3,6 +3,7 @@ libk_src = [
   'bitsearch.c',
   'itoa.c',
   'panic.c',
+  'pregs.S',
   'printk.c',
   'qsort.c',
   'string.c'
