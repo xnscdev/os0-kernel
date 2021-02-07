@@ -102,7 +102,9 @@ exc13_handler (void)
 void
 exc14_handler (void)
 {
-  panic ("CPU Exception: Page Fault");
+  u32 addr;
+  __asm__ volatile ("mov %%cr2, %0" : "=r" (addr));
+  panic ("CPU Exception: Page Fault\nFault address: 0x%x", addr);
 }
 
 void
