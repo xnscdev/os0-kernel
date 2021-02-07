@@ -24,9 +24,7 @@
 	.global exc ## x;		\
 	.type exc ## x, @function;	\
 exc ## x:				\
-	pusha;				\
 	call	exc ## x ## _handler;	\
-	popa;				\
 	iret;				\
 	.size exc ## x, . - exc ## x
 #define IRQ(x)				\
