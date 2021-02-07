@@ -85,7 +85,7 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
   header->mh_alloc = 0;
   sorted_array_insert (&heap->mh_index, header);
 
-  footer = (MemFooter *) ((u32) header + header->mh_size);
+  footer = (MemFooter *) ((u32) header + sizeof (MemHeader) + header->mh_size);
   footer->mf_cigam = MEM_CIGAM;
   footer->mf_header = (u32) header;
 
