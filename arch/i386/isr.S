@@ -18,13 +18,18 @@
 
 #define _ASM
 
+#define EXC_POP(x) EXC_POP_ ## x
+#define EXC_POP_0
+#define EXC_POP_1 add $4, %esp
+
 	.section .text
 	.align 16
-#define EXC(x)				\
+#define EXC(x, p)			\
 	.global exc ## x;		\
 	.type exc ## x, @function;	\
 exc ## x:				\
 	call	exc ## x ## _handler;	\
+	EXC_POP(p);			\
 	iret;				\
 	.size exc ## x, . - exc ## x
 #define IRQ(x)				\

@@ -23,7 +23,7 @@
 static IDTEntry idt_entries[IDT_SIZE];
 static DTPtr idt;
 
-#define EXC(x) void exc ## x (void);
+#define EXC(x, p) void exc ## x (void);
 #define IRQ(x) void irq ## x (void);
 #include "irq.inc"
 #undef EXC
@@ -32,7 +32,7 @@ static DTPtr idt;
 void
 idt_init (void)
 {
-#define EXC(x) u32 exc ## x ## _addr;
+#define EXC(x, p) u32 exc ## x ## _addr;
 #define IRQ(x) u32 irq ## x ## _addr;
 #include "irq.inc"
 #undef EXC
@@ -53,7 +53,7 @@ idt_init (void)
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
   idt.dp_base = (u32) &idt_entries;
 
-#define EXC(x) exc ## x ## _addr = (u32) exc ## x;			\
+#define EXC(x, p) exc ## x ## _addr = (u32) exc ## x;			\
   idt_entries[x].ie_basel = exc ## x ## _addr & 0xffff;			\
   idt_entries[x].ie_sel = 0x08;						\
   idt_entries[x].ie_reserved = 0;					\
