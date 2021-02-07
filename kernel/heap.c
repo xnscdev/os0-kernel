@@ -109,6 +109,58 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
       if (header->mh_magic != MEM_MAGIC || header->mh_alloc)
 	continue;
 
+      if (aligned)
+	{
+	  /* Page-aligned start of new header */
+	  u32 addr = (u32) header + sizeof (MemHeader);
+	  u32 new_size;
+	  if (addr & (PAGE_SIZE - 1))
+	    {
+	      addr &= 0xfffff000;
+	      addr += PAGE_SIZE;
+	    }
+	  /* Give up if the page-aligned address is no longer in the block */
+	  if (addr >= (u32) header + sizeof (MemHeader) + header->mh_size)
+	    continue;
+	  new_size = addr - (u32) header - sizeof (MemHeader);
+	  if (new_size < size)
+	    continue; /* Not enough space for the requested size anymore */
+
+	  /* Check if there is enough extra space to insert a free block
+	     behind the page-aligned address */
+	  if (addr - (u32) header > sizeof (MemHeader) * 2 + sizeof (MemFooter))
+	    {
+	      MemFooter *footer =
+		(MemFooter *) ((u32) header + sizeof (MemHeader) +
+			       header->mh_size);
+	      MemHeader *page_header =
+		(MemHeader *) (addr - sizeof (MemHeader));
+	      MemFooter *prev_footer =
+		(MemFooter *) ((u32) page_header - sizeof (MemFooter));
+
+	      /* Change the footer to point to the new header */
+	      footer->mf_header = (u32) page_header;
+
+	      /* Create a new header behind the page-aligned address */
+	      page_header->mh_magic = MEM_MAGIC;
+	      page_header->mh_size = header->mh_size - addr + (u32) header +
+		sizeof (MemHeader);
+	      page_header->mh_alloc = 1;
+
+	      /* Shrink the original block and add a new footer */
+	      prev_footer->mf_cigam = MEM_CIGAM;
+	      prev_footer->mf_header = (u32) header;
+
+	      /* Update the original block size */
+	      header->mh_size = (u32) prev_footer - (u32) header -
+		sizeof (MemHeader);
+
+	      return (void *) addr;
+	    }
+	  else
+	    continue; /* TODO Create a new header and add a gap in the index */
+	}
+
       /* Check if there is enough extra space to insert a new free block
 	 to fill the extra space */
       if (header->mh_size > size + sizeof (MemHeader) + sizeof (MemFooter))
@@ -127,16 +179,6 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 	  /* Create a new footer for the allocated header */
 	  footer->mf_cigam = MEM_CIGAM;
 	  footer->mf_header = (u32) header;
-
-	  /* Create a new block of memory for the remaining part of
-	     the larger block; splitting a block of memory looks like this:
-
-	     H............F
-	     H....FH......F
-
-	     A new header needs to be created after the footer of the
-	     allocated block, then the previous footer needs to point
-	     to the new header */
 
 	  /* Create a new header for the unused memory portion */
 	  new_header = (MemHeader *) ((u32) footer + sizeof (MemFooter));

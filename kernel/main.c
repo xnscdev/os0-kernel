@@ -35,7 +35,7 @@ static void
 pass (void)
 {
   void *a = kmalloc (0x40);
-  void *b = kmalloc (0x100);
+  void *b = kvalloc (0x100);
   printk ("%p\n%p\n", a, b);
 }
 
