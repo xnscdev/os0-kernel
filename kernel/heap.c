@@ -99,7 +99,6 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 void *
 heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 {
-  /* TODO Page aligning support */
   u32 i;
   assert (heap != NULL);
 
@@ -110,10 +109,14 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
       if (header->mh_magic != MEM_MAGIC || header->mh_alloc)
 	continue;
 
-      if (header->mh_size >= size + sizeof (MemHeader) + sizeof (MemFooter))
+      /* Check if there is enough extra space to insert a new free block
+	 to fill the extra space */
+      if (header->mh_size > size + sizeof (MemHeader) + sizeof (MemFooter))
 	{
 	  MemFooter *footer =
 	    (MemFooter *) ((u32) header + sizeof (MemHeader) + size);
+	  MemHeader *new_header;
+	  MemFooter *new_footer;
 	  u32 new_size =
 	    header->mh_size - size - sizeof (MemHeader) - sizeof (MemFooter);
 
@@ -125,35 +128,29 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 	  footer->mf_cigam = MEM_CIGAM;
 	  footer->mf_header = (u32) header;
 
-	  if (new_size > 0)
-	    {
-	      /* Create a new block of memory for the remaining part of
-		 the larger block; splitting a block of memory looks like this:
+	  /* Create a new block of memory for the remaining part of
+	     the larger block; splitting a block of memory looks like this:
 
-		 H............F
-		 H....FH......F
+	     H............F
+	     H....FH......F
 
-		 A new header needs to be created after the footer of the
-		 allocated block, then the previous footer needs to point
-		 to the new header */
+	     A new header needs to be created after the footer of the
+	     allocated block, then the previous footer needs to point
+	     to the new header */
 
-	      MemHeader *new_header =
-		(MemHeader *) ((u32) footer + sizeof (MemFooter));
-	      MemFooter *new_footer;
+	  /* Create a new header for the unused memory portion */
+	  new_header = (MemHeader *) ((u32) footer + sizeof (MemFooter));
+	  new_header->mh_magic = MEM_MAGIC;
+	  new_header->mh_size = new_size;
+	  new_header->mh_alloc = 0;
+	  sorted_array_insert (&heap->mh_index, new_header);
 
-	      /* Create a new header for the unused memory portion */
-	      new_header->mh_magic = MEM_MAGIC;
-	      new_header->mh_size = new_size;
-	      new_header->mh_alloc = 0;
-	      sorted_array_insert (&heap->mh_index, new_header);
+	  /* Create the footer for the new header */
+	  new_footer = (MemFooter *) ((u32) new_header + sizeof (MemHeader) +
+				      new_header->mh_size);
+	  new_footer->mf_cigam = MEM_CIGAM;
+	  new_footer->mf_header = (u32) new_header;
 
-	      /* Create the footer for the new header */
-	      new_footer =
-		(MemFooter *) ((u32) new_header + sizeof (MemHeader) +
-			       new_header->mh_size);
-	      new_footer->mf_cigam = MEM_CIGAM;
-	      new_footer->mf_header = (u32) new_header;
-	    }
 	  return (void *) ((u32) header + sizeof (MemHeader));
 	}
       else if (header->mh_size >= size)
