@@ -78,7 +78,7 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
   for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
     map_page (addr + (u32) heapaddr, addr + (u32) vaddr, flags);
 
-  /* TODO Add a single unallocated memory block to the heap */
+  /* Add a single unallocated memory block to the heap */
   header = vaddr;
   header->mh_magic = MEM_MAGIC;
   header->mh_size = heapsize - sizeof (MemHeader) - sizeof (MemFooter);
@@ -109,16 +109,14 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
       if (header->mh_magic != MEM_MAGIC || header->mh_alloc)
 	continue;
 
-      if (aligned)
+      if (aligned && ((u32) header + sizeof (MemHeader)) & (PAGE_SIZE - 1))
 	{
 	  /* Page-aligned start of new header */
 	  u32 addr = (u32) header + sizeof (MemHeader);
 	  u32 new_size;
-	  if (addr & (PAGE_SIZE - 1))
-	    {
-	      addr &= 0xfffff000;
-	      addr += PAGE_SIZE;
-	    }
+	  addr &= 0xfffff000;
+	  addr += PAGE_SIZE;
+
 	  /* Give up if the page-aligned address is no longer in the block */
 	  if (addr >= (u32) header + sizeof (MemHeader) + header->mh_size)
 	    continue;
@@ -156,6 +154,7 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 	      header->mh_size = (u32) prev_footer - (u32) header -
 		sizeof (MemHeader);
 
+	      sorted_array_insert (&heap->mh_index, page_header);
 	      return (void *) addr;
 	    }
 	  else
