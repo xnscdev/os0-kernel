@@ -36,7 +36,7 @@ char *utoa_u (unsigned int value, char *result, int base);
 void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
 
 void panic (const char *__restrict fmt, ...) __attribute__ ((noreturn))
-  __attribute__ ((cold));
+  __attribute__ ((cold)) __attribute__ ((format (printf, 1, 2)));
 
 __END_DECLS
 

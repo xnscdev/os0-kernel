@@ -24,7 +24,8 @@
 
 __BEGIN_DECLS
 
-int printk (const char *__restrict fmt, ...);
+int printk (const char *__restrict fmt, ...)
+  __attribute__ ((format (printf, 1, 2)));
 int vprintk (const char *fmt, va_list args);
 
 __END_DECLS
