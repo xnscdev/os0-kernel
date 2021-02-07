@@ -32,7 +32,7 @@
 
 #define MEM_MAX_BLOCK_ORDER 16 /* 256 MiB blocks */
 
-#define MEM_STARTADDR 0x400000
+#define MEM_STARTADDR 0x800000
 
 #define PAGE_SIZE 0x1000
 

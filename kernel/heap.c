@@ -36,6 +36,8 @@ int
 heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 	  u8 supervisor, u8 readonly)
 {
+  MemHeader *header;
+  MemFooter *footer;
   void *indexaddr;
   void *heapaddr;
   u32 addr;
@@ -76,6 +78,17 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
   for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
     map_page (addr + (u32) heapaddr, addr + (u32) vaddr, flags);
 
+  /* TODO Add a single unallocated memory block to the heap */
+  header = vaddr;
+  header->mh_magic = MEM_MAGIC;
+  header->mh_size = heapsize - sizeof (MemHeader) - sizeof (MemFooter);
+  header->mh_alloc = 0;
+  sorted_array_insert (&heap->mh_index, header);
+
+  footer = (MemFooter *) ((u32) header + header->mh_size);
+  footer->mf_cigam = MEM_CIGAM;
+  footer->mf_header = (u32) header;
+
   heap->mh_addr = (u32) vaddr;
   heap->mh_size = heapsize;
   heap->mh_supvsr = supervisor;
@@ -86,7 +99,52 @@ heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
 void *
 heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 {
+  /* TODO Page aligning support */
+  u32 i;
   assert (heap != NULL);
+
+  for (i = 0; i < heap->mh_index.sa_size; i++)
+    {
+      MemHeader *header = sorted_array_lookup (&heap->mh_index, i);
+      if (header->mh_alloc)
+	continue;
+      if (header->mh_size >= size + sizeof (MemHeader) + sizeof (MemFooter))
+	{
+	  MemFooter *footer =
+	    (MemFooter *) ((u32) header + sizeof (MemHeader) + size);
+	  u32 new_size =
+	    header->mh_size - sizeof (MemHeader) - sizeof (MemFooter);
+
+	  /* Change the size and set the header to allocated */
+	  header->mh_size = size;
+	  header->mh_alloc = 1;
+
+	  /* Create a new footer for the allocated header */
+	  footer->mf_cigam = MEM_CIGAM;
+	  footer->mf_header = (u32) header;
+
+	  if (new_size > 0)
+	    {
+	      MemHeader *new_header =
+		(MemHeader *) ((u32) footer + sizeof (MemFooter));
+	      MemFooter *new_footer;
+
+	      /* Create a new header for the unused memory portion */
+	      new_header->mh_magic = MEM_MAGIC;
+	      new_header->mh_size = new_size;
+	      new_header->mh_alloc = 0;
+	      sorted_array_insert (&heap->mh_index, new_header);
+
+	      /* Create the footer for the new header */
+	      new_footer =
+		(MemFooter *) ((u32) new_header + sizeof (MemHeader) +
+			       new_header->mh_size);
+	      new_footer->mf_cigam = MEM_CIGAM;
+	      new_footer->mf_header = (u32) new_header;
+	    }
+	  return (void *) ((u32) header + sizeof (MemHeader));
+	}
+    }
   return NULL;
 }
 
