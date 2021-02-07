@@ -106,8 +106,10 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
   for (i = 0; i < heap->mh_index.sa_size; i++)
     {
       MemHeader *header = sorted_array_lookup (&heap->mh_index, i);
+      /* Can't allocate an already-allocated block */
       if (header->mh_alloc)
 	continue;
+
       if (header->mh_size >= size + sizeof (MemHeader) + sizeof (MemFooter))
 	{
 	  MemFooter *footer =
@@ -125,6 +127,16 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 
 	  if (new_size > 0)
 	    {
+	      /* Create a new block of memory for the remaining part of
+		 the larger block; splitting a block of memory looks like this:
+
+		 H............F
+		 H....FH......F
+
+		 A new header needs to be created after the footer of the
+		 allocated block, then the previous footer needs to point
+		 to the new header */
+
 	      MemHeader *new_header =
 		(MemHeader *) ((u32) footer + sizeof (MemFooter));
 	      MemFooter *new_footer;
