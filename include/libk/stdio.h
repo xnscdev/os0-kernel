@@ -20,10 +20,12 @@
 #define _LIBK_STDIO_H
 
 #include <sys/cdefs.h>
+#include <stdarg.h>
 
 __BEGIN_DECLS
 
 int printk (const char *__restrict fmt, ...);
+int vprintk (const char *fmt, va_list args);
 
 __END_DECLS
 

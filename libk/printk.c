@@ -19,17 +19,24 @@
 #include <libk/libk.h>
 #include <video/vga.h>
 #include <limits.h>
-#include <stdarg.h>
 
 static char itoa_buffer[32];
 
 int
 printk (const char *__restrict fmt, ...)
 {
+  int ret;
   va_list args;
-  int written = 0;
   va_start (args, fmt);
+  ret = vprintk (fmt, args);
+  va_end (args);
+  return ret;
+}
 
+int
+vprintk (const char *fmt, va_list args)
+{
+  int written = 0;
   while (*fmt != '\0')
     {
       size_t maxrem = INT_MAX - written;
@@ -117,7 +124,5 @@ printk (const char *__restrict fmt, ...)
 	  fmt += len;
 	}
     }
-
-  va_end (args);
   return written;
 }
