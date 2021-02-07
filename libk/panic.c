@@ -21,10 +21,13 @@
 void halt (void) __attribute__ ((noreturn));
 
 void
-panic (const char *msg)
+panic (const char *__restrict fmt, ...)
 {
-  printk ("============[ KERNEL PANIC ]============\n");
-  printk ("%s\n", msg);
-  printk ("==========[ END KERNEL PANIC ]==========\n");
+  va_list args;
+  va_start (args, fmt);
+  printk ("\n============[ KERNEL PANIC ]============\n");
+  vprintk (fmt, args);
+  printk ("\n==========[ END KERNEL PANIC ]==========\n");
+  va_end (args);
   halt ();
 }
