@@ -29,7 +29,7 @@ static void
 splash (void)
 {
   printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
-  /* heap_alloc (kernel_heap, 69, 0); */
+  heap_alloc (kernel_heap, 69, 0);
 }
 
 void

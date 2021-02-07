@@ -87,3 +87,33 @@ strlen (const char *s)
     i++;
   return i;
 }
+
+int
+strcmp (const char *a, const char *b)
+{
+  size_t i = 0;
+  while (1)
+    {
+      if (a[i] > b[i])
+	return 1;
+      if (a[i] < b[i])
+	return -1;
+      if (a[i] == '\0' && b[i] == '\0')
+	return 0;
+      i++;
+    }
+}
+
+int
+strncmp (const char *a, const char *b, size_t len)
+{
+  size_t i;
+  for (i = 0; i < len; i++)
+    {
+      if (a[i] > b[i])
+	return 1;
+      if (a[i] < b[i])
+	return -1;
+    }
+  return 0;
+}
