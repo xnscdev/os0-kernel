@@ -98,6 +98,17 @@ vprintk (const char *fmt, va_list args)
 	  vga_write (itoa_buffer, len);
 	  fmt++;
 	}
+      else if (*fmt == 'u')
+	{
+	  unsigned int n = va_arg (args, unsigned int);
+	  size_t len;
+	  utoa (n, itoa_buffer, 10);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
+	  fmt++;
+	}
       else if (*fmt == 'x' || *fmt == 'X')
 	{
 	  unsigned int n = va_arg (args, unsigned int);
@@ -111,6 +122,28 @@ vprintk (const char *fmt, va_list args)
 	    return -1;
 	  vga_write (itoa_buffer, len);
 	  fmt++;
+	}
+      else if (strncmp (fmt, "ld", 2) == 0 || strncmp (fmt, "li", 2) == 0)
+	{
+	  long n = va_arg (args, long);
+	  size_t len;
+	  itoa (n, itoa_buffer, 10);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
+	  fmt += 2;
+	}
+      else if (strncmp (fmt, "lu", 2) == 0)
+	{
+	  unsigned long n = va_arg (args, unsigned long);
+	  size_t len;
+	  utoa (n, itoa_buffer, 10);
+	  len = strlen (itoa_buffer);
+	  if (maxrem < len)
+	    return -1;
+	  vga_write (itoa_buffer, len);
+	  fmt += 2;
 	}
       else
 	{

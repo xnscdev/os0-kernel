@@ -63,7 +63,7 @@ void
 mem_init (u32 mem)
 {
   mem_maxaddr = mem * 1024 + 0x100000;
-  printk ("Detected %dK of available upper memory\n", mem);
+  printk ("Detected %luK of available upper memory\n", mem);
 }
 
 void *
