@@ -99,6 +99,12 @@
 #define ATA_READ  0
 #define ATA_WRITE 1
 
+#define PATA_BAR0 0x1f0
+#define PATA_BAR1 0x3f6
+#define PATA_BAR2 0x170
+#define PATA_BAR3 0x376
+#define PATA_BAR4 0x000
+
 typedef struct
 {
   u16 icr_base;
@@ -127,6 +133,10 @@ extern IDEDevice ata_devices[4];
 
 u8 ata_read (u8 channel, u8 reg);
 void ata_write (u8 channel, u8 reg, u8 data);
+void ata_readbuf (u8 channel, u8 reg, void *buffer, u32 quads);
+u8 ata_poll (u8 channel, u8 chkerr);
+u8 ata_perror (u8 drive, u8 err);
+void ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4);
 
 __END_DECLS
 
