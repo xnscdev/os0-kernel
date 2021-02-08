@@ -109,6 +109,9 @@
 #define PATA_BAR3 0x376
 #define PATA_BAR4 0x000
 
+#define ATA_SECTSIZE   512
+#define ATAPI_SECTSIZE 2048
+
 typedef struct
 {
   u16 icr_base;
@@ -147,6 +150,7 @@ u8 ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
 void ata_await (void);
 
 u8 atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
+u8 atapi_eject (u8 drive);
 
 u8 ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);
 u8 ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);

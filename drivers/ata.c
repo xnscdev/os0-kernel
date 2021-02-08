@@ -314,7 +314,7 @@ ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
   u32 channel = ata_devices[drive].id_channel;
   u32 slavebit = ata_devices[drive].id_drive;
   u32 bus = ata_channels[channel].icr_base;
-  u32 words = 256;
+  u32 words = ATA_SECTSIZE >> 1;
   u16 cyl;
   u8 head;
   u8 sect;
@@ -477,7 +477,7 @@ atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
   u32 channel = ata_devices[drive].id_channel;
   u32 slavebit = ata_devices[drive].id_drive;
   u32 bus = ata_channels[channel].icr_base;
-  u32 words = 1024;
+  u32 words = ATAPI_SECTSIZE >> 1;
   u8 err;
   int i;
 
@@ -536,6 +536,56 @@ atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
 }
 
 u8
+atapi_eject (u8 drive)
+{
+  u32 channel = ata_devices[drive].id_channel;
+  u32 slavebit = ata_devices[drive].id_drive;
+  u32 bus = ata_channels[channel].icr_base;
+  u8 err;
+  int i;
+
+  if (drive > 3 || !ata_devices[drive].id_reserved)
+    return 1;
+  if (ata_devices[drive].id_type == IDE_ATA)
+    return 20;
+
+  /* Enable IRQs */
+  ide_irq = 0;
+  ata_channels[channel].icr_noint = ide_irq;
+  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
+
+  /* Fill SCSI packet */
+  atapi_packet[0] = ATAPI_CMD_EJECT;
+  atapi_packet[1] = 0;
+  atapi_packet[2] = 0;
+  atapi_packet[3] = 0;
+  atapi_packet[4] = 2;
+  atapi_packet[5] = 0;
+  atapi_packet[6] = 0;
+  atapi_packet[7] = 0;
+  atapi_packet[8] = 0;
+  atapi_packet[9] = 0;
+  atapi_packet[10] = 0;
+  atapi_packet[11] = 0;
+
+  ata_write (channel, ATA_REG_HDDEVSEL, slavebit << 4);
+  for (i = 0; i < 4; i++)
+    ata_read (channel, ATA_REG_ALTSTAT);
+
+  ata_write (channel, ATA_REG_COMMAND, ATA_CMD_PACKET);
+  err = ata_poll (channel, 1);
+  if (err != 0)
+    return err;
+
+  outsw (bus, atapi_packet, 6);
+  ata_await ();
+  err = ata_poll (channel, 1);
+  if (err == 3)
+    err = 0;
+  return ata_perror (drive, err);
+}
+
+u8
 ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
 {
   u8 err;
@@ -551,7 +601,7 @@ ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
     {
       int i;
       for (i = 0; i < nsects; i++)
-	err = atapi_read (drive, lba + i, 1, es, buffer + i * 2048);
+	err = atapi_read (drive, lba + i, 1, es, buffer + i * ATAPI_SECTSIZE);
     }
   err = ata_perror (drive, err);
   return err;
