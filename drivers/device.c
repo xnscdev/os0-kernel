@@ -1,5 +1,5 @@
 /*************************************************************************
- * device.h -- This file is part of OS/0.                                *
+ * device.c -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,29 +16,13 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_DEVICE_H
-#define _SYS_DEVICE_H
+#include <sys/device.h>
+#include <vm/heap.h>
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
+SpecDevice *device_table;
 
-#define DEVICE_TABLE_SIZE 64
-
-typedef struct
+void
+devices_init (void)
 {
-  dev_t sd_major;
-  dev_t sd_minor;
-  char sd_name[12];
-  int (*sd_init) (void);
-  int (*sd_destroy) (void);
-} SpecDevice;
-
-__BEGIN_DECLS
-
-extern SpecDevice *device_table;
-
-void devices_init (void);
-
-__END_DECLS
-
-#endif
+  device_table = kzalloc (sizeof (SpecDevice) * DEVICE_TABLE_SIZE);
+}

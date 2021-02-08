@@ -2,6 +2,7 @@ drivers_src = [
   'ata.c',
   'ata-bio.c',
   'atapi.c',
+  'device.c',
   'vga.c'
 ]
 
