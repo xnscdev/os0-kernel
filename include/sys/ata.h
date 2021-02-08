@@ -1,5 +1,5 @@
 /*************************************************************************
- * device.h -- This file is part of OS/0.                                *
+ * ata.h -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,18 +16,16 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_DEVICE_H
-#define _SYS_DEVICE_H
+#ifndef _SYS_ATA_H
+#define _SYS_ATA_H
 
-#include <libk/types.h>
-
-typedef struct
-{
-  dev_t dd_major;
-  dev_t dd_minor;
-  const char *dd_name;
-  int (*dd_init) (void);
-  int (*dd_destroy) (void);
-} DiskDevice;
+#define ATA_SR_BSY  0x80
+#define ATA_SR_DRDY 0x40
+#define ATA_SR_DF   0x20
+#define ATA_SR_DSC  0x10
+#define ATA_SR_DRQ  0x08
+#define ATA_SR_CORR 0x04
+#define ATA_SR_IDX  0x02
+#define ATA_SR_ERR  0x01
 
 #endif
