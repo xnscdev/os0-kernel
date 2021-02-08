@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * filesize.c -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,30 +16,43 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STDLIB_H
-#define _LIBK_STDLIB_H
+#include <libk/stdlib.h>
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
+static char itoa_buffer[32];
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+static char filesize_prefixes[] = {
+  'B',
+  'K',
+  'M',
+  'G',
+  'T',
+  'P',
+  'E'
+};
 
-__BEGIN_DECLS
+char *
+format_filesize (u64 size, char *buffer)
+{
+  char *ptr;
+  u16 value;
+  int i;
+  int p;
 
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
+  /* TODO Set to `0B' when size is 0 */
+  for (i = 6, p = 60; p >= 0; i--, p -= 10)
+    {
+      if (size >= 1 << p)
+	{
+	  value = size >> p;
+	  break;
+	}
+    }
 
-char *format_filesize (u64 size, char *result);
-
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
-
-void panic (const char *__restrict fmt, ...) __attribute__ ((noreturn))
-  __attribute__ ((cold)) __attribute__ ((format (printf, 1, 2)));
-
-__END_DECLS
-
-#endif
+  utoa (value, itoa_buffer, 10);
+  /*
+    ptr = stpcpy (buffer, itoa_buffer);
+    *ptr = filesize_prefixes[i];
+    *++ptr = '\0';
+    */
+  return buffer;
+}
