@@ -22,7 +22,6 @@
 #include <sys/timer.h>
 
 static u8 ata_buffer[2048];
-static u8 atapi_packet[12] = {0xa8};
 
 static const char *ide_channel_names[] = {
   "primary",
@@ -47,7 +46,6 @@ static const char ata_flush_cmds[] = {
 
 IDEChannelRegisters ata_channels[2];
 IDEDevice ata_devices[4];
-int ide_irq;
 
 void
 ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
@@ -469,158 +467,4 @@ ata_await (void)
   while (ide_irq == 0)
     ;
   ide_irq = 0;
-}
-
-u8
-atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
-{
-  u32 channel = ata_devices[drive].id_channel;
-  u32 slavebit = ata_devices[drive].id_drive;
-  u32 bus = ata_channels[channel].icr_base;
-  u32 words = ATAPI_SECTSIZE >> 1;
-  u8 err;
-  int i;
-
-  /* Enable IRQs */
-  ide_irq = 0;
-  ata_channels[channel].icr_noint = ide_irq;
-  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
-
-  /* Fill SCSI packet */
-  atapi_packet[0] = ATAPI_CMD_READ;
-  atapi_packet[1] = 0;
-  atapi_packet[2] = (lba >> 24) & 0xff;
-  atapi_packet[3] = (lba >> 16) & 0xff;
-  atapi_packet[4] = (lba >> 8) & 0xff;
-  atapi_packet[5] = lba & 0xff;
-  atapi_packet[6] = 0;
-  atapi_packet[7] = 0;
-  atapi_packet[8] = 0;
-  atapi_packet[9] = nsects;
-  atapi_packet[10] = 0;
-  atapi_packet[11] = 0;
-
-  ata_write (channel, ATA_REG_HDDEVSEL, slavebit << 4);
-  for (i = 0; i < 4; i++)
-    ata_read (channel, ATA_REG_ALTSTAT);
-
-  /* Use PIO mode */
-  ata_write (channel, ATA_REG_FEATURES, 0);
-
-  ata_write (channel, ATA_REG_LBA1, (words * 2) & 0xff);
-  ata_write (channel, ATA_REG_LBA2, (words * 2) >> 8);
-
-  ata_write (channel, ATA_REG_COMMAND, ATA_CMD_PACKET);
-  err = ata_poll (channel, 1);
-  if (err != 0)
-    return err;
-  outsw (bus, atapi_packet, 6);
-
-  for (i = 0; i < nsects; i++)
-    {
-      ata_await ();
-      err = ata_poll (channel, 1);
-      if (err != 0)
-	return err;
-      __asm__ volatile ("push %es");
-      __asm__ volatile ("mov %%ax, %%es" :: "a" (selector));
-      insw (bus, buffer, words);
-      __asm__ volatile ("pop %es");
-      buffer += words * 2;
-    }
-
-  ata_await ();
-  while (ata_read (channel, ATA_REG_STATUS) & (ATA_SR_BSY | ATA_SR_DRQ))
-    ;
-  return 0;
-}
-
-u8
-atapi_eject (u8 drive)
-{
-  u32 channel = ata_devices[drive].id_channel;
-  u32 slavebit = ata_devices[drive].id_drive;
-  u32 bus = ata_channels[channel].icr_base;
-  u8 err;
-  int i;
-
-  if (drive > 3 || !ata_devices[drive].id_reserved)
-    return 1;
-  if (ata_devices[drive].id_type == IDE_ATA)
-    return 20;
-
-  /* Enable IRQs */
-  ide_irq = 0;
-  ata_channels[channel].icr_noint = ide_irq;
-  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
-
-  /* Fill SCSI packet */
-  atapi_packet[0] = ATAPI_CMD_EJECT;
-  atapi_packet[1] = 0;
-  atapi_packet[2] = 0;
-  atapi_packet[3] = 0;
-  atapi_packet[4] = 2;
-  atapi_packet[5] = 0;
-  atapi_packet[6] = 0;
-  atapi_packet[7] = 0;
-  atapi_packet[8] = 0;
-  atapi_packet[9] = 0;
-  atapi_packet[10] = 0;
-  atapi_packet[11] = 0;
-
-  ata_write (channel, ATA_REG_HDDEVSEL, slavebit << 4);
-  for (i = 0; i < 4; i++)
-    ata_read (channel, ATA_REG_ALTSTAT);
-
-  ata_write (channel, ATA_REG_COMMAND, ATA_CMD_PACKET);
-  err = ata_poll (channel, 1);
-  if (err != 0)
-    return err;
-
-  outsw (bus, atapi_packet, 6);
-  ata_await ();
-  err = ata_poll (channel, 1);
-  if (err == 3)
-    err = 0;
-  return ata_perror (drive, err);
-}
-
-u8
-ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
-{
-  u8 err;
-  if (drive > 3 || !ata_devices[drive].id_reserved)
-    return 1;
-  if (lba + nsects > ata_devices[drive].id_size
-      && ata_devices[drive].id_type == IDE_ATA)
-    return 2;
-
-  if (ata_devices[drive].id_type == IDE_ATA)
-    err = ata_access (ATA_READ, drive, lba, nsects, es, buffer);
-  else if (ata_devices[drive].id_type == IDE_ATAPI)
-    {
-      int i;
-      for (i = 0; i < nsects; i++)
-	err = atapi_read (drive, lba + i, 1, es, buffer + i * ATAPI_SECTSIZE);
-    }
-  err = ata_perror (drive, err);
-  return err;
-}
-
-u8
-ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
-{
-  u8 err;
-  if (drive > 3 || !ata_devices[drive].id_reserved)
-    return 1;
-  if (lba + nsects > ata_devices[drive].id_size
-      && ata_devices[drive].id_type == IDE_ATA)
-    return 2;
-
-  if (ata_devices[drive].id_type == IDE_ATA)
-    err = ata_access (ATA_WRITE, drive, lba, nsects, es, buffer);
-  else if (ata_devices[drive].id_type == IDE_ATAPI)
-    err = 4;
-  err = ata_perror (drive, err);
-  return err;
 }
