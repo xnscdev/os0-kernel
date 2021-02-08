@@ -33,8 +33,6 @@ char *itoa_u (int value, char *result, int base);
 char *utoa (unsigned int value, char *result, int base);
 char *utoa_u (unsigned int value, char *result, int base);
 
-char *format_filesize (u64 size, char *result);
-
 void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
 
 void panic (const char *__restrict fmt, ...) __attribute__ ((noreturn))
