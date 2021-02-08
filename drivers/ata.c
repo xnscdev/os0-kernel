@@ -147,7 +147,7 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
   for (i = 0; i < 4; i++)
     {
       if (ata_devices[i].id_reserved)
-	printk ("Found %s %s %s drive (size %lu bytes)\n",
+	printk ("Found %s %s %s drive (size %lu sectors)\n",
 		ide_channel_names[ata_devices[i].id_channel],
 		ide_drive_names[ata_devices[i].id_drive],
 		ide_type_names[ata_devices[i].id_type], ata_devices[i].id_size);
@@ -533,4 +533,44 @@ atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
   while (ata_read (channel, ATA_REG_STATUS) & (ATA_SR_BSY | ATA_SR_DRQ))
     ;
   return 0;
+}
+
+u8
+ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
+{
+  u8 err;
+  if (drive > 3 || !ata_devices[drive].id_reserved)
+    return 1;
+  if (lba + nsects > ata_devices[drive].id_size
+      && ata_devices[drive].id_type == IDE_ATA)
+    return 2;
+
+  if (ata_devices[drive].id_type == IDE_ATA)
+    err = ata_access (ATA_READ, drive, lba, nsects, es, buffer);
+  else if (ata_devices[drive].id_type == IDE_ATAPI)
+    {
+      int i;
+      for (i = 0; i < nsects; i++)
+	err = atapi_read (drive, lba + i, 1, es, buffer + i * 2048);
+    }
+  err = ata_perror (drive, err);
+  return err;
+}
+
+u8
+ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
+{
+  u8 err;
+  if (drive > 3 || !ata_devices[drive].id_reserved)
+    return 1;
+  if (lba + nsects > ata_devices[drive].id_size
+      && ata_devices[drive].id_type == IDE_ATA)
+    return 2;
+
+  if (ata_devices[drive].id_type == IDE_ATA)
+    err = ata_access (ATA_WRITE, drive, lba, nsects, es, buffer);
+  else if (ata_devices[drive].id_type == IDE_ATAPI)
+    err = 4;
+  err = ata_perror (drive, err);
+  return err;
 }

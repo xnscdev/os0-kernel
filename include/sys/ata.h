@@ -148,6 +148,9 @@ void ata_await (void);
 
 u8 atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
 
+u8 ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);
+u8 ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);
+
 __END_DECLS
 
 #endif
