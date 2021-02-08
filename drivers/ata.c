@@ -40,6 +40,12 @@ static const char *ide_type_names[] = {
   "ATAPI"
 };
 
+static const char ata_flush_cmds[] = {
+  ATA_CMD_CACHE_FLUSH,
+  ATA_CMD_CACHE_FLUSH,
+  ATA_CMD_CACHE_FLUSH_EXT
+};
+
 IDEChannelRegisters ata_channels[2];
 IDEDevice ata_devices[4];
 
@@ -298,4 +304,161 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
 		ide_drive_names[ata_devices[i].id_drive],
 		ide_type_names[ata_devices[i].id_type], ata_devices[i].id_size);
     }
+}
+
+u8
+ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
+{
+  u8 lba_mode;
+  u8 lba_io[6];
+  u32 channel = ata_devices[drive].id_channel;
+  u32 slavebit = ata_devices[drive].id_drive;
+  u32 bus = ata_channels[channel].icr_base;
+  u32 words = 256;
+  u16 cyl;
+  u8 head;
+  u8 sect;
+  u8 err;
+  u8 dma = 0; /* TODO DMA support */
+  char cmd;
+  u16 i;
+
+  /* Turn off IRQs */
+  ide_irq = 0;
+  ata_channels[channel].icr_noint = 0x02;
+  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
+
+  /* Set parameters depending on addressing mode */
+  if (lba >= 0x10000000)
+    {
+      /* Require LBA48 for >128G addresses */
+      lba_mode = IDE_LBA48;
+      lba_io[0] = lba & 0x000000ff;
+      lba_io[1] = (lba & 0x0000ff00) >> 8;
+      lba_io[2] = (lba & 0x00ff0000) >> 16;
+      lba_io[3] = (lba & 0xff000000) >> 24;
+      lba_io[4] = 0;
+      lba_io[5] = 0;
+      head = 0;
+    }
+  else if (ata_devices[drive].id_cap & 0x200)
+    {
+      /* Use LBA28 if supported */
+      lba_mode = IDE_LBA28;
+      lba_io[0] = lba & 0x00000ff;
+      lba_io[1] = (lba & 0x000ff00) >> 8;
+      lba_io[2] = (lba & 0x0ff0000) >> 16;
+      lba_io[3] = 0;
+      lba_io[4] = 0;
+      lba_io[5] = 0;
+      head = (lba & 0xf000000) >> 24;
+    }
+  else
+    {
+      /* Use CHS */
+      lba_mode = IDE_CHS;
+      sect = lba % 63 + 1;
+      cyl = (lba - sect + 1) / 1008;
+      lba_io[0] = sect;
+      lba_io[1] = cyl & 0xff;
+      lba_io[2] = (cyl >> 8) & 0xff;
+      lba_io[3] = 0;
+      lba_io[4] = 0;
+      lba_io[5] = 0;
+      head = (lba - sect + 1) % 1008 / 63;
+    }
+
+  while (ata_read (channel, ATA_REG_STATUS) & ATA_SR_BSY)
+    ;
+
+  if (lba_mode == IDE_CHS)
+    ata_write (channel, ATA_REG_HDDEVSEL, 0xa0 | slavebit << 4 | head);
+  else
+    ata_write (channel, ATA_REG_HDDEVSEL, 0xe0 | slavebit << 4 | head);
+
+  if (lba_mode == IDE_LBA48)
+    {
+      ata_write (channel, ATA_REG_SECCNT1, 0);
+      ata_write (channel, ATA_REG_LBA3, lba_io[3]);
+      ata_write (channel, ATA_REG_LBA4, lba_io[4]);
+      ata_write (channel, ATA_REG_LBA5, lba_io[5]);
+    }
+  ata_write (channel, ATA_REG_SECCNT0, nsects);
+  ata_write (channel, ATA_REG_LBA0, lba_io[0]);
+  ata_write (channel, ATA_REG_LBA1, lba_io[1]);
+  ata_write (channel, ATA_REG_LBA2, lba_io[2]);
+
+  /* Set the command */
+  if (lba_mode == IDE_LBA48)
+    {
+      if (dma)
+	{
+	  if (op == ATA_WRITE)
+	    cmd = ATA_CMD_WRITE_DMA_EXT;
+	  else
+	    cmd = ATA_CMD_READ_DMA_EXT;
+	}
+      else
+	{
+	  if (op == ATA_WRITE)
+	    cmd = ATA_CMD_WRITE_PIO_EXT;
+	  else
+	    cmd = ATA_CMD_READ_PIO_EXT;
+	}
+    }
+  else
+    {
+      if (dma)
+	{
+	  if (op == ATA_WRITE)
+	    cmd = ATA_CMD_WRITE_DMA;
+	  else
+	    cmd = ATA_CMD_READ_DMA;
+	}
+      else
+	{
+	  if (op == ATA_WRITE)
+	    cmd = ATA_CMD_WRITE_PIO;
+	  else
+	    cmd = ATA_CMD_READ_PIO;
+	}
+    }
+  ata_write (channel, ATA_REG_COMMAND, cmd);
+
+  /* Run the command */
+  if (dma)
+    ; /* TODO DMA support */
+  else
+    {
+      if (op == ATA_WRITE)
+	{
+	  for (i = 0; i < nsects; i++)
+	    {
+	      ata_poll (channel, 0);
+	      __asm__ volatile ("push %ds");
+	      __asm__ volatile ("mov %%ax, %%ds" :: "a" (selector));
+	      outsw (bus, buffer, words);
+	      __asm__ volatile ("pop %ds");
+	      buffer += words * 2;
+	    }
+
+	  ata_write (channel, ATA_REG_COMMAND, ata_flush_cmds[lba_mode]);
+	  ata_poll (channel, 0);
+	}
+      else
+	{
+	  for (i = 0; i < nsects; i++)
+	    {
+	      err = ata_poll (channel, 1);
+	      if (err != 0)
+		return err;
+	      __asm__ volatile ("push %es");
+	      __asm__ volatile ("mov %%ax, %%es" :: "a" (selector));
+	      insw (bus, buffer, words);
+	      __asm__ volatile ("pop %es");
+	      buffer += words * 2;
+	    }
+	}
+    }
+  return 0;
 }

@@ -99,6 +99,10 @@
 #define ATA_READ  0
 #define ATA_WRITE 1
 
+#define IDE_LBA48 2
+#define IDE_LBA28 1
+#define IDE_CHS   0
+
 #define PATA_BAR0 0x1f0
 #define PATA_BAR1 0x3f6
 #define PATA_BAR2 0x170
