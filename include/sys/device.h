@@ -21,23 +21,49 @@
 
 #include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stddef.h>
 
 #define DEVICE_TABLE_SIZE 64
+
+#define DEVICE_TYPE_BLOCK 1
+#define DEVICE_TYPE_CHAR  2
 
 typedef struct
 {
   dev_t sd_major;
   dev_t sd_minor;
-  char sd_name[12];
-  int (*sd_init) (void);
-  int (*sd_destroy) (void);
+  u8 sd_type;
+  char sd_name[15];
+  void *sd_data;
 } SpecDevice;
+
+typedef struct
+{
+  u8 mdpi_attr;
+  u8 mdpi_chs_start[3];
+  u8 mdpi_type;
+  u8 mdpi_chs_end[3];
+  u32 mdpi_lba;
+  u32 mdpi_sects;
+} MBRPartTable[4];
+
+typedef union
+{
+  u32 dpi_type;
+  u32 dpi_lba;
+  u32 dpi_size;
+  SpecDevice *dpi_dev;
+} DiskPartInfo;
 
 __BEGIN_DECLS
 
 extern SpecDevice *device_table;
+extern size_t device_table_size;
 
 void devices_init (void);
+
+SpecDevice *device_register (dev_t major, u8 type, const char *name,
+			     void *data);
 
 __END_DECLS
 

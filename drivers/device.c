@@ -16,13 +16,36 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <libk/string.h>
 #include <sys/device.h>
 #include <vm/heap.h>
 
 SpecDevice *device_table;
+size_t device_table_size;
 
 void
 devices_init (void)
 {
   device_table = kzalloc (sizeof (SpecDevice) * DEVICE_TABLE_SIZE);
+  device_table_size = DEVICE_TABLE_SIZE;
+}
+
+SpecDevice *
+device_register (dev_t major, u8 type, const char *name, void *data)
+{
+  size_t i;
+  for (i = 0; i < device_table_size; i++)
+    {
+      SpecDevice *dev = &device_table[i];
+      if (dev->sd_type != 0)
+	continue;
+      dev->sd_major = major;
+      dev->sd_minor = 0;
+      dev->sd_type = type;
+      strncpy (dev->sd_name, name, 15);
+      dev->sd_name[15] = '\0';
+      dev->sd_data = data;
+      return dev;
+    }
+  return NULL;
 }

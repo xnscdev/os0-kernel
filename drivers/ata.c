@@ -145,7 +145,7 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
   for (i = 0; i < 4; i++)
     {
       if (ata_devices[i].id_reserved)
-	printk ("Found %s %s %s drive (size %lu sectors)\n",
+        printk ("Found %s %s %s drive (size %lu sectors)\n",
 		ide_channel_names[ata_devices[i].id_channel],
 		ide_drive_names[ata_devices[i].id_drive],
 		ide_type_names[ata_devices[i].id_type], ata_devices[i].id_size);
