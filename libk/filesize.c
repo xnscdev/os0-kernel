@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/stdlib.h>
+#include <libk/libk.h>
 
 static char itoa_buffer[32];
 
@@ -38,7 +38,12 @@ format_filesize (u64 size, char *buffer)
   int i;
   int p;
 
-  /* TODO Set to `0B' when size is 0 */
+  if (size == 0)
+    {
+      strcpy (buffer, "0B");
+      return buffer;
+    }
+
   for (i = 6, p = 60; p >= 0; i--, p -= 10)
     {
       if (size >= 1 << p)
@@ -49,10 +54,8 @@ format_filesize (u64 size, char *buffer)
     }
 
   utoa (value, itoa_buffer, 10);
-  /*
-    ptr = stpcpy (buffer, itoa_buffer);
-    *ptr = filesize_prefixes[i];
-    *++ptr = '\0';
-    */
+  ptr = stpcpy (buffer, itoa_buffer);
+  *ptr = filesize_prefixes[i];
+  *++ptr = '\0';
   return buffer;
 }

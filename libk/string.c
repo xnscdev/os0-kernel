@@ -88,6 +88,64 @@ strlen (const char *s)
   return i;
 }
 
+char *
+stpcpy (char *dest, const char *src)
+{
+  while (1)
+    {
+      *dest = *src++;
+      if (*dest == '\0')
+	return dest;
+      dest++;
+    }
+}
+
+char *
+stpncpy (char *dest, const char *src, size_t len)
+{
+  size_t i = 0;
+  while (i < len)
+    {
+      *dest = *src++;
+      if (*dest == '\0')
+        break;
+      dest++;
+      i++;
+    }
+  while (i < len)
+    dest[i++] = '\0';
+  return dest;
+}
+
+char *
+strcpy (char *dest, const char *src)
+{
+  size_t i = 0;
+  while (1)
+    {
+      dest[i] = src[i];
+      if (dest[i] == '\0')
+	return dest;
+      i++;
+    }
+}
+
+char *
+strncpy (char *dest, const char *src, size_t len)
+{
+  size_t i = 0;
+  while (i < len)
+    {
+      dest[i] = src[i];
+      if (dest[i] == '\0')
+        break;
+      i++;
+    }
+  while (i < len)
+    dest[i++] = '\0';
+  return dest;
+}
+
 int
 strcmp (const char *a, const char *b)
 {
