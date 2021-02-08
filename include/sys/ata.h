@@ -134,13 +134,19 @@ __BEGIN_DECLS
 
 extern IDEChannelRegisters ata_channels[2];
 extern IDEDevice ata_devices[4];
+extern int ide_irq;
+
+void ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4);
 
 u8 ata_read (u8 channel, u8 reg);
 void ata_write (u8 channel, u8 reg, u8 data);
 void ata_readbuf (u8 channel, u8 reg, void *buffer, u32 quads);
 u8 ata_poll (u8 channel, u8 chkerr);
 u8 ata_perror (u8 drive, u8 err);
-void ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4);
+u8 ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
+void ata_await (void);
+
+u8 atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
 
 __END_DECLS
 

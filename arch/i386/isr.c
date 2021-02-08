@@ -19,6 +19,7 @@
 #include <i386/pic.h>
 #include <i386/timer.h>
 #include <libk/stdlib.h>
+#include <sys/ata.h>
 #include <sys/io.h>
 
 void
@@ -237,6 +238,7 @@ irq13_handler (void)
 void
 irq14_handler (void)
 {
+  ide_irq = 1;
   outb (PIC_EOI, PIC_SLAVE_COMMAND);
   outb (PIC_EOI, PIC_MASTER_COMMAND);
 }
@@ -244,6 +246,7 @@ irq14_handler (void)
 void
 irq15_handler (void)
 {
+  ide_irq = 1;
   outb (PIC_EOI, PIC_SLAVE_COMMAND);
   outb (PIC_EOI, PIC_MASTER_COMMAND);
 }

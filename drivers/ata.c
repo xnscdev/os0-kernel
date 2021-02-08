@@ -22,7 +22,6 @@
 #include <sys/timer.h>
 
 static u8 ata_buffer[2048];
-static u8 ide_irq;
 static u8 atapi_packet[12] = {0xa8};
 
 static const char *ide_channel_names[] = {
@@ -48,6 +47,112 @@ static const char ata_flush_cmds[] = {
 
 IDEChannelRegisters ata_channels[2];
 IDEDevice ata_devices[4];
+int ide_irq;
+
+void
+ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
+{
+  int i;
+  int j;
+  int k;
+  int count = 0;
+
+  ata_channels[ATA_PRIMARY].icr_base = (bar0 & 0xfffffffc) + 0x1f0 * !bar0;
+  ata_channels[ATA_PRIMARY].icr_ctrl = (bar1 & 0xfffffffc) + 0x3f6 * !bar1;
+  ata_channels[ATA_SECONDARY].icr_base = (bar2 & 0xfffffffc) + 0x170 * !bar2;
+  ata_channels[ATA_SECONDARY].icr_ctrl = (bar3 & 0xfffffffc) + 0x376 * !bar3;
+  ata_channels[ATA_PRIMARY].icr_bmide = bar4 & 0xfffffffc;
+  ata_channels[ATA_SECONDARY].icr_bmide = (bar4 & 0xfffffffc) + 8;
+
+  ata_write (ATA_PRIMARY, ATA_REG_CONTROL, 2);
+  ata_write (ATA_SECONDARY, ATA_REG_CONTROL, 2);
+
+  /* Detect and assign IDE drives */
+  for (i = 0; i < 2; i++)
+    {
+      for (j = 0; j < 2; j++)
+	{
+	  u8 err = 0;
+	  u8 type = IDE_ATA;
+	  u8 status;
+	  ata_devices[count].id_reserved = 0;
+
+	  ata_write (i, ATA_REG_HDDEVSEL, 0xa0 | j << 4);
+	  msleep (1);
+
+	  ata_write (i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
+	  msleep (1);
+
+	  if (ata_read (i, ATA_REG_STATUS) == 0)
+	    continue;
+	  while (1)
+	    {
+	      status = ata_read (i, ATA_REG_STATUS);
+	      if (status & ATA_SR_ERR)
+		{
+		  err = 1;
+		  break;
+		}
+	      if ((status & ATA_SR_BSY) == 0 && status & ATA_SR_DRQ)
+		break;
+	    }
+
+	  if (err != 0)
+	    {
+	      u8 cl = ata_read (i, ATA_REG_LBA1);
+	      u8 ch = ata_read (i, ATA_REG_LBA2);
+
+	      if ((cl == 0x14 && ch == 0xeb) || (cl == 0x69 && ch == 0x96))
+		type = IDE_ATAPI;
+	      else
+		continue;
+
+	      ata_write (i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
+	      msleep (1);
+	    }
+
+	  /* Fill device properties */
+	  ata_readbuf (i, ATA_REG_DATA, ata_buffer, 128);
+	  ata_devices[count].id_reserved = 1;
+	  ata_devices[count].id_type = type;
+	  ata_devices[count].id_channel = i;
+	  ata_devices[count].id_drive = j;
+	  ata_devices[count].id_sig =
+	    *((u16 *) (ata_buffer + ATA_IDENT_DEVICETYPE));
+	  ata_devices[count].id_cap =
+	    *((u16 *) (ata_buffer + ATA_IDENT_CAPABILITIES));
+	  ata_devices[count].id_cmdset =
+	    *((u32 *) (ata_buffer + ATA_IDENT_COMMANDSETS));
+
+	  if (ata_devices[count].id_cmdset & 1 << 26)
+	    ata_devices[count].id_size =
+	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA_EXT));
+	  else
+	    ata_devices[count].id_size =
+	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA));
+
+	  for (k = 0; k < 40; k += 2)
+	    {
+	      ata_devices[count].id_model[k] =
+		ata_buffer[ATA_IDENT_MODEL + k + 1];
+	      ata_devices[count].id_model[k + 1] =
+		ata_buffer[ATA_IDENT_MODEL + k];
+	    }
+	  ata_devices[count].id_model[40] = '\0';
+
+	  count++;
+	}
+    }
+
+  for (i = 0; i < 4; i++)
+    {
+      if (ata_devices[i].id_reserved)
+	printk ("Found %s %s %s drive (size %lu bytes)\n",
+		ide_channel_names[ata_devices[i].id_channel],
+		ide_drive_names[ata_devices[i].id_drive],
+		ide_type_names[ata_devices[i].id_type], ata_devices[i].id_size);
+    }
+}
 
 u8
 ata_read (u8 channel, u8 reg)
@@ -199,111 +304,6 @@ ata_perror (u8 drive, u8 err)
       break;
     }
   return err;
-}
-
-void
-ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
-{
-  int i;
-  int j;
-  int k;
-  int count = 0;
-
-  ata_channels[ATA_PRIMARY].icr_base = (bar0 & 0xfffffffc) + 0x1f0 * !bar0;
-  ata_channels[ATA_PRIMARY].icr_ctrl = (bar1 & 0xfffffffc) + 0x3f6 * !bar1;
-  ata_channels[ATA_SECONDARY].icr_base = (bar2 & 0xfffffffc) + 0x170 * !bar2;
-  ata_channels[ATA_SECONDARY].icr_ctrl = (bar3 & 0xfffffffc) + 0x376 * !bar3;
-  ata_channels[ATA_PRIMARY].icr_bmide = bar4 & 0xfffffffc;
-  ata_channels[ATA_SECONDARY].icr_bmide = (bar4 & 0xfffffffc) + 8;
-
-  ata_write (ATA_PRIMARY, ATA_REG_CONTROL, 2);
-  ata_write (ATA_SECONDARY, ATA_REG_CONTROL, 2);
-
-  /* Detect and assign IDE drives */
-  for (i = 0; i < 2; i++)
-    {
-      for (j = 0; j < 2; j++)
-	{
-	  u8 err = 0;
-	  u8 type = IDE_ATA;
-	  u8 status;
-	  ata_devices[count].id_reserved = 0;
-
-	  ata_write (i, ATA_REG_HDDEVSEL, 0xa0 | j << 4);
-	  msleep (1);
-
-	  ata_write (i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
-	  msleep (1);
-
-	  if (ata_read (i, ATA_REG_STATUS) == 0)
-	    continue;
-	  while (1)
-	    {
-	      status = ata_read (i, ATA_REG_STATUS);
-	      if (status & ATA_SR_ERR)
-		{
-		  err = 1;
-		  break;
-		}
-	      if ((status & ATA_SR_BSY) == 0 && status & ATA_SR_DRQ)
-		break;
-	    }
-
-	  if (err != 0)
-	    {
-	      u8 cl = ata_read (i, ATA_REG_LBA1);
-	      u8 ch = ata_read (i, ATA_REG_LBA2);
-
-	      if ((cl == 0x14 && ch == 0xeb) || (cl == 0x69 && ch == 0x96))
-		type = IDE_ATAPI;
-	      else
-		continue;
-
-	      ata_write (i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
-	      msleep (1);
-	    }
-
-	  /* Fill device properties */
-	  ata_readbuf (i, ATA_REG_DATA, ata_buffer, 128);
-	  ata_devices[count].id_reserved = 1;
-	  ata_devices[count].id_type = type;
-	  ata_devices[count].id_channel = i;
-	  ata_devices[count].id_drive = j;
-	  ata_devices[count].id_sig =
-	    *((u16 *) (ata_buffer + ATA_IDENT_DEVICETYPE));
-	  ata_devices[count].id_cap =
-	    *((u16 *) (ata_buffer + ATA_IDENT_CAPABILITIES));
-	  ata_devices[count].id_cmdset =
-	    *((u32 *) (ata_buffer + ATA_IDENT_COMMANDSETS));
-
-	  if (ata_devices[count].id_cmdset & 1 << 26)
-	    ata_devices[count].id_size =
-	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA_EXT));
-	  else
-	    ata_devices[count].id_size =
-	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA));
-
-	  for (k = 0; k < 40; k += 2)
-	    {
-	      ata_devices[count].id_model[k] =
-		ata_buffer[ATA_IDENT_MODEL + k + 1];
-	      ata_devices[count].id_model[k + 1] =
-		ata_buffer[ATA_IDENT_MODEL + k];
-	    }
-	  ata_devices[count].id_model[40] = '\0';
-
-	  count++;
-	}
-    }
-
-  for (i = 0; i < 4; i++)
-    {
-      if (ata_devices[i].id_reserved)
-	printk ("Found %s %s %s drive (size %lu bytes)\n",
-		ide_channel_names[ata_devices[i].id_channel],
-		ide_drive_names[ata_devices[i].id_drive],
-		ide_type_names[ata_devices[i].id_type], ata_devices[i].id_size);
-    }
 }
 
 u8
@@ -460,5 +460,77 @@ ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
 	    }
 	}
     }
+  return 0;
+}
+
+void
+ata_await (void)
+{
+  while (ide_irq == 0)
+    ;
+  ide_irq = 0;
+}
+
+u8
+atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
+{
+  u32 channel = ata_devices[drive].id_channel;
+  u32 slavebit = ata_devices[drive].id_drive;
+  u32 bus = ata_channels[channel].icr_base;
+  u32 words = 1024;
+  u8 err;
+  int i;
+
+  /* Enable IRQs */
+  ide_irq = 0;
+  ata_channels[channel].icr_noint = ide_irq;
+  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
+
+  /* Fill SCSI packet */
+  atapi_packet[0] = ATAPI_CMD_READ;
+  atapi_packet[1] = 0;
+  atapi_packet[2] = (lba >> 24) & 0xff;
+  atapi_packet[3] = (lba >> 16) & 0xff;
+  atapi_packet[4] = (lba >> 8) & 0xff;
+  atapi_packet[5] = lba & 0xff;
+  atapi_packet[6] = 0;
+  atapi_packet[7] = 0;
+  atapi_packet[8] = 0;
+  atapi_packet[9] = nsects;
+  atapi_packet[10] = 0;
+  atapi_packet[11] = 0;
+
+  ata_write (channel, ATA_REG_HDDEVSEL, slavebit << 4);
+  for (i = 0; i < 4; i++)
+    ata_read (channel, ATA_REG_ALTSTAT);
+
+  /* Use PIO mode */
+  ata_write (channel, ATA_REG_FEATURES, 0);
+
+  ata_write (channel, ATA_REG_LBA1, (words * 2) & 0xff);
+  ata_write (channel, ATA_REG_LBA2, (words * 2) >> 8);
+
+  ata_write (channel, ATA_REG_COMMAND, ATA_CMD_PACKET);
+  err = ata_poll (channel, 1);
+  if (err != 0)
+    return err;
+  outsw (bus, atapi_packet, 6);
+
+  for (i = 0; i < nsects; i++)
+    {
+      ata_await ();
+      err = ata_poll (channel, 1);
+      if (err != 0)
+	return err;
+      __asm__ volatile ("push %es");
+      __asm__ volatile ("mov %%ax, %%es" :: "a" (selector));
+      insw (bus, buffer, words);
+      __asm__ volatile ("pop %es");
+      buffer += words * 2;
+    }
+
+  ata_await ();
+  while (ata_read (channel, ATA_REG_STATUS) & (ATA_SR_BSY | ATA_SR_DRQ))
+    ;
   return 0;
 }
