@@ -1,5 +1,5 @@
 /*************************************************************************
- * main.c -- This file is part of OS/0.                                  *
+ * device.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,28 +16,19 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <kconfig.h>
+#ifndef _SYS_DEVICE_H
+#define _SYS_DEVICE_H
 
-#include <libk/libk.h>
-#include <sys/multiboot.h>
-#include <sys/timer.h>
-#include <video/vga.h>
-#include <vm/heap.h>
-#include <vm/paging.h>
+#include <libk/types.h>
+#include <sys/cdefs.h>
 
-static void
-splash (void)
+typedef struct
 {
-  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
-}
+  dev_t dd_major;
+  dev_t dd_minor;
+  const char *dd_name;
+  int (*dd_init) (void);
+  int (*dd_destroy) (void);
+} DiskDevice;
 
-void
-kmain (MultibootInfo *info)
-{
-  timer_set_freq (1000);
-  vga_init ();
-  splash ();
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  mem_init (info->mi_memhigh);
-  heap_init ();
-}
+#endif
