@@ -19,6 +19,9 @@
 #ifndef _SYS_ATA_H
 #define _SYS_ATA_H
 
+#include <libk/types.h>
+#include <sys/cdefs.h>
+
 #define ATA_SR_BSY  0x80
 #define ATA_SR_DRDY 0x40
 #define ATA_SR_DF   0x20
@@ -95,5 +98,33 @@
 
 #define ATA_READ  0
 #define ATA_WRITE 1
+
+typedef struct
+{
+  u16 icr_base;
+  u16 icr_ctrl;
+  u16 icr_bmide;
+  u8 icr_noint;
+} IDEChannelRegisters;
+
+typedef struct
+{
+  u8 id_reserved;
+  u8 id_channel;
+  u8 id_drive;
+  u16 id_type;
+  u16 id_sig;
+  u16 id_cap;
+  u32 id_cmdset;
+  u32 id_size;
+  char id_model[41];
+} IDEDevice;
+
+__BEGIN_DECLS
+
+extern IDEChannelRegisters ata_channels[2];
+extern IDEDevice ata_devices[4];
+
+__END_DECLS
 
 #endif
