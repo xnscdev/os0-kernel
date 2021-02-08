@@ -155,7 +155,7 @@ heap_alloc (MemHeap *heap, u32 size, u8 aligned)
 		sizeof (MemHeader);
 
 	      sorted_array_insert (&heap->mh_index, page_header);
-	      return (void *) addr;
+	      header = page_header; /* For allocation setup */
 	    }
 	  else
 	    continue; /* TODO Create a new header and add a gap in the index */
