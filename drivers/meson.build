@@ -1,4 +1,5 @@
 drivers_src = [
+  'ata.c',
   'vga.c'
 ]
 

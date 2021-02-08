@@ -125,6 +125,9 @@ __BEGIN_DECLS
 extern IDEChannelRegisters ata_channels[2];
 extern IDEDevice ata_devices[4];
 
+u8 ata_read (u8 channel, u8 reg);
+void ata_write (u8 channel, u8 reg, u8 data);
+
 __END_DECLS
 
 #endif
