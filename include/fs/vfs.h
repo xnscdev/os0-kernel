@@ -19,6 +19,7 @@
 #ifndef _FS_VFS_H
 #define _FS_VFS_H
 
+#include <libk/time.h>
 #include <sys/cdefs.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -30,14 +31,6 @@
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSInode VFSInode;
 typedef struct _VFSDirEntry VFSDirEntry;
-
-typedef struct
-{
-  char vfs_name[16];
-  uint32_t vfs_flags;
-  int (*vfs_init) (void *);
-  int (*vfs_destroy) (void);
-} VFSFilesystem;
 
 typedef struct
 {
@@ -72,6 +65,17 @@ typedef struct
   int (*d_compare) (VFSDirEntry *, const char *, const char *);
   void (*d_iput) (VFSDirEntry *, VFSInode *);
 } VFSDirEntryOps;
+
+typedef struct
+{
+  char vfs_name[16];
+  uint32_t vfs_flags;
+  int (*vfs_init) (void);
+  int (*vfs_destroy) (void);
+  VFSMountOps *vfs_mops;
+  VFSInodeOps *vfs_iops;
+  VFSDirEntryOps *vfs_dops;
+} VFSFilesystem;
 
 struct _VFSMount
 {
@@ -112,6 +116,8 @@ struct _VFSDirEntry
 __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
+
+void fs_init (void);
 
 int fs_register (const VFSFilesystem *fs);
 

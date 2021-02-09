@@ -22,6 +22,7 @@ configure_file(input: 'kconfig.h.in', output: 'kconfig.h',
 	       configuration: kernel_conf)
 
 subdir('drivers')
+subdir('fs')
 subdir('libk')
 
 subdir('kernel')

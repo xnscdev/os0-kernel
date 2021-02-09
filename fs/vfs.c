@@ -1,5 +1,5 @@
 /*************************************************************************
- * device.h -- This file is part of OS/0.                                *
+ * vfs.c -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,52 +16,37 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_DEVICE_H
-#define _SYS_DEVICE_H
+#include <fs/ext2.h>
+#include <fs/vfs.h>
+#include <libk/libk.h>
 
-#include <sys/cdefs.h>
-#include <stddef.h>
-#include <stdint.h>
+VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 
-#define DEVICE_TABLE_SIZE 64
-
-#define DEVICE_TYPE_BLOCK 1
-#define DEVICE_TYPE_CHAR  2
-
-typedef struct
+void
+fs_init (void)
 {
-  dev_t sd_major;
-  dev_t sd_minor;
-  unsigned char sd_type;
-  char sd_name[15];
-} SpecDevice;
+  ext2_init ();
+}
 
-typedef struct
+int
+fs_register (const VFSFilesystem *fs)
 {
-  unsigned char mpi_attr;
-  unsigned char mpi_chs_start[3];
-  unsigned char mpi_type;
-  unsigned char mpi_chs_end[3];
-  uint32_t mpi_lba;
-  uint32_t mpi_sects;
-} MBRPartInfo;
-
-typedef union
-{
-  uint32_t dpi_type;
-  uint32_t dpi_lba;
-  uint32_t dpi_size;
-  SpecDevice *dpi_dev;
-} DiskPartInfo;
-
-__BEGIN_DECLS
-
-extern SpecDevice device_table[DEVICE_TABLE_SIZE];
-
-void devices_init (void);
-
-SpecDevice *device_register (dev_t major, unsigned char type, const char *name);
-
-__END_DECLS
-
-#endif
+  int i;
+  if (fs == NULL)
+    return 1;
+  if (*fs->vfs_name == '\0')
+    return 2;
+  for (i = 0; i < VFS_FS_TABLE_SIZE; i++)
+    {
+      if (*fs_table[i].vfs_name != '\0')
+	continue;
+      if (fs->vfs_init != NULL)
+	{
+	  if (fs->vfs_init () != 0)
+	    return 3;
+	}
+      memcpy (&fs_table[i], fs, sizeof (VFSFilesystem));
+      return 0;
+    }
+  return 4;
+}

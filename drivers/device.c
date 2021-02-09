@@ -23,8 +23,7 @@
 
 static unsigned char mbr_buffer[512];
 
-SpecDevice *device_table;
-size_t device_table_size;
+SpecDevice device_table[DEVICE_TABLE_SIZE];
 
 static void
 device_disk_init (int drive, SpecDevice *dev)
@@ -54,10 +53,8 @@ devices_init (void)
 {
   int i;
   int j = 0;
-  device_table = kzalloc (sizeof (SpecDevice) * DEVICE_TABLE_SIZE);
   if (unlikely (device_table == NULL))
     panic ("Failed to initialize device table");
-  device_table_size = DEVICE_TABLE_SIZE;
 
   /* Initialize ATA devices */
   for (i = 0; i < 4; i++)
@@ -88,7 +85,7 @@ SpecDevice *
 device_register (dev_t major, unsigned char type, const char *name)
 {
   size_t i;
-  for (i = 0; i < device_table_size; i++)
+  for (i = 0; i < DEVICE_TABLE_SIZE; i++)
     {
       SpecDevice *dev = &device_table[i];
       if (dev->sd_type != 0)

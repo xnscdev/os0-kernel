@@ -37,8 +37,7 @@ ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
       for (i = 0; i < nsects; i++)
 	err = atapi_read (drive, lba + i, 1, es, buffer + i * ATAPI_SECTSIZE);
     }
-  err = ata_perror (drive, err);
-  return err;
+  return ata_perror (drive, err);
 }
 
 int
