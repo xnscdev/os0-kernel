@@ -25,6 +25,7 @@
 #include <libk/stdio.h>
 #include <libk/stdlib.h>
 #include <libk/string.h>
+#include <libk/time.h>
 #include <libk/types.h>
 
 #endif
