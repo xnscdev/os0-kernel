@@ -44,6 +44,6 @@ kmain (MultibootInfo *info)
   mem_init (info->mi_memhigh);
   heap_init ();
 
-  devices_init ();
   ata_init (PATA_BAR0, PATA_BAR1, PATA_BAR2, PATA_BAR3, PATA_BAR4);
+  devices_init ();
 }

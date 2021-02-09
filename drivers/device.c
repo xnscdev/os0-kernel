@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <libk/string.h>
+#include <sys/ata.h>
 #include <sys/device.h>
 #include <vm/heap.h>
 
@@ -26,8 +27,23 @@ size_t device_table_size;
 void
 devices_init (void)
 {
+  int i;
+  int j = 0;
   device_table = kzalloc (sizeof (SpecDevice) * DEVICE_TABLE_SIZE);
+  /* TODO Check result of kzalloc() */
   device_table_size = DEVICE_TABLE_SIZE;
+
+  /* Initialize ATA devices */
+  for (i = 0; i < 4; i++)
+    {
+      char name[4];
+      if (!ata_devices[i].id_reserved)
+        continue;
+      /* Set device name and register it */
+      strcpy (name, "sdx");
+      name[2] = 'a' + j++;
+      device_register (i, DEVICE_TYPE_BLOCK, name, NULL);
+    }
 }
 
 SpecDevice *
