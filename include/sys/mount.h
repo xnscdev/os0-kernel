@@ -1,5 +1,5 @@
 /*************************************************************************
- * vfs.h -- This file is part of OS/0.                                   *
+ * mount.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,38 +16,28 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _FS_VFS_H
-#define _FS_VFS_H
+#ifndef _SYS_MOUNT_H
+#define _SYS_MOUNT_H
 
-#include <libk/libk.h>
-#include <sys/mount.h>
-
-typedef struct
-{
-  char name[16];
-  u32 flags;
-} VFSFilesystem;
+#include <sys/types.h>
 
 typedef struct
 {
-  int (*vfs_mount) (const char *, u32, void *);
-  int (*vfs_unmount) (u32);
-  int (*vfs_statfs) (struct statfs *);
-} VFSFilesystemOps;
+  int f_val[2];
+} fsid_t;
 
-typedef struct
+struct statfs
 {
-  uid_t vi_uid;
-  gid_t vi_gid;
-  u32 vi_flags;
-  u32 vi_ino;
-  u32 vi_nlink;
-  dev_t vi_rdev;
-  loff_t vi_size;
-  struct timespec vi_atime;
-  struct timespec vi_mtime;
-  struct timespec vi_ctime;
-  blkcnt_t vi_blocks;
-} VFSInode;
+  long f_type;
+  blksize_t f_bsize;
+  fsblkcnt_t f_blocks;
+  fsblkcnt_t f_bfree;
+  fsblkcnt_t f_bavail;
+  fsfilcnt_t f_files;
+  fsfilcnt_t f_ffree;
+  fsid_t f_fsid;
+  long f_namelen;
+  long f_flags;
+};
 
 #endif
