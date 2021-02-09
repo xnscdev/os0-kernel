@@ -19,8 +19,8 @@
 #ifndef _I386_PIC_H
 #define _I386_PIC_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 #define PIC_MASTER_COMMAND 0x20
 #define PIC_MASTER_DATA    0x21
@@ -33,16 +33,16 @@
 
 typedef struct
 {
-  u16 ie_basel;
-  u16 ie_sel;
-  u8 ie_reserved;
-  u8 ie_flags;
-  u16 ie_baseh;
+  uint16_t ie_basel;
+  uint16_t ie_sel;
+  unsigned char ie_reserved;
+  unsigned char ie_flags;
+  uint16_t ie_baseh;
 } __attribute__ ((packed)) IDTEntry;
 
 __BEGIN_DECLS
 
-void idt_load (u32 addr);
+void idt_load (uint32_t addr);
 
 __END_DECLS
 

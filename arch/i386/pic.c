@@ -32,8 +32,8 @@ static DTPtr idt;
 void
 idt_init (void)
 {
-#define EXC(x, p) u32 exc ## x ## _addr;
-#define IRQ(x) u32 irq ## x ## _addr;
+#define EXC(x, p) uint32_t exc ## x ## _addr;
+#define IRQ(x) uint32_t irq ## x ## _addr;
 #include "irq.inc"
 #undef EXC
 #undef IRQ
@@ -51,15 +51,15 @@ idt_init (void)
   outb (0, PIC_SLAVE_DATA);
 
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
-  idt.dp_base = (u32) &idt_entries;
+  idt.dp_base = (uint32_t) &idt_entries;
 
-#define EXC(x, p) exc ## x ## _addr = (u32) exc ## x;			\
+#define EXC(x, p) exc ## x ## _addr = (uint32_t) exc ## x;			\
   idt_entries[x].ie_basel = exc ## x ## _addr & 0xffff;			\
   idt_entries[x].ie_sel = 0x08;						\
   idt_entries[x].ie_reserved = 0;					\
   idt_entries[x].ie_flags = 0x8e;					\
   idt_entries[x].ie_baseh = (exc ## x ## _addr & 0xffff0000) >> 16;
-#define IRQ(x) irq ## x ## _addr = (u32) irq ## x;			\
+#define IRQ(x) irq ## x ## _addr = (uint32_t) irq ## x;			\
   idt_entries[x + 32].ie_basel = irq ## x ## _addr & 0xffff;		\
   idt_entries[x + 32].ie_sel = 0x08;					\
   idt_entries[x + 32].ie_reserved = 0;					\
@@ -69,5 +69,5 @@ idt_init (void)
 #undef EXC
 #undef IRQ
 
-  idt_load ((u32) &idt);
+  idt_load ((uint32_t) &idt);
 }

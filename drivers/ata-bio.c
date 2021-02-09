@@ -18,10 +18,11 @@
 
 #include <sys/ata.h>
 
-u8
-ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
+int
+ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
+		  uint16_t es, void *buffer)
 {
-  u8 err;
+  int err;
   if (drive > 3 || !ata_devices[drive].id_reserved)
     return 1;
   if (lba + nsects > ata_devices[drive].id_size
@@ -40,10 +41,11 @@ ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
   return err;
 }
 
-u8
-ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer)
+int
+ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
+		   uint16_t es, void *buffer)
 {
-  u8 err;
+  int err;
   if (drive > 3 || !ata_devices[drive].id_reserved)
     return 1;
   if (lba + nsects > ata_devices[drive].id_size

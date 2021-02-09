@@ -20,7 +20,7 @@
 #define _SYS_MULTIBOOT_H
 
 #ifndef _ASM
-#include <libk/types.h>
+#include <stdint.h>
 #endif
 
 #define MULTIBOOT_MAGIC 0x1badb002
@@ -43,34 +43,34 @@
 
 typedef struct
 {
-  u32 mi_flags;
-  u32 mi_memlow;
-  u32 mi_memhigh;
-  u32 mi_bootdev;
-  u32 mi_cmdline;
-  u32 mi_modcnt;
-  u32 mi_modaddr;
-  u32 mi_syms[4];
-  u32 mi_mmaplen;
-  u32 mi_mmapaddr;
-  u32 mi_drivelen;
-  u32 mi_driveaddr;
-  u32 mi_conftbl;
-  u32 mi_loadname;
-  u32 mi_apmtbl;
-  u32 mi_vbectlinfo;
-  u32 mi_vbemodinfo;
-  u16 mi_vbemode;
-  u16 mi_vbeifcseg;
-  u16 mi_vbeifcoff;
-  u16 mi_vbeifclen;
-  u32 mi_fbaddr;
-  u32 mi_fbpitch;
-  u32 mi_fbwidth;
-  u32 mi_fbheight;
-  u8 mi_fbbpp;
-  u8 mi_fbtype;
-  u8 mi_fbcolinfo[6];
+  uint32_t mi_flags;
+  uint32_t mi_memlow;
+  uint32_t mi_memhigh;
+  uint32_t mi_bootdev;
+  uint32_t mi_cmdline;
+  uint32_t mi_modcnt;
+  uint32_t mi_modaddr;
+  uint32_t mi_syms[4];
+  uint32_t mi_mmaplen;
+  uint32_t mi_mmapaddr;
+  uint32_t mi_drivelen;
+  uint32_t mi_driveaddr;
+  uint32_t mi_conftbl;
+  uint32_t mi_loadname;
+  uint32_t mi_apmtbl;
+  uint32_t mi_vbectlinfo;
+  uint32_t mi_vbemodinfo;
+  uint16_t mi_vbemode;
+  uint16_t mi_vbeifcseg;
+  uint16_t mi_vbeifcoff;
+  uint16_t mi_vbeifclen;
+  uint32_t mi_fbaddr;
+  uint32_t mi_fbpitch;
+  uint32_t mi_fbwidth;
+  uint32_t mi_fbheight;
+  unsigned char mi_fbbpp;
+  unsigned char mi_fbtype;
+  unsigned char mi_fbcolinfo[6];
 } __attribute__ ((packed)) MultibootInfo;
 
 #endif

@@ -22,15 +22,15 @@ void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
 {
   size_t i;
-  if ((u32) dest % 2 == 0 && (u32) src % 2 == 0 && len % 2 == 0)
+  if ((uint32_t) dest % 2 == 0 && (uint32_t) src % 2 == 0 && len % 2 == 0)
     {
       for (i = 0; i < len / 2; i++)
-	((u16 *) dest)[i] = ((u16 *) src)[i];
+	((uint16_t *) dest)[i] = ((uint16_t *) src)[i];
     }
   else
     {
       for (i = 0; i < len; i++)
-	((u8 *) dest)[i] = ((u8 *) src)[i];
+	((unsigned char *) dest)[i] = ((unsigned char *) src)[i];
     }
   return dest;
 }
@@ -41,15 +41,15 @@ memmove (void *dest, const void *src, size_t len)
   size_t i;
   if (dest < src)
     return memcpy (dest, src, len);
-  if ((u32) dest % 2 == 0 && (u32) src % 2 == 0 && len % 2 == 0)
+  if ((uint32_t) dest % 2 == 0 && (uint32_t) src % 2 == 0 && len % 2 == 0)
     {
       for (i = len / 2; i > 0; i--)
-	((u16 *) dest)[i - 1] = ((u16 *) src)[i - 1];
+	((uint16_t *) dest)[i - 1] = ((uint16_t *) src)[i - 1];
     }
   else
     {
       for (i = len; i > 0; i--)
-	((u8 *) dest)[i - 1] = ((u8 *) src)[i - 1];
+	((unsigned char *) dest)[i - 1] = ((unsigned char *) src)[i - 1];
     }
   return dest;
 }
@@ -59,15 +59,15 @@ memset (void *ptr, int c, size_t len)
 {
   size_t i;
   for (i = 0; i < len; i++)
-    ((u8 *) ptr)[i] = c;
+    ((unsigned char *) ptr)[i] = c;
   return ptr;
 }
 
 int
 memcmp (const void *a, const void *b, size_t len)
 {
-  u8 *ca = (u8 *) a;
-  u8 *cb = (u8 *) b;
+  unsigned char *ca = (unsigned char *) a;
+  unsigned char *cb = (unsigned char *) b;
   size_t i;
   for (i = 0; i < len; i++)
     {

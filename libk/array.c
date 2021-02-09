@@ -19,7 +19,7 @@
 #include <libk/libk.h>
 
 int
-sorted_array_place (SortedArray *array, void *addr, u32 max,
+sorted_array_place (SortedArray *array, void *addr, uint32_t max,
 		    ComparePredicate cmp)
 {
   if (array == NULL || addr == NULL || cmp == NULL)
@@ -40,7 +40,7 @@ sorted_array_destroy (SortedArray *array)
 void
 sorted_array_insert (SortedArray *array, void *item)
 {
-  u32 i = 0;
+  uint32_t i = 0;
   while (i < array->sa_size && array->sa_cmp (array->sa_elems[i], item))
     i++;
   if (i == array->sa_size)
@@ -60,7 +60,7 @@ sorted_array_insert (SortedArray *array, void *item)
 }
 
 void *
-sorted_array_lookup (SortedArray *array, u32 i)
+sorted_array_lookup (SortedArray *array, uint32_t i)
 {
   if (array == NULL || i >= array->sa_size)
     return NULL;
@@ -68,7 +68,7 @@ sorted_array_lookup (SortedArray *array, u32 i)
 }
 
 void
-sorted_array_remove (SortedArray *array, u32 i)
+sorted_array_remove (SortedArray *array, uint32_t i)
 {
   while (i < array->sa_size)
     {

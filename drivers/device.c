@@ -85,7 +85,7 @@ devices_init (void)
 }
 
 SpecDevice *
-device_register (dev_t major, u8 type, const char *name)
+device_register (dev_t major, unsigned char type, const char *name)
 {
   size_t i;
   for (i = 0; i < device_table_size; i++)

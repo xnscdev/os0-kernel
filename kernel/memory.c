@@ -20,35 +20,35 @@
 #include <sys/memory.h>
 #include <limits.h>
 
-static u32 mem_maxaddr; /* Physical address of max memory location */
+static uint32_t mem_maxaddr; /* Physical address of max memory location */
 
-static u8 o16[0x1];
-static u8 o15[0x2];
-static u8 o14[0x4];
-static u8 o13[0x8];
-static u8 o12[0x10];
-static u8 o11[0x20];
-static u8 o10[0x40];
-static u8 o9[0x80];
-static u8 o8[0x100];
-static u8 o7[0x200];
-static u8 o6[0x400];
-static u8 o5[0x800];
-static u8 o4[0x1000];
-static u8 o3[0x2000];
-static u8 o2[0x4000];
-static u8 o1[0x8000];
-static u8 o0[0x10000];
-static u8 *block_list[] =
+static unsigned char o16[0x1];
+static unsigned char o15[0x2];
+static unsigned char o14[0x4];
+static unsigned char o13[0x8];
+static unsigned char o12[0x10];
+static unsigned char o11[0x20];
+static unsigned char o10[0x40];
+static unsigned char o9[0x80];
+static unsigned char o8[0x100];
+static unsigned char o7[0x200];
+static unsigned char o6[0x400];
+static unsigned char o5[0x800];
+static unsigned char o4[0x1000];
+static unsigned char o3[0x2000];
+static unsigned char o2[0x4000];
+static unsigned char o1[0x8000];
+static unsigned char o0[0x10000];
+static unsigned char *block_list[] =
   {o0, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12, o13, o14, o15, o16};
 
 static int
-mem_search_free (u32 order, int *index, int *bit)
+mem_search_free (uint32_t order, int *index, int *bit)
 {
   size_t i;
   for (i = 0; i < 1 << (MEM_MAX_BLOCK_ORDER - order); i++)
     {
-      u8 num = ~block_list[order][i];
+      unsigned char num = ~block_list[order][i];
       int nbit = fls (num);
       if (nbit == 0)
 	continue;
@@ -60,17 +60,17 @@ mem_search_free (u32 order, int *index, int *bit)
 }
 
 void
-mem_init (u32 mem)
+mem_init (uint32_t mem)
 {
   mem_maxaddr = mem * 1024 + 0x100000;
   printk ("Detected %luK of available upper memory\n", mem);
 }
 
 void *
-mem_alloc (size_t size, u32 flags)
+mem_alloc (size_t size, uint32_t flags)
 {
-  u8 order = 0;
-  u32 addr;
+  unsigned char order = 0;
+  uint32_t addr;
   int index;
   int bit;
   int save_index;
@@ -128,7 +128,7 @@ mem_alloc (size_t size, u32 flags)
 void
 mem_free (void *ptr, size_t size)
 {
-  u8 order = 0;
+  unsigned char order = 0;
   int offset;
   int index;
   int bit;
@@ -138,7 +138,7 @@ mem_free (void *ptr, size_t size)
 
   if (ptr == NULL)
     return;
-  if (((u32) ptr - MEM_STARTADDR) % PAGE_SIZE != 0)
+  if (((uint32_t) ptr - MEM_STARTADDR) % PAGE_SIZE != 0)
     return; /* Bad address */
 
   while (1 << (order + 12) < size)
@@ -146,7 +146,7 @@ mem_free (void *ptr, size_t size)
   if (order > MEM_MAX_BLOCK_ORDER)
     return; /* Freeing too much memory */
 
-  offset = ((u32) ptr - MEM_STARTADDR) >> 12;
+  offset = ((uint32_t) ptr - MEM_STARTADDR) >> 12;
   index = offset / CHAR_BIT;
   bit = offset - index * CHAR_BIT;
   save_index = index;

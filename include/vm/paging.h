@@ -23,20 +23,20 @@
 #include <i386/paging.h>
 #endif
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 __BEGIN_DECLS
 
-extern u32 page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
-extern u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+extern uint32_t page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
 
-void paging_loaddir (u32 addr);
+void paging_loaddir (uint32_t addr);
 void paging_enable (void);
 
 void *get_paddr (void *vaddr);
-void map_page (u32 paddr, u32 vaddr, u32 flags);
+void map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags);
 
 __END_DECLS
 

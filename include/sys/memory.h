@@ -21,9 +21,9 @@
 
 #ifndef _ASM
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #endif
 
@@ -39,13 +39,13 @@
 #define KERNEL_PADDR 0x100000
 #define KERNEL_VADDR 0xc0100000
 #ifndef _ASM
-#define KERNEL_LEN   ((u32) &_kernel_end - KERNEL_VADDR)
+#define KERNEL_LEN   ((uint32_t) &_kernel_end - KERNEL_VADDR)
 #endif
 
 #define RELOC_PADDR 0x0
 #define RELOC_VADDR 0xc0000000
 #ifndef _ASM
-#define RELOC_LEN   ((u32) &_kernel_end - RELOC_VADDR)
+#define RELOC_LEN   ((uint32_t) &_kernel_end - RELOC_VADDR)
 #endif
 
 #ifndef _ASM
@@ -55,9 +55,9 @@ __BEGIN_DECLS
 extern void *_kernel_start;
 extern void *_kernel_end;
 
-void mem_init (u32 mem);
+void mem_init (uint32_t mem);
 
-void *mem_alloc (size_t size, u32 flags);
+void *mem_alloc (size_t size, uint32_t flags);
 void mem_free (void *ptr, size_t size);
 
 __END_DECLS

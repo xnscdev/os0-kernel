@@ -20,7 +20,7 @@
 #include <sys/io.h>
 #include <sys/timer.h>
 
-static u32 tick;
+static uint32_t tick;
 static int record;
 
 void
@@ -31,16 +31,16 @@ timer_tick (void)
 }
 
 void
-timer_set_freq (u32 freq)
+timer_set_freq (uint32_t freq)
 {
-  u32 div = TIMER_FREQ / freq;
+  uint32_t div = TIMER_FREQ / freq;
   outb (0x36, TIMER_PORT_COMMAND);
-  outb ((u8) (div & 0xff), TIMER_PORT_CHANNEL0);
-  outb ((u8) ((div >> 8) & 0xff), TIMER_PORT_CHANNEL0);
+  outb ((unsigned char) (div & 0xff), TIMER_PORT_CHANNEL0);
+  outb ((unsigned char) ((div >> 8) & 0xff), TIMER_PORT_CHANNEL0);
 }
 
 void
-msleep (u32 ms)
+msleep (uint32_t ms)
 {
   record = 1;
   tick = 0;

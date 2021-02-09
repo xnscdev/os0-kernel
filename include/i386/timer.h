@@ -19,8 +19,8 @@
 #ifndef _I386_TIMER_H
 #define _I386_TIMER_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 #define TIMER_FREQ 1193182
 

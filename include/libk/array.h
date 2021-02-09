@@ -25,19 +25,19 @@
 typedef struct
 {
   void **sa_elems;
-  u32 sa_size;
-  u32 sa_max;
+  uint32_t sa_size;
+  uint32_t sa_max;
   ComparePredicate sa_cmp;
 } SortedArray;
 
 __BEGIN_DECLS
 
-int sorted_array_place (SortedArray *array, void *addr, u32 maxsize,
+int sorted_array_place (SortedArray *array, void *addr, uint32_t maxsize,
 			ComparePredicate cmp);
 void sorted_array_destroy (SortedArray *array);
 void sorted_array_insert (SortedArray *array, void *item);
-void *sorted_array_lookup (SortedArray *array, u32 i);
-void sorted_array_remove (SortedArray *array, u32 i);
+void *sorted_array_lookup (SortedArray *array, uint32_t i);
+void sorted_array_remove (SortedArray *array, uint32_t i);
 
 __END_DECLS
 

@@ -21,18 +21,19 @@
 #include <sys/io.h>
 #include <sys/timer.h>
 
-static u8 atapi_packet[12] = {0xa8};
+static unsigned char atapi_packet[12] = {0xa8};
 
 int ide_irq;
 
-u8
-atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
+int
+atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
+	    uint16_t selector, void *buffer)
 {
-  u32 channel = ata_devices[drive].id_channel;
-  u32 slavebit = ata_devices[drive].id_drive;
-  u32 bus = ata_channels[channel].icr_base;
-  u32 words = ATAPI_SECTSIZE >> 1;
-  u8 err;
+  uint32_t channel = ata_devices[drive].id_channel;
+  uint32_t slavebit = ata_devices[drive].id_drive;
+  uint32_t bus = ata_channels[channel].icr_base;
+  uint32_t words = ATAPI_SECTSIZE >> 1;
+  int err;
   int i;
 
   /* Enable IRQs */
@@ -89,13 +90,13 @@ atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
   return 0;
 }
 
-u8
-atapi_eject (u8 drive)
+int
+atapi_eject (unsigned char drive)
 {
-  u32 channel = ata_devices[drive].id_channel;
-  u32 slavebit = ata_devices[drive].id_drive;
-  u32 bus = ata_channels[channel].icr_base;
-  u8 err;
+  uint32_t channel = ata_devices[drive].id_channel;
+  uint32_t slavebit = ata_devices[drive].id_drive;
+  uint32_t bus = ata_channels[channel].icr_base;
+  int err;
   int i;
 
   if (drive > 3 || !ata_devices[drive].id_reserved)

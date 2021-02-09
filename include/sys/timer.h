@@ -19,14 +19,14 @@
 #ifndef _SYS_TIMER_H
 #define _SYS_TIMER_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 __BEGIN_DECLS
 
-void timer_set_freq (u32 freq);
+void timer_set_freq (uint32_t freq);
 
-void msleep (u32 ms);
+void msleep (uint32_t ms);
 
 __END_DECLS
 

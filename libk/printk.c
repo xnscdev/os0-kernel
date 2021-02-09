@@ -88,7 +88,7 @@ vprintk (const char *fmt, va_list args)
       else if (*fmt == 'p')
 	{
 	  void *ptr = va_arg (args, void *);
-	  u32 addr = (u32) ptr;
+	  uint32_t addr = (uint32_t) ptr;
 	  size_t len;
 	  utoa (addr, itoa_buffer, 16);
 	  len = strlen (itoa_buffer);

@@ -30,34 +30,34 @@
 
 typedef struct
 {
-  u32 mh_magic;
-  u32 mh_size;
-  u8 mh_alloc;
-  u8 mh_reserved[7];
+  uint32_t mh_magic;
+  uint32_t mh_size;
+  unsigned char mh_alloc;
+  unsigned char mh_reserved[7];
 } MemHeader;
 
 typedef struct
 {
-  u32 mf_cigam;
-  u32 mf_header;
+  uint32_t mf_cigam;
+  uint32_t mf_header;
 } MemFooter;
 
 typedef struct
 {
   SortedArray mh_index;
-  u32 mh_addr;
-  u32 mh_size;
-  u16 mh_supvsr;
-  u16 mh_rdonly;
+  uint32_t mh_addr;
+  uint32_t mh_size;
+  uint16_t mh_supvsr;
+  uint16_t mh_rdonly;
 } MemHeap;
 
 __BEGIN_DECLS
 
 extern MemHeap *kernel_heap;
 
-int heap_new (MemHeap *heap, void *vaddr, u32 indexsize, u32 heapsize,
-	      u8 supervisor, u8 readonly);
-void *heap_alloc (MemHeap *heap, u32 size, u8 aligned);
+int heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
+	      unsigned char supervisor, unsigned char readonly);
+void *heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned);
 void heap_free (MemHeap *heap, void *ptr);
 
 void *kmalloc (size_t size);

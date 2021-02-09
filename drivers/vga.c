@@ -21,8 +21,8 @@
 
 static size_t vga_row;
 static size_t vga_column;
-static u8 vga_color;
-static u16 *vga_buffer;
+static unsigned char vga_color;
+static uint16_t *vga_buffer;
 
 void
 vga_init (void)
@@ -31,7 +31,7 @@ vga_init (void)
   size_t y;
 
   vga_color = vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-  vga_buffer = (u16 *) VGA_BUFFER;
+  vga_buffer = (uint16_t *) VGA_BUFFER;
 
   for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
     {
@@ -40,14 +40,14 @@ vga_init (void)
     }
 }
 
-u8
+unsigned char
 vga_getcolor (void)
 {
   return vga_color;
 }
 
 void
-vga_setcolor (u8 color)
+vga_setcolor (unsigned char color)
 {
   vga_color = color;
 }
@@ -101,9 +101,9 @@ vga_puts (const char *s)
 void
 vga_setcurs (size_t x, size_t y)
 {
-  u16 pos = vga_getindex (x, y);
+  uint16_t pos = vga_getindex (x, y);
   outb (0x0f, VGA_PORT_INDEX);
-  outb ((u8) (pos & 0xff), VGA_PORT_DATA);
+  outb ((unsigned char) (pos & 0xff), VGA_PORT_DATA);
   outb (0x0e, VGA_PORT_INDEX);
-  outb ((u8) ((pos >> 8) & 0xff), VGA_PORT_DATA);
+  outb ((unsigned char) ((pos >> 8) & 0xff), VGA_PORT_DATA);
 }

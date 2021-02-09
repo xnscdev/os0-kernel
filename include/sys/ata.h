@@ -19,8 +19,8 @@
 #ifndef _SYS_ATA_H
 #define _SYS_ATA_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 #define ATA_SR_BSY  0x80
 #define ATA_SR_DRDY 0x40
@@ -114,22 +114,22 @@
 
 typedef struct
 {
-  u16 icr_base;
-  u16 icr_ctrl;
-  u16 icr_bmide;
-  u8 icr_noint;
+  uint16_t icr_base;
+  uint16_t icr_ctrl;
+  uint16_t icr_bmide;
+  unsigned char icr_noint;
 } IDEChannelRegisters;
 
 typedef struct
 {
-  u8 id_reserved;
-  u8 id_channel;
-  u8 id_drive;
-  u16 id_type;
-  u16 id_sig;
-  u16 id_cap;
-  u32 id_cmdset;
-  u32 id_size;
+  unsigned char id_reserved;
+  unsigned char id_channel;
+  unsigned char id_drive;
+  uint16_t id_type;
+  uint16_t id_sig;
+  uint16_t id_cap;
+  uint32_t id_cmdset;
+  uint32_t id_size;
   char id_model[41];
 } IDEDevice;
 
@@ -139,21 +139,27 @@ extern IDEChannelRegisters ata_channels[2];
 extern IDEDevice ata_devices[4];
 extern int ide_irq;
 
-void ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4);
+void ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
+	       uint32_t bar4);
 
-u8 ata_read (u8 channel, u8 reg);
-void ata_write (u8 channel, u8 reg, u8 data);
-void ata_readbuf (u8 channel, u8 reg, void *buffer, u32 quads);
-u8 ata_poll (u8 channel, u8 chkerr);
-u8 ata_perror (u8 drive, u8 err);
-u8 ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
+unsigned char ata_read (unsigned char channel, unsigned char reg);
+void ata_write (unsigned char channel, unsigned char reg, unsigned char data);
+void ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
+		  uint32_t quads);
+int ata_poll (unsigned char channel, unsigned char chkerr);
+int ata_perror (unsigned char drive, int err);
+int ata_access (unsigned char op, unsigned char drive, uint32_t lba,
+		unsigned char nsects, uint16_t selector, void *buffer);
 void ata_await (void);
 
-u8 atapi_read (u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer);
-u8 atapi_eject (u8 drive);
+int atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
+		uint16_t selector, void *buffer);
+int atapi_eject (unsigned char drive);
 
-u8 ata_read_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);
-u8 ata_write_sectors (u8 drive, u8 nsects, u32 lba, u16 es, void *buffer);
+int ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
+		      uint16_t es, void *buffer);
+int ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
+		       uint16_t es, void *buffer);
 
 __END_DECLS
 

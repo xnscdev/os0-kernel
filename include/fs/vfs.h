@@ -19,11 +19,11 @@
 #ifndef _FS_VFS_H
 #define _FS_VFS_H
 
-#include <libk/libk.h>
 #include <sys/cdefs.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define VFS_FS_TABLE_SIZE 8
 
@@ -34,15 +34,15 @@ typedef struct _VFSDirEntry VFSDirEntry;
 typedef struct
 {
   char vfs_name[16];
-  u32 vfs_flags;
+  uint32_t vfs_flags;
   int (*vfs_init) (void *);
   int (*vfs_destroy) (void);
 } VFSFilesystem;
 
 typedef struct
 {
-  int (*vfs_mount) (VFSMount *, const char *, u32, void *);
-  int (*vfs_unmount) (VFSMount *, u32);
+  int (*vfs_mount) (VFSMount *, const char *, uint32_t, void *);
+  int (*vfs_unmount) (VFSMount *, uint32_t);
   int (*vfs_statfs) (VFSMount *, struct statfs *);
 } VFSMountOps;
 
@@ -76,7 +76,7 @@ typedef struct
 struct _VFSMount
 {
   char vfs_name[16];
-  u32 vfs_flags;
+  uint32_t vfs_flags;
   VFSMount *vfs_parent;
   VFSMountOps *vfs_ops;
   VFSDirEntry *vfs_mountpoint;
@@ -87,9 +87,9 @@ struct _VFSInode
 {
   uid_t vi_uid;
   gid_t vi_gid;
-  u32 vi_flags;
-  u32 vi_ino;
-  u32 vi_nlink;
+  uint32_t vi_flags;
+  uint32_t vi_ino;
+  uint32_t vi_nlink;
   dev_t vi_rdev;
   loff_t vi_size;
   struct timespec vi_atime;
@@ -101,7 +101,7 @@ struct _VFSInode
 
 struct _VFSDirEntry
 {
-  u32 d_flags;
+  uint32_t d_flags;
   VFSInode *d_inode;
   int d_mounted;
   VFSDirEntry *d_parent;

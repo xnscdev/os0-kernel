@@ -21,7 +21,7 @@
 #include <sys/io.h>
 #include <sys/timer.h>
 
-static u8 ata_buffer[2048];
+static unsigned char ata_buffer[2048];
 
 static const char *ide_channel_names[] = {
   "primary",
@@ -48,7 +48,8 @@ IDEChannelRegisters ata_channels[2];
 IDEDevice ata_devices[4];
 
 void
-ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
+ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
+	  uint32_t bar4)
 {
   int i;
   int j;
@@ -70,9 +71,9 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
     {
       for (j = 0; j < 2; j++)
 	{
-	  u8 err = 0;
-	  u8 type = IDE_ATA;
-	  u8 status;
+	  unsigned char err = 0;
+	  unsigned char type = IDE_ATA;
+	  unsigned char status;
 	  ata_devices[count].id_reserved = 0;
 
 	  ata_write (i, ATA_REG_HDDEVSEL, 0xa0 | j << 4);
@@ -97,8 +98,8 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
 
 	  if (err != 0)
 	    {
-	      u8 cl = ata_read (i, ATA_REG_LBA1);
-	      u8 ch = ata_read (i, ATA_REG_LBA2);
+	      unsigned char cl = ata_read (i, ATA_REG_LBA1);
+	      unsigned char ch = ata_read (i, ATA_REG_LBA2);
 
 	      if ((cl == 0x14 && ch == 0xeb) || (cl == 0x69 && ch == 0x96))
 		type = IDE_ATAPI;
@@ -116,18 +117,18 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
 	  ata_devices[count].id_channel = i;
 	  ata_devices[count].id_drive = j;
 	  ata_devices[count].id_sig =
-	    *((u16 *) (ata_buffer + ATA_IDENT_DEVICETYPE));
+	    *((uint16_t *) (ata_buffer + ATA_IDENT_DEVICETYPE));
 	  ata_devices[count].id_cap =
-	    *((u16 *) (ata_buffer + ATA_IDENT_CAPABILITIES));
+	    *((uint16_t *) (ata_buffer + ATA_IDENT_CAPABILITIES));
 	  ata_devices[count].id_cmdset =
-	    *((u32 *) (ata_buffer + ATA_IDENT_COMMANDSETS));
+	    *((uint32_t *) (ata_buffer + ATA_IDENT_COMMANDSETS));
 
 	  if (ata_devices[count].id_cmdset & 1 << 26)
 	    ata_devices[count].id_size =
-	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA_EXT));
+	      *((uint32_t *) (ata_buffer + ATA_IDENT_MAX_LBA_EXT));
 	  else
 	    ata_devices[count].id_size =
-	      *((u32 *) (ata_buffer + ATA_IDENT_MAX_LBA));
+	      *((uint32_t *) (ata_buffer + ATA_IDENT_MAX_LBA));
 
 	  for (k = 0; k < 40; k += 2)
 	    {
@@ -152,10 +153,10 @@ ata_init (u32 bar0, u32 bar1, u32 bar2, u32 bar3, u32 bar4)
     }
 }
 
-u8
-ata_read (u8 channel, u8 reg)
+unsigned char
+ata_read (unsigned char channel, unsigned char reg)
 {
-  u8 result;
+  unsigned char result;
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL,
 	       0x80 | ata_channels[channel].icr_noint);
@@ -173,7 +174,7 @@ ata_read (u8 channel, u8 reg)
 }
 
 void
-ata_write (u8 channel, u8 reg, u8 data)
+ata_write (unsigned char channel, unsigned char reg, unsigned char data)
 {
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL,
@@ -191,7 +192,8 @@ ata_write (u8 channel, u8 reg, u8 data)
 }
 
 void
-ata_readbuf (u8 channel, u8 reg, void *buffer, u32 quads)
+ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
+	     uint32_t quads)
 {
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL,
@@ -210,8 +212,8 @@ ata_readbuf (u8 channel, u8 reg, void *buffer, u32 quads)
     ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
 }
 
-u8
-ata_poll (u8 channel, u8 chkerr)
+int
+ata_poll (unsigned char channel, unsigned char chkerr)
 {
   int i;
   for (i = 0; i < 4; i++)
@@ -221,7 +223,7 @@ ata_poll (u8 channel, u8 chkerr)
 
   if (chkerr)
     {
-      u8 state = ata_read (channel, ATA_REG_STATUS);
+      unsigned char state = ata_read (channel, ATA_REG_STATUS);
       if (state & ATA_SR_ERR)
 	return 1;
       if (state & ATA_SR_DF)
@@ -232,10 +234,10 @@ ata_poll (u8 channel, u8 chkerr)
   return 0;
 }
 
-u8
-ata_perror (u8 drive, u8 err)
+int
+ata_perror (unsigned char drive, int err)
 {
-  u8 st;
+  unsigned char st;
   if (err == 0)
     return 0;
 
@@ -304,22 +306,23 @@ ata_perror (u8 drive, u8 err)
   return err;
 }
 
-u8
-ata_access (u8 op, u8 drive, u32 lba, u8 nsects, u16 selector, void *buffer)
+int
+ata_access (unsigned char op, unsigned char drive, uint32_t lba,
+	    unsigned char nsects, uint16_t selector, void *buffer)
 {
-  u8 lba_mode;
-  u8 lba_io[6];
-  u32 channel = ata_devices[drive].id_channel;
-  u32 slavebit = ata_devices[drive].id_drive;
-  u32 bus = ata_channels[channel].icr_base;
-  u32 words = ATA_SECTSIZE >> 1;
-  u16 cyl;
-  u8 head;
-  u8 sect;
-  u8 err;
-  u8 dma = 0; /* TODO DMA support */
+  unsigned char lba_mode;
+  unsigned char lba_io[6];
+  uint32_t channel = ata_devices[drive].id_channel;
+  uint32_t slavebit = ata_devices[drive].id_drive;
+  uint32_t bus = ata_channels[channel].icr_base;
+  uint32_t words = ATA_SECTSIZE >> 1;
+  uint16_t cyl;
+  unsigned char head;
+  unsigned char sect;
+  int err;
+  unsigned char dma = 0; /* TODO DMA support */
   char cmd;
-  u16 i;
+  uint16_t i;
 
   /* Turn off IRQs */
   ide_irq = 0;

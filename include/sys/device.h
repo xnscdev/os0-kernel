@@ -19,9 +19,9 @@
 #ifndef _SYS_DEVICE_H
 #define _SYS_DEVICE_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define DEVICE_TABLE_SIZE 64
 
@@ -32,25 +32,25 @@ typedef struct
 {
   dev_t sd_major;
   dev_t sd_minor;
-  u8 sd_type;
+  unsigned char sd_type;
   char sd_name[15];
 } SpecDevice;
 
 typedef struct
 {
-  u8 mpi_attr;
-  u8 mpi_chs_start[3];
-  u8 mpi_type;
-  u8 mpi_chs_end[3];
-  u32 mpi_lba;
-  u32 mpi_sects;
+  unsigned char mpi_attr;
+  unsigned char mpi_chs_start[3];
+  unsigned char mpi_type;
+  unsigned char mpi_chs_end[3];
+  uint32_t mpi_lba;
+  uint32_t mpi_sects;
 } MBRPartInfo;
 
 typedef union
 {
-  u32 dpi_type;
-  u32 dpi_lba;
-  u32 dpi_size;
+  uint32_t dpi_type;
+  uint32_t dpi_lba;
+  uint32_t dpi_size;
   SpecDevice *dpi_dev;
 } DiskPartInfo;
 
@@ -61,7 +61,7 @@ extern size_t device_table_size;
 
 void devices_init (void);
 
-SpecDevice *device_register (dev_t major, u8 type, const char *name);
+SpecDevice *device_register (dev_t major, unsigned char type, const char *name);
 
 __END_DECLS
 

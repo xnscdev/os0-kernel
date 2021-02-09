@@ -19,32 +19,33 @@
 #ifndef _I386_GDT_H
 #define _I386_GDT_H
 
-#include <libk/types.h>
 #include <sys/cdefs.h>
+#include <stdint.h>
 
 #define GDT_SIZE 5
 
 typedef struct
 {
-  u16 ge_liml;
-  u16 ge_basel;
-  u8 ge_basem;
-  u8 ge_access;
-  u8 ge_gran;
-  u8 ge_baseh;
+  uint16_t ge_liml;
+  uint16_t ge_basel;
+  unsigned char ge_basem;
+  unsigned char ge_access;
+  unsigned char ge_gran;
+  unsigned char ge_baseh;
 } __attribute__ ((packed)) GDTEntry;
 
 typedef struct
 {
-  u16 dp_limit;
-  u32 dp_base;
+  uint16_t dp_limit;
+  uint32_t dp_base;
 } __attribute__ ((packed)) DTPtr;
 
 __BEGIN_DECLS
 
-void gdt_load (u32 addr);
+void gdt_load (uint32_t addr);
 
-void gdt_set_gate (u32 n, u32 base, u32 limit, u8 access, u8 granularity);
+void gdt_set_gate (uint32_t n, uint32_t base, uint32_t limit,
+		   unsigned char access, unsigned char granularity);
 
 __END_DECLS
 

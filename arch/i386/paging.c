@@ -22,41 +22,41 @@
 #include <sys/memory.h>
 #include <vm/paging.h>
 
-u32 page_dir[PAGE_DIR_SIZE];
-u32 page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE];
+uint32_t page_dir[PAGE_DIR_SIZE];
+uint32_t page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE];
 
 void
 paging_init (void)
 {
-  u32 addr;
+  uint32_t addr;
   int i;
 
   /* Fill page directory */
   for (i = 0; i < PAGE_DIR_SIZE; i++)
-    page_dir[i] = ((u32) page_table[i] - RELOC_VADDR) | PAGE_FLAG_WRITE
+    page_dir[i] = ((uint32_t) page_table[i] - RELOC_VADDR) | PAGE_FLAG_WRITE
       | PAGE_FLAG_PRESENT;
 
   /* Map low memory + kernel to RELOC_VADDR */
   for (i = 0, addr = 0; addr < RELOC_LEN; i++, addr += PAGE_SIZE)
     map_page (addr + RELOC_PADDR, addr + RELOC_VADDR, PAGE_FLAG_WRITE);
 
-  paging_loaddir ((u32) page_dir - RELOC_VADDR);
+  paging_loaddir ((uint32_t) page_dir - RELOC_VADDR);
 }
 
 void *
 get_paddr (void *vaddr)
 {
-  u32 pdi = (u32) vaddr >> 22;
-  u32 pti = (u32) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-  u32 *table = (u32 *) ((page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
-  return (void *) ((table[pti] & 0xfffff000) + ((u32) vaddr & 0xfff));
+  uint32_t pdi = (uint32_t) vaddr >> 22;
+  uint32_t pti = (uint32_t) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
+  uint32_t *table = (uint32_t *) ((page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
+  return (void *) ((table[pti] & 0xfffff000) + ((uint32_t) vaddr & 0xfff));
 }
 
 void
-map_page (u32 paddr, u32 vaddr, u32 flags)
+map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags)
 {
-  u32 pdi = vaddr >> 22;
-  u32 pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-  u32 *table = (u32 *) ((page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
+  uint32_t pdi = vaddr >> 22;
+  uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
+  uint32_t *table = (uint32_t *) ((page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
   table[pti] = paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
 }
