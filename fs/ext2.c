@@ -19,6 +19,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/stdlib.h>
+#include <errno.h>
 
 static int ext2_mount (VFSMount *mp, const char *path, uint32_t flags,
 		       void *data);
