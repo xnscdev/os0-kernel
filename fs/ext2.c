@@ -90,6 +90,138 @@ static const VFSFilesystem ext2_vfs = {
   .vfs_dops = &ext2_dops
 };
 
+static int
+ext2_mount (VFSMount *mp, const char *path, uint32_t flags, void *data)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_unmount (VFSMount *mp, uint32_t flags)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_statfs (VFSMount *mp, struct statfs *st)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+{
+  return ENOSYS;
+}
+
+static VFSDirEntry *
+ext2_lookup (VFSInode *dir, VFSDirEntry *entry)
+{
+  return NULL;
+}
+
+static int
+ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_unlink (VFSInode *dir, VFSDirEntry *entry)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_rmdir (VFSInode *dir, VFSDirEntry *entry)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
+	     VFSDirEntry *newentry)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
+{
+  return ENOSYS;
+}
+
+static void
+ext2_truncate (VFSInode *inode)
+{
+}
+
+static int
+ext2_permission (VFSInode *inode, mode_t mask)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+	       size_t len, int flags)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_getxattr (VFSDirEntry *entry, const char *name, void *buffer, size_t len)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_listxattr (VFSDirEntry *entry, char *buffer, size_t len)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_removexattr (VFSDirEntry *entry, const char *name)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_compare (VFSDirEntry *entry, const char *a, const char *b)
+{
+  return ENOSYS;
+}
+
+static void
+ext2_iput (VFSDirEntry *entry, VFSInode *inode)
+{
+}
+
 void
 ext2_init (void)
 {

@@ -72,9 +72,9 @@ typedef struct
   uint32_t vfs_flags;
   int (*vfs_init) (void);
   int (*vfs_destroy) (void);
-  VFSMountOps *vfs_mops;
-  VFSInodeOps *vfs_iops;
-  VFSDirEntryOps *vfs_dops;
+  const VFSMountOps *vfs_mops;
+  const VFSInodeOps *vfs_iops;
+  const VFSDirEntryOps *vfs_dops;
 } VFSFilesystem;
 
 struct _VFSMount
