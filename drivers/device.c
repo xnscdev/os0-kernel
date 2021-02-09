@@ -30,13 +30,26 @@ device_disk_init (int drive, SpecDevice *dev)
 {
   char name[16];
   char *ptr;
-  MBRPartInfo *mbr = (MBRPartInfo *) &mbr_buffer[0x1be];
+  MBRPartInfo *mbr;
   int i;
   int j = 0;
+
+  /* Don't initialize an empty drive */
+  if (ata_devices[drive].id_size == 0)
+    return;
+
+  /* Read the MBR */
+  if (ata_read_sectors (drive, 1, 0, mbr_buffer) != 0)
+    {
+      printk ("ATA drive %d: failed to read MBR\n", drive);
+      return;
+    }
+  mbr = (MBRPartInfo *) &mbr_buffer[0x1be];
 
   /* Set up device name */
   memset (name, 0, 16);
   ptr = stpcpy (name, dev->sd_name);
+  return;
 
   /* Read MBR entries */
   for (i = 0; i < 4; i++)
@@ -51,6 +64,7 @@ device_disk_init (int drive, SpecDevice *dev)
 void
 devices_init (void)
 {
+  char name[] = "sdx";
   int i;
   int j = 0;
   if (unlikely (device_table == NULL))
@@ -60,19 +74,10 @@ devices_init (void)
   for (i = 0; i < 4; i++)
     {
       SpecDevice *dev;
-      char name[4];
       if (!ata_devices[i].id_reserved)
         continue;
 
-      /* Read device MBR into buffer */
-      if (ata_read_sectors (i, 1, 0, mbr_buffer) != 0)
-	{
-	  printk ("ATA drive %d: failed to read MBR\n", i);
-	  continue;
-	}
-
       /* Set device name and register it */
-      strcpy (name, "sdx");
       name[2] = 'a' + j++;
       dev = device_register (i, DEVICE_TYPE_BLOCK, name);
 
