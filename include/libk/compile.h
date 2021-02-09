@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * compile.h -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,15 +16,12 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_LIBK_H
-#define _LIBK_LIBK_H
+#ifndef _LIBK_COMPILE_H
+#define _LIBK_COMPILE_H
 
-#include <libk/array.h>
-#include <libk/assert.h>
-#include <libk/compile.h>
-#include <libk/stdio.h>
-#include <libk/stdlib.h>
-#include <libk/string.h>
-#include <libk/types.h>
+/* Branch prediction macros */
+
+#define likely(x) __builtin_expect (!!(x), 1)
+#define unlikely(x) __builtin_expect (!!(x), 0)
 
 #endif

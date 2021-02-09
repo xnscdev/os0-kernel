@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/string.h>
+#include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/device.h>
 #include <vm/heap.h>
@@ -30,7 +30,8 @@ devices_init (void)
   int i;
   int j = 0;
   device_table = kzalloc (sizeof (SpecDevice) * DEVICE_TABLE_SIZE);
-  /* TODO Check result of kzalloc() */
+  if (unlikely (device_table == NULL))
+    panic ("Failed to initialize device table");
   device_table_size = DEVICE_TABLE_SIZE;
 
   /* Initialize ATA devices */
