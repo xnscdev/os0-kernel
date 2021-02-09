@@ -21,6 +21,8 @@
 #include <sys/device.h>
 #include <vm/heap.h>
 
+static unsigned char mbr_buffer[512];
+
 SpecDevice *device_table;
 size_t device_table_size;
 
@@ -38,12 +40,28 @@ devices_init (void)
   for (i = 0; i < 4; i++)
     {
       char name[4];
+      MBRPartInfo *mbr;
       if (!ata_devices[i].id_reserved)
         continue;
+
+      /* Fill the MBR */
+      if (ata_read_sectors (i, 1, 0, 0, mbr_buffer) != 0)
+	{
+	  printk ("Failed to read MBR for ATA drive %d\n", i);
+	  continue;
+	}
+      mbr = kmalloc (sizeof (MBRPartInfo) * 4);
+      if (unlikely (mbr == NULL))
+	{
+	  printk ("Failed to allocate MBR buffer for ATA drive %d\n", i);
+	  continue;
+	}
+      memcpy (mbr, &mbr_buffer[0x1be], 64);
+
       /* Set device name and register it */
       strcpy (name, "sdx");
       name[2] = 'a' + j++;
-      device_register (i, DEVICE_TYPE_BLOCK, name, NULL);
+      device_register (i, DEVICE_TYPE_BLOCK, name, mbr);
     }
 }
 

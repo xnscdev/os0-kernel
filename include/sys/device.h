@@ -39,13 +39,13 @@ typedef struct
 
 typedef struct
 {
-  u8 mdpi_attr;
-  u8 mdpi_chs_start[3];
-  u8 mdpi_type;
-  u8 mdpi_chs_end[3];
-  u32 mdpi_lba;
-  u32 mdpi_sects;
-} MBRPartTable[4];
+  u8 mpi_attr;
+  u8 mpi_chs_start[3];
+  u8 mpi_type;
+  u8 mpi_chs_end[3];
+  u32 mpi_lba;
+  u32 mpi_sects;
+} MBRPartInfo;
 
 typedef union
 {
