@@ -308,7 +308,7 @@ ata_perror (unsigned char drive, int err)
 
 int
 ata_access (unsigned char op, unsigned char drive, uint32_t lba,
-	    unsigned char nsects, uint16_t selector, void *buffer)
+	    unsigned char nsects, void *buffer)
 {
   unsigned char lba_mode;
   unsigned char lba_io[6];
@@ -436,10 +436,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 	  for (i = 0; i < nsects; i++)
 	    {
 	      ata_poll (channel, 0);
-	      __asm__ volatile ("push %ds");
-	      __asm__ volatile ("mov %%ax, %%ds" :: "a" (selector));
 	      outsw (bus, buffer, words);
-	      __asm__ volatile ("pop %ds");
 	      buffer += words * 2;
 	    }
 
@@ -453,10 +450,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 	      err = ata_poll (channel, 1);
 	      if (err != 0)
 		return err;
-	      __asm__ volatile ("push %es");
-	      __asm__ volatile ("mov %%ax, %%es" :: "a" (selector));
 	      insw (bus, buffer, words);
-	      __asm__ volatile ("pop %es");
 	      buffer += words * 2;
 	    }
 	}

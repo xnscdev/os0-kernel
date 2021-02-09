@@ -65,7 +65,7 @@ devices_init (void)
         continue;
 
       /* Read device MBR into buffer */
-      if (ata_read_sectors (i, 1, 0, 0, mbr_buffer) != 0)
+      if (ata_read_sectors (i, 1, 0, mbr_buffer) != 0)
 	{
 	  printk ("ATA drive %d: failed to read MBR\n", i);
 	  continue;

@@ -149,17 +149,17 @@ void ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
 int ata_poll (unsigned char channel, unsigned char chkerr);
 int ata_perror (unsigned char drive, int err);
 int ata_access (unsigned char op, unsigned char drive, uint32_t lba,
-		unsigned char nsects, uint16_t selector, void *buffer);
+		unsigned char nsects, void *buffer);
 void ata_await (void);
 
 int atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
-		uint16_t selector, void *buffer);
+		void *buffer);
 int atapi_eject (unsigned char drive);
 
 int ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		      uint16_t es, void *buffer);
+		      void *buffer);
 int ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		       uint16_t es, void *buffer);
+		       void *buffer);
 
 __END_DECLS
 

@@ -27,7 +27,7 @@ int ide_irq;
 
 int
 atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
-	    uint16_t selector, void *buffer)
+	    void *buffer)
 {
   uint32_t channel = ata_devices[drive].id_channel;
   uint32_t slavebit = ata_devices[drive].id_drive;
@@ -77,10 +77,7 @@ atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
       err = ata_poll (channel, 1);
       if (err != 0)
 	return err;
-      __asm__ volatile ("push %es");
-      __asm__ volatile ("mov %%ax, %%es" :: "a" (selector));
       insw (bus, buffer, words);
-      __asm__ volatile ("pop %es");
       buffer += words * 2;
     }
 

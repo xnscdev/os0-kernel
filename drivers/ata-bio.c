@@ -20,7 +20,7 @@
 
 int
 ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		  uint16_t es, void *buffer)
+		  void *buffer)
 {
   int err;
   if (drive > 3 || !ata_devices[drive].id_reserved)
@@ -30,19 +30,19 @@ ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
     return 2;
 
   if (ata_devices[drive].id_type == IDE_ATA)
-    err = ata_access (ATA_READ, drive, lba, nsects, es, buffer);
+    err = ata_access (ATA_READ, drive, lba, nsects, buffer);
   else if (ata_devices[drive].id_type == IDE_ATAPI)
     {
       int i;
       for (i = 0; i < nsects; i++)
-	err = atapi_read (drive, lba + i, 1, es, buffer + i * ATAPI_SECTSIZE);
+	err = atapi_read (drive, lba + i, 1, buffer + i * ATAPI_SECTSIZE);
     }
   return ata_perror (drive, err);
 }
 
 int
 ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		   uint16_t es, void *buffer)
+		   void *buffer)
 {
   int err;
   if (drive > 3 || !ata_devices[drive].id_reserved)
@@ -52,7 +52,7 @@ ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
     return 2;
 
   if (ata_devices[drive].id_type == IDE_ATA)
-    err = ata_access (ATA_WRITE, drive, lba, nsects, es, buffer);
+    err = ata_access (ATA_WRITE, drive, lba, nsects, buffer);
   else if (ata_devices[drive].id_type == IDE_ATAPI)
     err = 4;
   err = ata_perror (drive, err);
