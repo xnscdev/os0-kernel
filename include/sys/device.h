@@ -34,7 +34,6 @@ typedef struct
   dev_t sd_minor;
   u8 sd_type;
   char sd_name[15];
-  void *sd_data;
 } SpecDevice;
 
 typedef struct
@@ -62,8 +61,7 @@ extern size_t device_table_size;
 
 void devices_init (void);
 
-SpecDevice *device_register (dev_t major, u8 type, const char *name,
-			     void *data);
+SpecDevice *device_register (dev_t major, u8 type, const char *name);
 
 __END_DECLS
 

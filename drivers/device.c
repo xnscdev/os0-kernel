@@ -26,6 +26,14 @@ static unsigned char mbr_buffer[512];
 SpecDevice *device_table;
 size_t device_table_size;
 
+static void
+device_disk_init (int drive, SpecDevice *dev)
+{
+  char name[16];
+  strcpy (name, dev->sd_name);
+  /* device_register (i, DEVICE_TYPE_BLOCK, name); */
+}
+
 void
 devices_init (void)
 {
@@ -39,34 +47,30 @@ devices_init (void)
   /* Initialize ATA devices */
   for (i = 0; i < 4; i++)
     {
+      SpecDevice *dev;
       char name[4];
-      MBRPartInfo *mbr;
       if (!ata_devices[i].id_reserved)
         continue;
 
-      /* Fill the MBR */
+      /* Read device MBR into buffer */
       if (ata_read_sectors (i, 1, 0, 0, mbr_buffer) != 0)
 	{
-	  printk ("Failed to read MBR for ATA drive %d\n", i);
+	  printk ("ATA drive %d: failed to read MBR\n", i);
 	  continue;
 	}
-      mbr = kmalloc (sizeof (MBRPartInfo) * 4);
-      if (unlikely (mbr == NULL))
-	{
-	  printk ("Failed to allocate MBR buffer for ATA drive %d\n", i);
-	  continue;
-	}
-      memcpy (mbr, &mbr_buffer[0x1be], 64);
 
       /* Set device name and register it */
       strcpy (name, "sdx");
       name[2] = 'a' + j++;
-      device_register (i, DEVICE_TYPE_BLOCK, name, mbr);
+      dev = device_register (i, DEVICE_TYPE_BLOCK, name);
+
+      /* Create more block devices for each partition */
+      device_disk_init (i, dev);
     }
 }
 
 SpecDevice *
-device_register (dev_t major, u8 type, const char *name, void *data)
+device_register (dev_t major, u8 type, const char *name)
 {
   size_t i;
   for (i = 0; i < device_table_size; i++)
@@ -79,7 +83,6 @@ device_register (dev_t major, u8 type, const char *name, void *data)
       dev->sd_type = type;
       strncpy (dev->sd_name, name, 15);
       dev->sd_name[15] = '\0';
-      dev->sd_data = data;
       return dev;
     }
   return NULL;
