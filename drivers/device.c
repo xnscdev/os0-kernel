@@ -30,8 +30,23 @@ static void
 device_disk_init (int drive, SpecDevice *dev)
 {
   char name[16];
-  strcpy (name, dev->sd_name);
-  /* device_register (i, DEVICE_TYPE_BLOCK, name); */
+  char *ptr;
+  MBRPartInfo *mbr = (MBRPartInfo *) &mbr_buffer[0x1be];
+  int i;
+  int j = 0;
+
+  /* Set up device name */
+  memset (name, 0, 16);
+  ptr = stpcpy (name, dev->sd_name);
+
+  /* Read MBR entries */
+  for (i = 0; i < 4; i++)
+    {
+      if (mbr[i].mpi_attr == 0)
+	continue; /* Unused or invalid */
+      *ptr = ++j;
+      device_register (i, DEVICE_TYPE_BLOCK, name);
+    }
 }
 
 void
