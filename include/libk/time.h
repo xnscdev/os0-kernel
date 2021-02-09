@@ -1,5 +1,5 @@
 /*************************************************************************
- * types.h -- This file is part of OS/0.                                 *
+ * time.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,31 +16,34 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
+#ifndef _LIBK_TIME_H
+#define _LIBK_TIME_H
 
-#include <stdint.h>
+#include <sys/types.h>
 
-/* POSIX types */
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+};
 
-typedef int32_t blkcnt_t;
-typedef int32_t blksize_t;
-typedef int32_t clock_t;
-typedef int32_t clockid_t;
-typedef uint16_t dev_t;
-typedef uint32_t fsblkcnt_t;
-typedef uint32_t fsfilcnt_t;
-typedef uint16_t gid_t;
-typedef uint16_t id_t;
-typedef uint32_t ino_t;
-typedef int32_t key_t;
-typedef uint32_t mode_t;
-typedef uint32_t nlink_t;
-typedef int32_t off_t;
-typedef int64_t loff_t;
-typedef uint16_t pid_t;
-typedef int32_t time_t; /* Year 2038 problem */
-typedef int32_t timer_t;
-typedef uint16_t uid_t;
+struct timespec
+{
+  time_t tv_sec;
+  long tv_nsec;
+};
+
+struct itimerspec
+{
+  struct timespec it_interval;
+  struct timespec it_value;
+};
 
 #endif
