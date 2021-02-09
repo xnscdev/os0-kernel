@@ -21,6 +21,7 @@
 
 #include <libk/libk.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <stddef.h>
 
 typedef struct _VFSMount VFSMount;
