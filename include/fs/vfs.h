@@ -20,13 +20,24 @@
 #define _FS_VFS_H
 
 #include <libk/libk.h>
+#include <sys/cdefs.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <stddef.h>
 
+#define VFS_FS_TABLE_SIZE 8
+
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSInode VFSInode;
 typedef struct _VFSDirEntry VFSDirEntry;
+
+typedef struct
+{
+  char vfs_name[16];
+  u32 vfs_flags;
+  int (*vfs_init) (void *);
+  int (*vfs_destroy) (void);
+} VFSFilesystem;
 
 typedef struct
 {
@@ -97,5 +108,13 @@ struct _VFSDirEntry
   char *d_name;
   VFSDirEntryOps *d_ops;
 };
+
+__BEGIN_DECLS
+
+extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
+
+int fs_register (const VFSFilesystem *fs);
+
+__END_DECLS
 
 #endif
