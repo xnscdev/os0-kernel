@@ -23,7 +23,8 @@ static GDTEntry gdt_entries[GDT_SIZE];
 static DTPtr gdt;
 
 void
-gdt_set_gate (uint32_t n, uint32_t base, uint32_t limit, unsigned char access, unsigned char granularity)
+gdt_set_gate (uint32_t n, uint32_t base, uint32_t limit, unsigned char access,
+	      unsigned char granularity)
 {
   gdt_entries[n].ge_basel = base & 0xffff;
   gdt_entries[n].ge_basem = (base >> 16) & 0xff;

@@ -53,7 +53,7 @@ idt_init (void)
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
   idt.dp_base = (uint32_t) &idt_entries;
 
-#define EXC(x, p) exc ## x ## _addr = (uint32_t) exc ## x;			\
+#define EXC(x, p) exc ## x ## _addr = (uint32_t) exc ## x;     		\
   idt_entries[x].ie_basel = exc ## x ## _addr & 0xffff;			\
   idt_entries[x].ie_sel = 0x08;						\
   idt_entries[x].ie_reserved = 0;					\

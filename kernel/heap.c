@@ -64,7 +64,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
     return -1;
   /* Identity map the index array */
   for (addr = 0; addr < sizeof (void *) * indexsize; addr += PAGE_SIZE)
-    map_page (addr + (uint32_t) indexaddr, addr + (uint32_t) indexaddr, PAGE_FLAG_WRITE);
+    map_page (addr + (uint32_t) indexaddr, addr + (uint32_t) indexaddr,
+	      PAGE_FLAG_WRITE);
   if (sorted_array_place (&heap->mh_index, indexaddr, indexsize, heap_cmp) != 0)
     return -1;
 
@@ -85,7 +86,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
   header->mh_alloc = 0;
   sorted_array_insert (&heap->mh_index, header);
 
-  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) + header->mh_size);
+  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
+			  header->mh_size);
   footer->mf_cigam = MEM_CIGAM;
   footer->mf_header = (uint32_t) header;
 
@@ -126,7 +128,8 @@ heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned)
 
 	  /* Check if there is enough extra space to insert a free block
 	     behind the page-aligned address */
-	  if (addr - (uint32_t) header > sizeof (MemHeader) * 2 + sizeof (MemFooter))
+	  if (addr - (uint32_t) header > sizeof (MemHeader) * 2 +
+	      sizeof (MemFooter))
 	    {
 	      MemFooter *footer =
 		(MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
@@ -142,8 +145,8 @@ heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned)
 
 	      /* Create a new header behind the page-aligned address */
 	      page_header->mh_magic = MEM_MAGIC;
-	      page_header->mh_size = header->mh_size - addr + (uint32_t) header +
-		sizeof (MemHeader);
+	      page_header->mh_size = header->mh_size - addr +
+		(uint32_t) header + sizeof (MemHeader);
 	      page_header->mh_alloc = 1;
 
 	      /* Shrink the original block and add a new footer */
@@ -188,8 +191,8 @@ heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned)
 	  sorted_array_insert (&heap->mh_index, new_header);
 
 	  /* Create the footer for the new header */
-	  new_footer = (MemFooter *) ((uint32_t) new_header + sizeof (MemHeader) +
-				      new_header->mh_size);
+	  new_footer = (MemFooter *) ((uint32_t) new_header +
+				      sizeof (MemHeader) + new_header->mh_size);
 	  new_footer->mf_cigam = MEM_CIGAM;
 	  new_footer->mf_header = (uint32_t) new_header;
 
