@@ -76,7 +76,7 @@ typedef struct
 typedef struct
 {
   char vfs_name[16];
-  uint32_t vfs_flags;
+  int vfs_flags;
   int (*vfs_mount) (VFSMount *, uint32_t, void *);
   int (*vfs_unmount) (VFSMount *, uint32_t);
   const VFSSuperblockOps *vfs_sops;
@@ -99,8 +99,8 @@ struct _VFSSuperblock
   blksize_t sb_blksize;
   size_t sb_maxsize;
   VFSSuperblockOps *sb_ops;
-  uint32_t sb_flags;
-  uint32_t sb_magic;
+  int sb_flags;
+  unsigned long sb_magic;
   VFSDirEntry *sb_root;
   char sb_name[16];
 };
@@ -109,9 +109,9 @@ struct _VFSInode
 {
   uid_t vi_uid;
   gid_t vi_gid;
-  uint32_t vi_flags;
-  uint32_t vi_ino;
-  uint32_t vi_nlink;
+  int vi_flags;
+  ino_t vi_ino;
+  nlink_t vi_nlink;
   dev_t vi_rdev;
   loff_t vi_size;
   struct timespec vi_atime;
@@ -139,6 +139,7 @@ extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 void vfs_init (void);
 
 int vfs_register (const VFSFilesystem *fs);
+int vfs_mount (const char *type, const char *dir, int flags, void *data);
 
 __END_DECLS
 

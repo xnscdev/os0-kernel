@@ -44,3 +44,9 @@ vfs_register (const VFSFilesystem *fs)
     }
   return -ENOSPC;
 }
+
+int
+vfs_mount (const char *type, const char *dir, int flags, void *data)
+{
+  return -ENOSYS;
+}
