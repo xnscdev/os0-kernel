@@ -19,6 +19,10 @@
 #include <libk/libk.h>
 #include <vm/heap.h>
 
+static char strtok_save;
+static char *strtok_ptr;
+static char *strtok_end;
+
 void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
 {
@@ -223,4 +227,43 @@ strrchr (const char *s, int c)
 	return (char *) save;
       ptr++;
     }
+}
+
+char *
+strtok (char *__restrict s, const char *__restrict delims)
+{
+  size_t i;
+  char *ptr = NULL;
+  char *end;
+  if (s != NULL)
+    strtok_ptr = s;
+  else if (strtok_ptr == NULL)
+    return NULL; /* No string initialized */
+  if (strtok_save != '\0')
+    *strtok_end = strtok_save; /* Restore state from previous call */
+
+  for (end = s; *end != '\0'; end++)
+    {
+      int is_delim = 0;
+      for (i = 0; delims[i] != '\0'; i++)
+	{
+	  if (*end == delims[i])
+	    {
+	      is_delim = 1;
+	      break;
+	    }
+	}
+
+      if (!is_delim && ptr == NULL)
+	ptr = end;
+      else if (is_delim && ptr != NULL)
+	{
+	  strtok_save = *end;
+	  strtok_ptr = ptr;
+	  strtok_end = end;
+	  *end = '\0';
+	  return ptr;
+	}
+    }
+  return NULL;
 }

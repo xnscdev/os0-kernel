@@ -1,6 +1,5 @@
 fs_src = [
   'ext2.c',
-  'namei.c',
   'vfs.c'
 ]
 

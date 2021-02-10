@@ -33,7 +33,7 @@ static void ext2_update (VFSSuperblock *sb);
 static int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
 static int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 static int ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
-static VFSDirEntry *ext2_lookup (VFSInode *dir, VFSDirEntry *entry);
+static VFSDirEntry *ext2_lookup (const char *path);
 static int ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
 static int ext2_unlink (VFSInode *dir, VFSDirEntry *entry);
 static int ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
@@ -170,7 +170,7 @@ ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 }
 
 static VFSDirEntry *
-ext2_lookup (VFSInode *dir, VFSDirEntry *entry)
+ext2_lookup (const char *path)
 {
   return NULL;
 }
