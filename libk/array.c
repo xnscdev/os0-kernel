@@ -44,6 +44,7 @@ sorted_array_new (SortedArray *array, uint32_t max, ComparePredicate cmp)
   array->sa_size = 0;
   array->sa_max = max;
   array->sa_cmp = cmp;
+  array->sa_alloc = 1;
   return 0;
 }
 
@@ -58,12 +59,15 @@ sorted_array_place (SortedArray *array, void *addr, uint32_t max,
   array->sa_size = 0;
   array->sa_max = max;
   array->sa_cmp = cmp;
+  array->sa_alloc = 0;
   return 0;
 }
 
 void
 sorted_array_destroy (SortedArray *array)
 {
+  if (array != NULL && array->sa_alloc)
+    kfree (array->sa_elems);
 }
 
 void

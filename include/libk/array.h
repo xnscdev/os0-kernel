@@ -28,6 +28,7 @@ typedef struct
   uint32_t sa_size;
   uint32_t sa_max;
   ComparePredicate sa_cmp;
+  unsigned char sa_alloc;
 } SortedArray;
 
 __BEGIN_DECLS
@@ -35,9 +36,8 @@ __BEGIN_DECLS
 int default_cmp (const void *a, const void *b);
 int noop_cmp (const void *a, const void *b);
 
-int sorted_array_new (SortedArray *array, uint32_t maxsize,
-		      ComparePredicate cmp);
-int sorted_array_place (SortedArray *array, void *addr, uint32_t maxsize,
+int sorted_array_new (SortedArray *array, uint32_t max, ComparePredicate cmp);
+int sorted_array_place (SortedArray *array, void *addr, uint32_t max,
 			ComparePredicate cmp);
 void sorted_array_destroy (SortedArray *array);
 void sorted_array_insert (SortedArray *array, void *item);

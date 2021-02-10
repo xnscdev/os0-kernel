@@ -21,8 +21,14 @@
 #include <vm/heap.h>
 #include <string.h>
 
+#define PATHCMP_MAX 256
+
 VFSDirEntry *
 namei (const char *path)
 {
+  SortedArray arr;
+  if (sorted_array_new (&arr, PATHCMP_MAX, noop_cmp) != 0)
+    return NULL;
+  sorted_array_destroy (&arr);
   return NULL; /* TODO Implement */
 }
