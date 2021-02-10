@@ -106,13 +106,13 @@ static const VFSFilesystem ext2_vfs = {
 static int
 ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_unmount (VFSMount *mp, uint32_t flags)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static VFSInode *
@@ -154,19 +154,19 @@ ext2_update (VFSSuperblock *sb)
 static int
 ext2_statfs (VFSSuperblock *sb, struct statfs *st)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_remount (VFSSuperblock *sb, int *flags, void *data)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static VFSDirEntry *
@@ -178,99 +178,99 @@ ext2_lookup (VFSInode *dir, VFSDirEntry *entry)
 static int
 ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_unlink (VFSInode *dir, VFSDirEntry *entry)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_rmdir (VFSInode *dir, VFSDirEntry *entry)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
 	     VFSDirEntry *newentry)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_truncate (VFSInode *inode)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_permission (VFSInode *inode, mode_t mask)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
 	       size_t len, int flags)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_getxattr (VFSDirEntry *entry, const char *name, void *buffer, size_t len)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_listxattr (VFSDirEntry *entry, char *buffer, size_t len)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_removexattr (VFSDirEntry *entry, const char *name)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static int
 ext2_compare (VFSDirEntry *entry, const char *a, const char *b)
 {
-  return ENOSYS;
+  return -ENOSYS;
 }
 
 static void
