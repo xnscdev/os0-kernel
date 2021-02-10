@@ -120,7 +120,7 @@ struct _VFSDirEntry
   uint32_t d_flags;
   VFSInode *d_inode;
   int d_mounted;
-  const VFSPath *d_path;
+  VFSPath *d_path;
   char *d_name;
   const VFSDirEntryOps *d_ops;
 };
@@ -150,9 +150,9 @@ void vfs_init (void);
 int vfs_register (const VFSFilesystem *fs);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
 
-VFSPath *vfs_path_add_component (VFSPath *path, const char *name);
+int vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name);
 void vfs_path_free (VFSPath *path);
-VFSPath *vfs_namei (const char *path);
+int vfs_namei (VFSPath **result, const char *path);
 
 __END_DECLS
 

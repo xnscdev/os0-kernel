@@ -109,6 +109,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
   VFSDirEntry *root = kmalloc (sizeof (VFSDirEntry));
   VFSInode *root_inode;
+  int ret;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
 
@@ -118,12 +119,25 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
     return -ENOMEM;
   root->d_flags = 0;
   root->d_mounted = 1;
-  root->d_path = vfs_namei ("/");
+  ret = vfs_namei (&root->d_path, "/");
+  if (unlikely (ret != 0))
+    {
+      kfree (root);
+      return ret;
+    }
   root->d_name = strdup ("/");
+  if (unlikely (root->d_name == NULL))
+    {
+      kfree (root);
+      vfs_path_free (root->d_path);
+      return -ENOMEM;
+    }
   root_inode = mp->vfs_fstype->vfs_sops->sb_alloc_inode (&mp->vfs_sb);
   if (unlikely (root_inode == NULL))
     {
       kfree (root);
+      vfs_path_free (root->d_path);
+      kfree (root->d_name);
       return -ENOMEM;
     }
   root->d_inode = root_inode;

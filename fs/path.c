@@ -17,31 +17,46 @@
  *************************************************************************/
 
 #include <fs/vfs.h>
+#include <libk/compile.h>
 #include <vm/heap.h>
+#include <errno.h>
 #include <string.h>
 
-VFSPath *
-vfs_path_add_component (VFSPath *path, const char *name)
+int
+vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
 {
   VFSPath *new;
 
   /* Special names */
   if (strcmp (name, ".") == 0)
-    return path;
+    {
+      *result = path;
+      return 0;
+    }
   else if (strcmp (name, "..") == 0)
     {
       VFSPath *temp = path->vp_parent;
       if (temp == NULL)
-	return path; /* Root directory .. leads to itself */
+	{
+	  /* Root directory .. leads to itself */
+	  *result = path;
+	  return 0;
+	}
       if (path->vp_long != NULL)
 	kfree (path->vp_long);
       kfree (path);
-      return temp;
+      *result = temp;
+      return 0;
     }
 
   if (name == NULL || strchr (name, '/') != NULL)
-    return NULL;
+    {
+      *result = NULL;
+      return -EINVAL;
+    }
   new = kmalloc (sizeof (VFSPath));
+  if (unlikely (new == NULL))
+    return -ENOMEM;
   new->vp_parent = path;
   if (strlen (name) < 16)
     {
@@ -50,7 +65,8 @@ vfs_path_add_component (VFSPath *path, const char *name)
     }
   else
     new->vp_long = strdup (name);
-  return new;
+  *result = new;
+  return 0;
 }
 
 void
@@ -69,28 +85,31 @@ vfs_path_free (VFSPath *path)
     }
 }
 
-VFSPath *
-vfs_namei (const char *path)
+int
+vfs_namei (VFSPath **result, const char *path)
 {
   VFSPath *dir = NULL;
   char *buffer;
   char *temp;
 
   if (path == NULL || *path != '/')
-    return NULL;
+    return -EINVAL;
 
   buffer = strdup (path);
   for (temp = strtok (buffer, "/"); temp != NULL; temp = strtok (NULL, "/"))
     {
-      VFSPath *new = vfs_path_add_component (dir, temp);
-      if (new == NULL)
+      VFSPath *new;
+      int ret = vfs_path_add_component (&new, dir, temp);
+      if (ret != 0)
 	{
 	  kfree (buffer);
 	  vfs_path_free (dir);
-	  return NULL;
+	  *result = NULL;
+	  return ret;
 	}
       dir = new;
     }
   kfree (buffer);
-  return dir;
+  *result = dir;
+  return 0;
 }
