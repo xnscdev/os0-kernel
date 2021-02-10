@@ -72,7 +72,7 @@ VFSPath *
 vfs_path_add_component (VFSPath *path, const char *name)
 {
   VFSPath *new;
-  if (path == NULL || name == NULL || strchr (name, '/') != NULL)
+  if (name == NULL || strchr (name, '/') != NULL)
     return NULL;
   new = kmalloc (sizeof (VFSPath));
   new->vp_parent = path;
@@ -84,6 +84,22 @@ vfs_path_add_component (VFSPath *path, const char *name)
   else
     new->vp_long = strdup (name);
   return new;
+}
+
+void
+vfs_path_free (VFSPath *path)
+{
+  VFSPath *temp = path;
+  if (path == NULL)
+    return;
+  while (path != NULL)
+    {
+      if (path->vp_long != NULL)
+	kfree (path->vp_long);
+      path = temp->vp_parent;
+      kfree (temp);
+      temp = path;
+    }
 }
 
 VFSPath *
@@ -98,7 +114,16 @@ vfs_namei (const char *path)
 
   buffer = strdup (path);
   for (temp = strtok (buffer, "/"); temp != NULL; temp = strtok (NULL, "/"))
-    dir = vfs_path_add_component (dir, temp);
+    {
+      VFSPath *new = vfs_path_add_component (dir, temp);
+      if (new == NULL)
+	{
+	  kfree (buffer);
+	  vfs_path_free (dir);
+	  return NULL;
+	}
+      dir = new;
+    }
   kfree (buffer);
   return dir;
 }

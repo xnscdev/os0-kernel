@@ -265,5 +265,7 @@ strtok (char *__restrict s, const char *__restrict delims)
 	  return ptr;
 	}
     }
+  strtok_save = '\0';
+  strtok_ptr = end;
   return ptr;
 }
