@@ -19,27 +19,12 @@
 #ifndef _SYS_NAMEI_H
 #define _SYS_NAMEI_H
 
+#include <fs/vfs.h>
 #include <sys/cdefs.h>
-#include <sys/stat.h>
-
-typedef struct _NameiData NameiData;
-
-struct _NameiData
-{
-  struct stat nd_stat;
-  char *nd_name;
-  char *nd_abslnk;
-  int nd_relstart;
-  int nd_level;
-  int nd_mntpoint;
-  int nd_noent;
-  NameiData *nd_next;
-};
 
 __BEGIN_DECLS
 
-NameiData *namei (NameiData *parent, const char *path, int start,
-		  NameiData **last);
+VFSDirEntry *namei (const char *path);
 
 __END_DECLS
 

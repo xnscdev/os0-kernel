@@ -21,73 +21,8 @@
 #include <vm/heap.h>
 #include <string.h>
 
-static NameiData *
-namei_new (NameiData *parent, const char *path, const char *name, int level)
+VFSDirEntry *
+namei (const char *path)
 {
-  NameiData *ni;
-  if (name == NULL)
-    return NULL;
-  ni = kzalloc (sizeof (NameiData));
-  if (unlikely (ni == NULL))
-    return NULL;
-  ni->nd_level = level;
-  ni->nd_name = strdup (name);
-
-  /* TODO Fill stat structure */
-  return ni;
-}
-
-NameiData *
-namei (NameiData *parent, const char *path, int start, NameiData **last)
-{
-  NameiData *ni = NULL;
-  NameiData *first = NULL;
-  char *name;
-  char *end;
-  char *temp;
-  int level = 0;
-
-  if (path == NULL)
-    return NULL;
-  if (parent != NULL)
-    {
-      ni = parent;
-      level = parent->nd_level + 1;
-    }
-  temp = strdup (path);
-  name = temp + start;
-
-  if (*name == '/')
-    {
-      while (*name == '/')
-	name++;
-      first = ni = namei_new (ni, "/", "/", level);
-    }
-
-  for (end = name; name != NULL && end != NULL;)
-    {
-      if (*name != '\0')
-	{
-	  end = strchr (name, '/');
-	  if (end != NULL)
-	    *end = '\0';
-	  ni = namei_new (ni, temp, name, level);
-	}
-      else
-	end = NULL;
-      if (first == NULL)
-	first = ni;
-      if (end != NULL)
-	{
-	  *end++ = '/';
-	  while (*end == '/')
-	    end++;
-	}
-      name = end;
-    }
-
-  if (last != NULL)
-    *last = ni;
-  kfree (temp);
-  return first;
+  return NULL; /* TODO Implement */
 }
