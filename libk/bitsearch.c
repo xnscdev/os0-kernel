@@ -16,8 +16,8 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/string.h>
 #include <limits.h>
+#include <string.h>
 
 int
 ffs (int value)

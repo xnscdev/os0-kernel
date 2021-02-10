@@ -18,9 +18,9 @@
 
 #include <i386/pic.h>
 #include <i386/timer.h>
-#include <libk/stdlib.h>
 #include <sys/ata.h>
 #include <sys/io.h>
+#include <stdlib.h>
 
 void
 exc0_handler (void)

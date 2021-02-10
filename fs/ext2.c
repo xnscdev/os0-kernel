@@ -18,8 +18,8 @@
 
 #include <fs/ext2.h>
 #include <fs/vfs.h>
-#include <libk/stdlib.h>
 #include <errno.h>
+#include <stdlib.h>
 
 static int ext2_mount (VFSMount *mp, uint32_t flags, void *data);
 static int ext2_unmount (VFSMount *mp, uint32_t flags);

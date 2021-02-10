@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * assert.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,28 +16,11 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STDLIB_H
-#define _LIBK_STDLIB_H
+#ifndef _ASSERT_H
+#define _ASSERT_H
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
+#include <stdlib.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-__BEGIN_DECLS
-
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
-
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
-
-void panic (const char *__restrict fmt, ...) __attribute__ ((noreturn))
-  __attribute__ ((cold)) __attribute__ ((format (printf, 1, 2)));
-
-__END_DECLS
+#define assert(x) (x) ? (void) 0 : panic ("Assertion failed: " #x)
 
 #endif

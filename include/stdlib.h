@@ -1,5 +1,5 @@
 /*************************************************************************
- * string.h -- This file is part of OS/0.                                *
+ * stdlib.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,33 +16,27 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STRING_H
-#define _LIBK_STRING_H
+#ifndef _STDLIB_H
+#define _STDLIB_H
 
+#include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 __BEGIN_DECLS
 
-int ffs (int value);
-int ffsl (long value);
-int ffsll (long long value);
-int fls (int value);
-int flsl (long value);
-int flsll (long long value);
+char *itoa (int value, char *result, int base);
+char *itoa_u (int value, char *result, int base);
+char *utoa (unsigned int value, char *result, int base);
+char *utoa_u (unsigned int value, char *result, int base);
 
-void *memcpy (void *__restrict dest, const void *__restrict src, size_t len);
-void *memmove (void *dest, const void *src, size_t len);
-void *memset (void *ptr, int c, size_t len);
-int memcmp (const void *a, const void *b, size_t len);
+void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
 
-size_t strlen (const char *s);
-char *stpcpy (char *dest, const char *src);
-char *stpncpy (char *dest, const char *src, size_t len);
-char *strcpy (char *dest, const char *src);
-char *strncpy (char *dest, const char *src, size_t len);
-int strcmp (const char *a, const char *b);
-int strncmp (const char *a, const char *b, size_t len);
+void panic (const char *__restrict fmt, ...)
+  __attribute__ ((noreturn, cold, format (printf, 1, 2)));
 
 __END_DECLS
 

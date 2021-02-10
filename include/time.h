@@ -1,5 +1,5 @@
 /*************************************************************************
- * assert.h -- This file is part of OS/0.                                *
+ * time.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,11 +16,34 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_ASSERT_H
-#define _LIBK_ASSERT_H
+#ifndef _TIME_H
+#define _TIME_H
 
-#include <libk/stdlib.h>
+#include <sys/types.h>
 
-#define assert(x) (x) ? (void) 0 : panic ("Assertion failed: " #x)
+struct tm
+{
+  int tm_sec;
+  int tm_min;
+  int tm_hour;
+  int tm_mday;
+  int tm_mon;
+  int tm_year;
+  int tm_wday;
+  int tm_yday;
+  int tm_isdst;
+};
+
+struct timespec
+{
+  time_t tv_sec;
+  long tv_nsec;
+};
+
+struct itimerspec
+{
+  struct timespec it_interval;
+  struct timespec it_value;
+};
 
 #endif

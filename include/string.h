@@ -1,5 +1,5 @@
 /*************************************************************************
- * time.h -- This file is part of OS/0.                                  *
+ * string.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,34 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_TIME_H
-#define _LIBK_TIME_H
+#ifndef _STRING_H
+#define _STRING_H
 
-#include <sys/types.h>
+#include <sys/cdefs.h>
+#include <stddef.h>
 
-struct tm
-{
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int tm_mday;
-  int tm_mon;
-  int tm_year;
-  int tm_wday;
-  int tm_yday;
-  int tm_isdst;
-};
+__BEGIN_DECLS
 
-struct timespec
-{
-  time_t tv_sec;
-  long tv_nsec;
-};
+int ffs (int value);
+int ffsl (long value);
+int ffsll (long long value);
+int fls (int value);
+int flsl (long value);
+int flsll (long long value);
 
-struct itimerspec
-{
-  struct timespec it_interval;
-  struct timespec it_value;
-};
+void *memcpy (void *__restrict dest, const void *__restrict src, size_t len);
+void *memmove (void *dest, const void *src, size_t len);
+void *memset (void *ptr, int c, size_t len);
+int memcmp (const void *a, const void *b, size_t len);
+
+size_t strlen (const char *s);
+char *stpcpy (char *dest, const char *src);
+char *stpncpy (char *dest, const char *src, size_t len);
+char *strcpy (char *dest, const char *src);
+char *strncpy (char *dest, const char *src, size_t len);
+int strcmp (const char *a, const char *b);
+int strncmp (const char *a, const char *b, size_t len);
+
+__END_DECLS
 
 #endif

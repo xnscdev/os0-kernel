@@ -19,12 +19,12 @@
 #ifndef _FS_VFS_H
 #define _FS_VFS_H
 
-#include <libk/time.h>
 #include <sys/cdefs.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <time.h>
 
 #define VFS_FS_TABLE_SIZE 8
 

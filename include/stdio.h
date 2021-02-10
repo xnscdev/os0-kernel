@@ -16,8 +16,8 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_STDIO_H
-#define _LIBK_STDIO_H
+#ifndef _STDIO_H
+#define _STDIO_H
 
 #include <sys/cdefs.h>
 #include <stdarg.h>

@@ -20,12 +20,12 @@
 #define _LIBK_LIBK_H
 
 #include <libk/array.h>
-#include <libk/assert.h>
 #include <libk/compile.h>
-#include <libk/stdio.h>
-#include <libk/stdlib.h>
-#include <libk/string.h>
-#include <libk/time.h>
 #include <libk/types.h>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #endif
