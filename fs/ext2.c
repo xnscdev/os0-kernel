@@ -34,7 +34,7 @@ static void ext2_update (VFSSuperblock *sb);
 static int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
 static int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 static int ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
-static VFSDirEntry *ext2_lookup (const char *path);
+static int ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
 static int ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
 static int ext2_unlink (VFSInode *dir, VFSDirEntry *entry);
 static int ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
@@ -132,7 +132,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
       kfree (root);
       return -ENOMEM;
     }
-  root_inode = mp->vfs_fstype->vfs_sops->sb_alloc_inode (&mp->vfs_sb);
+  root_inode = ext2_alloc_inode (&mp->vfs_sb);
   if (unlikely (root_inode == NULL))
     {
       vfs_path_free (root->d_path);
@@ -159,7 +159,7 @@ static VFSInode *
 ext2_alloc_inode (VFSSuperblock *sb)
 {
   VFSInode *inode = kzalloc (sizeof (VFSInode));
-  inode->vi_ops = sb->sb_fstype->vfs_iops;
+  inode->vi_ops = &ext2_iops;
   return inode;
 }
 
@@ -212,10 +212,10 @@ ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
   return -ENOSYS;
 }
 
-static VFSDirEntry *
-ext2_lookup (const char *path)
+static int
+ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 {
-  return NULL;
+  return -ENOSYS;
 }
 
 static int

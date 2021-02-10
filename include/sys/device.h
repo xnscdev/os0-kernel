@@ -20,6 +20,7 @@
 #define _SYS_DEVICE_H
 
 #include <sys/cdefs.h>
+#include <sys/types.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -34,6 +35,8 @@ typedef struct
   dev_t sd_minor;
   unsigned char sd_type;
   char sd_name[15];
+  int (*sd_read) (void *, size_t, off_t);
+  int (*sd_write) (void *, size_t, off_t);
 } SpecDevice;
 
 typedef struct

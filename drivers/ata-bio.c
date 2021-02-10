@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <sys/ata.h>
+#include <sys/device.h>
 
 int
 ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,

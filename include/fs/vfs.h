@@ -51,7 +51,7 @@ typedef struct
 typedef struct
 {
   int (*vfs_create) (VFSInode *, VFSDirEntry *, mode_t);
-  VFSDirEntry *(*vfs_lookup) (const char *path);
+  int (*vfs_lookup) (VFSDirEntry *, VFSSuperblock *, VFSPath *);
   int (*vfs_link) (VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_unlink) (VFSInode *, VFSDirEntry *);
   int (*vfs_symlink) (VFSInode *, VFSDirEntry *, const char *);
