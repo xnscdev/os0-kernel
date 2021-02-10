@@ -155,6 +155,8 @@ int vfs_mount (const char *type, const char *dir, int flags, void *data);
 int vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name);
 void vfs_path_free (VFSPath *path);
 int vfs_namei (VFSPath **result, const char *path);
+int vfs_path_cmp (const VFSPath *a, const VFSPath *b);
+int vfs_path_subdir (const VFSPath *path, const VFSPath *dir);
 
 __END_DECLS
 

@@ -22,6 +22,15 @@
 #include <errno.h>
 #include <string.h>
 
+static int
+vfs_path_component_cmp (const VFSPath *a, const VFSPath *b)
+{
+  if (a == b)
+    return 0; /* Save strcmp() call */
+  return strcmp (a->vp_long == NULL ? a->vp_short : a->vp_long,
+		 b->vp_long == NULL ? b->vp_short : b->vp_long);
+}
+
 int
 vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
 {
@@ -111,5 +120,56 @@ vfs_namei (VFSPath **result, const char *path)
     }
   kfree (buffer);
   *result = dir;
+  return 0;
+}
+
+int
+vfs_path_cmp (const VFSPath *a, const VFSPath *b)
+{
+  size_t la;
+  size_t lb;
+  const VFSPath *ta;
+  const VFSPath *tb;
+
+  /* Special value checks */
+  if (a == b)
+    return 0;
+  if (a == NULL || b == NULL)
+    {
+      if (a == NULL)
+	return b != NULL;
+      return -1;
+    }
+
+  for (la = 0, ta = a; ta != NULL; ta = ta->vp_parent)
+    la++;
+  for (lb = 0, tb = b; tb != NULL; tb = tb->vp_parent)
+    lb++;
+  if (lb > la)
+    return 1;
+  if (lb < la)
+    return -1;
+
+  for (ta = a, tb = b; ta != NULL && tb != NULL;
+       ta = ta->vp_parent, tb = tb->vp_parent)
+    {
+      int ret = vfs_path_component_cmp (ta, tb);
+      if (ret != 0)
+	return ret;
+    }
+  return 0;
+}
+
+int
+vfs_path_subdir (const VFSPath *path, const VFSPath *dir)
+{
+  const VFSPath *temp;
+  if (dir == NULL)
+    return path != NULL;
+  for (temp = path; temp != NULL; temp++)
+    {
+      if (vfs_path_cmp (temp, dir) == 0)
+	return 1;
+    }
   return 0;
 }
