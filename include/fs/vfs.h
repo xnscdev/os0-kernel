@@ -77,6 +77,8 @@ typedef struct
 {
   char vfs_name[16];
   uint32_t vfs_flags;
+  int (*vfs_mount) (VFSMount *, uint32_t, void *);
+  int (*vfs_unmount) (VFSMount *, uint32_t);
   const VFSSuperblockOps *vfs_sops;
   const VFSInodeOps *vfs_iops;
   const VFSDirEntryOps *vfs_dops;

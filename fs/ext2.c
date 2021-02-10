@@ -21,6 +21,8 @@
 #include <libk/stdlib.h>
 #include <errno.h>
 
+static int ext2_mount (VFSMount *mp, uint32_t flags, void *data);
+static int ext2_unmount (VFSMount *mp, uint32_t flags);
 static VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 static void ext2_destroy_inode (VFSInode *inode);
 static void ext2_fill_inode (VFSInode *inode);
@@ -94,10 +96,24 @@ static const VFSDirEntryOps ext2_dops = {
 static const VFSFilesystem ext2_vfs = {
   .vfs_name = "ext2",
   .vfs_flags = 0,
+  .vfs_mount = ext2_mount,
+  .vfs_unmount = ext2_unmount,
   .vfs_sops = &ext2_sops,
   .vfs_iops = &ext2_iops,
   .vfs_dops = &ext2_dops
 };
+
+static int
+ext2_mount (VFSMount *mp, uint32_t flags, void *data)
+{
+  return ENOSYS;
+}
+
+static int
+ext2_unmount (VFSMount *mp, uint32_t flags)
+{
+  return ENOSYS;
+}
 
 static VFSInode *
 ext2_alloc_inode (VFSSuperblock *sb)
