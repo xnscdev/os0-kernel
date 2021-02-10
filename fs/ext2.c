@@ -290,7 +290,7 @@ ext2_removexattr (VFSDirEntry *entry, const char *name)
 static int
 ext2_compare (VFSDirEntry *entry, const char *a, const char *b)
 {
-  return -ENOSYS;
+  return strcmp (a, b);
 }
 
 static void
