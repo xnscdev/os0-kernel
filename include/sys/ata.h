@@ -20,6 +20,7 @@
 #define _SYS_ATA_H
 
 #include <sys/cdefs.h>
+#include <sys/device.h>
 #include <stdint.h>
 
 #define ATA_SR_BSY  0x80
@@ -160,6 +161,8 @@ int ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		      void *buffer);
 int ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		       void *buffer);
+int ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset);
+int ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset);
 
 __END_DECLS
 

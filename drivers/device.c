@@ -18,7 +18,6 @@
 
 #include <libk/libk.h>
 #include <sys/ata.h>
-#include <sys/device.h>
 #include <vm/heap.h>
 
 static unsigned char mbr_buffer[512];
@@ -57,7 +56,7 @@ device_disk_init (int drive, SpecDevice *dev)
       if (mbr[i].mpi_attr == 0)
 	continue; /* Unused or invalid */
       *ptr = ++j;
-      device_register (i, DEVICE_TYPE_BLOCK, name);
+      device_register (drive + 1, i + 1, DEVICE_TYPE_BLOCK, name);
     }
 }
 
@@ -79,7 +78,7 @@ devices_init (void)
 
       /* Set device name and register it */
       name[2] = 'a' + j++;
-      dev = device_register (i, DEVICE_TYPE_BLOCK, name);
+      dev = device_register (i + 1, 0, DEVICE_TYPE_BLOCK, name);
 
       /* Create more block devices for each partition */
       device_disk_init (i, dev);
@@ -87,7 +86,7 @@ devices_init (void)
 }
 
 SpecDevice *
-device_register (dev_t major, unsigned char type, const char *name)
+device_register (dev_t major, dev_t minor, unsigned char type, const char *name)
 {
   size_t i;
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)
@@ -96,7 +95,7 @@ device_register (dev_t major, unsigned char type, const char *name)
       if (dev->sd_type != 0)
 	continue;
       dev->sd_major = major;
-      dev->sd_minor = 0;
+      dev->sd_minor = minor;
       dev->sd_type = type;
       strncpy (dev->sd_name, name, 15);
       dev->sd_name[15] = '\0';

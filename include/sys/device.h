@@ -63,7 +63,8 @@ extern SpecDevice device_table[DEVICE_TABLE_SIZE];
 
 void devices_init (void);
 
-SpecDevice *device_register (dev_t major, unsigned char type, const char *name);
+SpecDevice *device_register (dev_t major, dev_t minor, unsigned char type,
+			     const char *name);
 
 __END_DECLS
 
