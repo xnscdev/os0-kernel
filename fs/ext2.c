@@ -128,16 +128,16 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
   root->d_name = strdup ("/");
   if (unlikely (root->d_name == NULL))
     {
-      kfree (root);
       vfs_path_free (root->d_path);
+      kfree (root);
       return -ENOMEM;
     }
   root_inode = mp->vfs_fstype->vfs_sops->sb_alloc_inode (&mp->vfs_sb);
   if (unlikely (root_inode == NULL))
     {
-      kfree (root);
       vfs_path_free (root->d_path);
       kfree (root->d_name);
+      kfree (root);
       return -ENOMEM;
     }
   root->d_inode = root_inode;
@@ -148,6 +148,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 static int
 ext2_unmount (VFSMount *mp, uint32_t flags)
 {
+  vfs_path_free (mp->vfs_sb.sb_root->d_path);
   kfree (mp->vfs_sb.sb_root->d_inode);
   kfree (mp->vfs_sb.sb_root->d_name);
   kfree (mp->vfs_sb.sb_root);

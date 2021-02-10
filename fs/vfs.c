@@ -23,6 +23,7 @@
 #include <errno.h>
 
 VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
+VFSMount mount_table[VFS_MOUNT_TABLE_SIZE];
 
 void
 vfs_init (void)
@@ -56,6 +57,7 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
     {
       VFSMount *mp;
       int ret;
+      int j;
       if (strcmp (fs_table[i].vfs_name, type) != 0)
         continue;
       mp = kmalloc (sizeof (VFSMount));
@@ -71,7 +73,28 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 	  return ret;
 	}
       mp->vfs_private = NULL;
-      return fs_table[i].vfs_mount (mp, flags, data);
+
+      /* Find a slot in the mount table */
+      for (j = 0; j < VFS_MOUNT_TABLE_SIZE; j++)
+	{
+	  if (mount_table[j].vfs_fstype == NULL)
+	    break;
+	}
+      if (j == VFS_MOUNT_TABLE_SIZE)
+	{
+	  vfs_path_free (mp->vfs_mntpoint);
+	  kfree (mp);
+	  return -ENOSPC;
+	}
+
+      /* Filesystem-specific mount */
+      ret = fs_table[i].vfs_mount (mp, flags, data);
+      if (ret != 0)
+	return ret;
+
+      /* Fill mount table */
+      memcpy (&mount_table[j], mp, sizeof (VFSMount));
+      return 0;
     }
   return -EINVAL; /* No such filesystem type */
 }

@@ -27,6 +27,7 @@
 #include <time.h>
 
 #define VFS_FS_TABLE_SIZE 8
+#define VFS_MOUNT_TABLE_SIZE 16
 
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
@@ -144,6 +145,7 @@ struct _VFSPath
 __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
+extern VFSMount mount_table[VFS_MOUNT_TABLE_SIZE];
 
 void vfs_init (void);
 
