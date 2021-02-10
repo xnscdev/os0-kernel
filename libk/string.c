@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <libk/libk.h>
+#include <vm/heap.h>
 
 void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
@@ -185,4 +186,41 @@ strncmp (const char *a, const char *b, size_t len)
 	return -1;
     }
   return 0;
+}
+
+char *
+strchr (const char *s, int c)
+{
+  const char *ptr = s;
+  if (s == NULL)
+    return NULL;
+  while (1)
+    {
+      if (*ptr == c)
+	return (char *) ptr;
+      if (*ptr == '\0')
+	return NULL;
+      ptr++;
+    }
+}
+
+char *
+strrchr (const char *s, int c)
+{
+  const char *ptr = s;
+  const char *save = NULL;
+  if (s == NULL)
+    return NULL;
+  while (1)
+    {
+      if (*ptr == c)
+	{
+	  if (c == '\0')
+	    return (char *) ptr;
+	  save = ptr;
+	}
+      else if (*ptr == '\0')
+	return (char *) save;
+      ptr++;
+    }
 }
