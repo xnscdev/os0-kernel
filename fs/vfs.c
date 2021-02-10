@@ -60,19 +60,28 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       int j;
       if (strcmp (fs_table[i].vfs_name, type) != 0)
         continue;
-      mp = kmalloc (sizeof (VFSMount));
+      mp = kzalloc (sizeof (VFSMount));
       if (unlikely (mp == NULL))
 	return -ENOMEM;
       mp->vfs_fstype = &fs_table[i];
-      /* TODO Fill vfs_parent and vfs_mntpoint with mount point table */
-      mp->vfs_parent = NULL;
+
+      /* Get mount point as a path and set parent mount */
       ret = vfs_namei (&mp->vfs_mntpoint, dir);
       if (ret != 0)
 	{
 	  kfree (mp);
 	  return ret;
 	}
-      mp->vfs_private = NULL;
+      for (j = 0; j < VFS_MOUNT_TABLE_SIZE; j++)
+	{
+	  if (mount_table[j].vfs_mntpoint == NULL)
+	    continue;
+	  if (vfs_path_subdir (mp->vfs_mntpoint, mount_table[j].vfs_mntpoint))
+	    {
+	      mp->vfs_parent = &mount_table[j];
+	      break;
+	    }
+	}
 
       /* Find a slot in the mount table */
       for (j = 0; j < VFS_MOUNT_TABLE_SIZE; j++)
