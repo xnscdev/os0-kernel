@@ -128,7 +128,7 @@ struct _VFSMount
   VFSFilesystem *vfs_fstype;
   VFSSuperblock vfs_sb;
   VFSMount *vfs_parent;
-  VFSDirEntry *vfs_mntpoint;
+  const char *vfs_mntpoint;
   void *vfs_private;
 };
 

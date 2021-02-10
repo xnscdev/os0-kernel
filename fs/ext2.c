@@ -18,8 +18,9 @@
 
 #include <fs/ext2.h>
 #include <fs/vfs.h>
+#include <libk/libk.h>
+#include <vm/heap.h>
 #include <errno.h>
-#include <stdlib.h>
 
 static int ext2_mount (VFSMount *mp, uint32_t flags, void *data);
 static int ext2_unmount (VFSMount *mp, uint32_t flags);
@@ -106,13 +107,32 @@ static const VFSFilesystem ext2_vfs = {
 static int
 ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
-  return -ENOSYS;
+  VFSDirEntry *root = kmalloc (sizeof (VFSDirEntry));
+  VFSInode *root_inode;
+  if (unlikely (root == NULL))
+    return -ENOMEM;
+  root->d_flags = 0;
+  root->d_mounted = 1;
+  root->d_parent = NULL;
+  root->d_name = strdup ("/");
+  root_inode = mp->vfs_fstype->vfs_sops->sb_alloc_inode (&mp->vfs_sb);
+  if (unlikely (root_inode == NULL))
+    {
+      kfree (root);
+      return -ENOMEM;
+    }
+  root->d_inode = root_inode;
+  mp->vfs_sb.sb_root = root;
+  return 0;
 }
 
 static int
 ext2_unmount (VFSMount *mp, uint32_t flags)
 {
-  return -ENOSYS;
+  kfree (mp->vfs_sb.sb_root->d_inode);
+  kfree (mp->vfs_sb.sb_root->d_name);
+  kfree (mp->vfs_sb.sb_root);
+  return 0;
 }
 
 static VFSInode *
