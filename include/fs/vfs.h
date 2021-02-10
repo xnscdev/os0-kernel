@@ -29,15 +29,22 @@
 #define VFS_FS_TABLE_SIZE 8
 
 typedef struct _VFSMount VFSMount;
+typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
 typedef struct _VFSDirEntry VFSDirEntry;
 
 typedef struct
 {
-  int (*vfs_mount) (VFSMount *, const char *, uint32_t, void *);
-  int (*vfs_unmount) (VFSMount *, uint32_t);
-  int (*vfs_statfs) (VFSMount *, struct statfs *);
-} VFSMountOps;
+  VFSInode *(*sb_alloc_inode) (VFSSuperblock *);
+  void (*sb_destroy_inode) (VFSInode *);
+  void (*sb_fill_inode) (VFSInode *);
+  void (*sb_write_inode) (VFSInode *);
+  void (*sb_delete_inode) (VFSInode *);
+  void (*sb_free) (VFSSuperblock *);
+  void (*sb_update) (VFSSuperblock *);
+  int (*sb_statfs) (VFSSuperblock *, struct statfs *);
+  int (*sb_remount) (VFSSuperblock *, int *, void *);
+} VFSSuperblockOps;
 
 typedef struct
 {
@@ -51,7 +58,7 @@ typedef struct
   int (*vfs_mknod) (VFSInode *, VFSDirEntry *, mode_t, dev_t);
   int (*vfs_rename) (VFSInode *, VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_readlink) (VFSDirEntry *, char *, size_t);
-  void (*vfs_truncate) (VFSInode *);
+  int (*vfs_truncate) (VFSInode *);
   int (*vfs_permission) (VFSInode *, mode_t);
   int (*vfs_getattr) (VFSMount *, VFSDirEntry *, struct stat *);
   int (*vfs_setxattr) (VFSDirEntry *, const char *, const void *, size_t, int);
@@ -70,21 +77,30 @@ typedef struct
 {
   char vfs_name[16];
   uint32_t vfs_flags;
-  int (*vfs_init) (void);
-  int (*vfs_destroy) (void);
-  const VFSMountOps *vfs_mops;
+  const VFSSuperblockOps *vfs_sops;
   const VFSInodeOps *vfs_iops;
   const VFSDirEntryOps *vfs_dops;
 } VFSFilesystem;
 
 struct _VFSMount
 {
-  char vfs_name[16];
-  uint32_t vfs_flags;
+  VFSFilesystem vfs_fstype;
+  VFSSuperblock *vfs_sb;
   VFSMount *vfs_parent;
-  VFSMountOps *vfs_ops;
-  VFSDirEntry *vfs_mountpoint;
-  VFSDirEntry *vfs_root;
+  VFSDirEntry *vfs_mntpoint;
+  void *vfs_private;
+};
+
+struct _VFSSuperblock
+{
+  dev_t sb_dev;
+  blksize_t sb_blksize;
+  size_t sb_maxsize;
+  VFSSuperblockOps *sb_ops;
+  uint32_t sb_flags;
+  uint32_t sb_magic;
+  VFSDirEntry *sb_root;
+  char sb_name[16];
 };
 
 struct _VFSInode
@@ -101,6 +117,7 @@ struct _VFSInode
   struct timespec vi_ctime;
   blkcnt_t vi_blocks;
   VFSInodeOps *vi_ops;
+  void *vi_private;
 };
 
 struct _VFSDirEntry

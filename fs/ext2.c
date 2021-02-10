@@ -21,10 +21,15 @@
 #include <libk/stdlib.h>
 #include <errno.h>
 
-static int ext2_mount (VFSMount *mp, const char *path, uint32_t flags,
-		       void *data);
-static int ext2_unmount (VFSMount *mp, uint32_t flags);
-static int ext2_statfs (VFSMount *mp, struct statfs *st);
+static VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
+static void ext2_destroy_inode (VFSInode *inode);
+static void ext2_fill_inode (VFSInode *inode);
+static void ext2_write_inode (VFSInode *inode);
+static void ext2_delete_inode (VFSInode *inode);
+static void ext2_free (VFSSuperblock *sb);
+static void ext2_update (VFSSuperblock *sb);
+static int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
+static int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 static int ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
 static VFSDirEntry *ext2_lookup (VFSInode *dir, VFSDirEntry *entry);
 static int ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
@@ -37,7 +42,7 @@ static int ext2_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode,
 static int ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry,
 			VFSInode *newdir, VFSDirEntry *newentry);
 static int ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len);
-static void ext2_truncate (VFSInode *inode);
+static int ext2_truncate (VFSInode *inode);
 static int ext2_permission (VFSInode *inode, mode_t mask);
 static int ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
 static int ext2_setxattr (VFSDirEntry *entry, const char *name,
@@ -49,10 +54,16 @@ static int ext2_removexattr (VFSDirEntry *entry, const char *name);
 static int ext2_compare (VFSDirEntry *entry, const char *a, const char *b);
 static void ext2_iput (VFSDirEntry *entry, VFSInode *inode);
 
-static const VFSMountOps ext2_mops = {
-  .vfs_mount = ext2_mount,
-  .vfs_unmount = ext2_unmount,
-  .vfs_statfs = ext2_statfs
+static const VFSSuperblockOps ext2_sops = {
+  .sb_alloc_inode = ext2_alloc_inode,
+  .sb_destroy_inode = ext2_destroy_inode,
+  .sb_fill_inode = ext2_fill_inode,
+  .sb_write_inode = ext2_write_inode,
+  .sb_delete_inode = ext2_delete_inode,
+  .sb_free = ext2_free,
+  .sb_update = ext2_update,
+  .sb_statfs = ext2_statfs,
+  .sb_remount = ext2_remount
 };
 
 static const VFSInodeOps ext2_iops = {
@@ -83,27 +94,55 @@ static const VFSDirEntryOps ext2_dops = {
 static const VFSFilesystem ext2_vfs = {
   .vfs_name = "ext2",
   .vfs_flags = 0,
-  .vfs_init = NULL,
-  .vfs_destroy = NULL,
-  .vfs_mops = &ext2_mops,
+  .vfs_sops = &ext2_sops,
   .vfs_iops = &ext2_iops,
   .vfs_dops = &ext2_dops
 };
 
+static VFSInode *
+ext2_alloc_inode (VFSSuperblock *sb)
+{
+  return NULL;
+}
+
+static void
+ext2_destroy_inode (VFSInode *inode)
+{
+}
+
+static void
+ext2_fill_inode (VFSInode *inode)
+{
+}
+
+static void
+ext2_write_inode (VFSInode *inode)
+{
+}
+
+static void
+ext2_delete_inode (VFSInode *inode)
+{
+}
+
+static void
+ext2_free (VFSSuperblock *sb)
+{
+}
+
+static void
+ext2_update (VFSSuperblock *sb)
+{
+}
+
 static int
-ext2_mount (VFSMount *mp, const char *path, uint32_t flags, void *data)
+ext2_statfs (VFSSuperblock *sb, struct statfs *st)
 {
   return ENOSYS;
 }
 
 static int
-ext2_unmount (VFSMount *mp, uint32_t flags)
-{
-  return ENOSYS;
-}
-
-static int
-ext2_statfs (VFSMount *mp, struct statfs *st)
+ext2_remount (VFSSuperblock *sb, int *flags, void *data)
 {
   return ENOSYS;
 }
@@ -169,9 +208,10 @@ ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
   return ENOSYS;
 }
 
-static void
+static int
 ext2_truncate (VFSInode *inode)
 {
+  return ENOSYS;
 }
 
 static int

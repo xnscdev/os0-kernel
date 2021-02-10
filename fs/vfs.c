@@ -19,6 +19,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
+#include <errno.h>
 
 VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 
@@ -32,21 +33,14 @@ int
 fs_register (const VFSFilesystem *fs)
 {
   int i;
-  if (fs == NULL)
-    return 1;
-  if (*fs->vfs_name == '\0')
-    return 2;
+  if (fs == NULL || *fs->vfs_name == '\0')
+    return -EINVAL;
   for (i = 0; i < VFS_FS_TABLE_SIZE; i++)
     {
       if (*fs_table[i].vfs_name != '\0')
 	continue;
-      if (fs->vfs_init != NULL)
-	{
-	  if (fs->vfs_init () != 0)
-	    return 3;
-	}
       memcpy (&fs_table[i], fs, sizeof (VFSFilesystem));
       return 0;
     }
-  return 4;
+  return -ENOSPC;
 }
