@@ -84,15 +84,6 @@ typedef struct
   const VFSDirEntryOps *vfs_dops;
 } VFSFilesystem;
 
-struct _VFSMount
-{
-  VFSFilesystem vfs_fstype;
-  VFSSuperblock *vfs_sb;
-  VFSMount *vfs_parent;
-  VFSDirEntry *vfs_mntpoint;
-  void *vfs_private;
-};
-
 struct _VFSSuperblock
 {
   dev_t sb_dev;
@@ -130,6 +121,15 @@ struct _VFSDirEntry
   VFSDirEntry *d_parent;
   char *d_name;
   VFSDirEntryOps *d_ops;
+};
+
+struct _VFSMount
+{
+  VFSFilesystem *vfs_fstype;
+  VFSSuperblock vfs_sb;
+  VFSMount *vfs_parent;
+  VFSDirEntry *vfs_mntpoint;
+  void *vfs_private;
 };
 
 __BEGIN_DECLS

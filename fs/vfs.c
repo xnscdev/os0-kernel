@@ -19,6 +19,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
+#include <vm/heap.h>
 #include <errno.h>
 
 VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
@@ -48,5 +49,21 @@ vfs_register (const VFSFilesystem *fs)
 int
 vfs_mount (const char *type, const char *dir, int flags, void *data)
 {
-  return -ENOSYS;
+  int i;
+  if (type == NULL || dir == NULL)
+    return -EINVAL;
+  for (i = 0; i < VFS_FS_TABLE_SIZE; i++)
+    {
+      VFSMount *mp;
+      if (strcmp (fs_table[i].vfs_name, type) != 0)
+        continue;
+      mp = kmalloc (sizeof (VFSMount));
+      mp->vfs_fstype = &fs_table[i];
+      /* TODO Fill vfs_parent and vfs_mntpoint with mount point table */
+      mp->vfs_parent = NULL;
+      mp->vfs_mntpoint = NULL;
+      mp->vfs_private = NULL;
+      return fs_table[i].vfs_mount (mp, flags, data);
+    }
+  return -EINVAL; /* No such filesystem type */
 }
