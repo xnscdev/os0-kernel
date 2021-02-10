@@ -149,6 +149,7 @@ void vfs_init (void);
 
 int vfs_register (const VFSFilesystem *fs);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
+
 VFSPath *vfs_path_add_component (VFSPath *path, const char *name);
 void vfs_path_free (VFSPath *path);
 VFSPath *vfs_namei (const char *path);
