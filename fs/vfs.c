@@ -58,10 +58,17 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       if (strcmp (fs_table[i].vfs_name, type) != 0)
         continue;
       mp = kmalloc (sizeof (VFSMount));
+      if (unlikely (mp == NULL))
+	return -ENOMEM;
       mp->vfs_fstype = &fs_table[i];
       /* TODO Fill vfs_parent and vfs_mntpoint with mount point table */
       mp->vfs_parent = NULL;
-      mp->vfs_mntpoint = NULL;
+      mp->vfs_mntpoint = vfs_namei (dir);
+      if (mp->vfs_mntpoint == NULL)
+	{
+	  kfree (mp);
+	  return -ENOENT;
+	}
       mp->vfs_private = NULL;
       return fs_table[i].vfs_mount (mp, flags, data);
     }

@@ -130,7 +130,7 @@ struct _VFSMount
   const VFSFilesystem *vfs_fstype;
   VFSSuperblock vfs_sb;
   const VFSMount *vfs_parent;
-  const char *vfs_mntpoint;
+  VFSPath *vfs_mntpoint;
   void *vfs_private;
 };
 
