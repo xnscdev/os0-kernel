@@ -1,5 +1,5 @@
 /*************************************************************************
- * string.h -- This file is part of OS/0.                                *
+ * namei.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,30 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STRING_H
-#define _STRING_H
+#ifndef _SYS_NAMEI_H
+#define _SYS_NAMEI_H
 
 #include <sys/cdefs.h>
-#include <stddef.h>
+#include <sys/stat.h>
+
+typedef struct _NameiData NameiData;
+
+struct _NameiData
+{
+  struct stat nd_stat;
+  char *nd_name;
+  char *nd_abslnk;
+  int nd_relstart;
+  int nd_level;
+  int nd_mntpoint;
+  int nd_noent;
+  NameiData *nd_next;
+};
 
 __BEGIN_DECLS
 
-int ffs (int value);
-int ffsl (long value);
-int ffsll (long long value);
-int fls (int value);
-int flsl (long value);
-int flsll (long long value);
-
-void *memcpy (void *__restrict dest, const void *__restrict src, size_t len);
-void *memmove (void *dest, const void *src, size_t len);
-void *memset (void *ptr, int c, size_t len);
-int memcmp (const void *a, const void *b, size_t len);
-
-size_t strlen (const char *s);
-char *strdup (const char *s);
-char *stpcpy (char *dest, const char *src);
-char *stpncpy (char *dest, const char *src, size_t len);
-char *strcpy (char *dest, const char *src);
-char *strncpy (char *dest, const char *src, size_t len);
-int strcmp (const char *a, const char *b);
-int strncmp (const char *a, const char *b, size_t len);
+NameiData *namei (NameiData *parent, const char *path, int start,
+		  NameiData **last);
 
 __END_DECLS
 

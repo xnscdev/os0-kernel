@@ -89,6 +89,17 @@ strlen (const char *s)
 }
 
 char *
+strdup (const char *s)
+{
+  size_t len = strlen (s);
+  char *buffer = kmalloc (len + 1);
+  if (unlikely (buffer == NULL))
+    return NULL;
+  strcpy (buffer, s);
+  return buffer;
+}
+
+char *
 stpcpy (char *dest, const char *src)
 {
   while (1)
