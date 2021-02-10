@@ -17,6 +17,8 @@
  *************************************************************************/
 
 #include <libk/libk.h>
+#include <vm/heap.h>
+#include <errno.h>
 
 int
 default_cmp (const void *a, const void *b)
@@ -31,11 +33,26 @@ noop_cmp (const void *a, const void *b)
 }
 
 int
+sorted_array_new (SortedArray *array, uint32_t max, ComparePredicate cmp)
+{
+  if (array == NULL || cmp == NULL)
+    return -EINVAL;
+  array->sa_elems = kmalloc (sizeof (void *) * max);
+  if (unlikely (array->sa_elems == NULL))
+    return -ENOMEM;
+  memset (array->sa_elems, 0, sizeof (void *) * max);
+  array->sa_size = 0;
+  array->sa_max = max;
+  array->sa_cmp = cmp;
+  return 0;
+}
+
+int
 sorted_array_place (SortedArray *array, void *addr, uint32_t max,
 		    ComparePredicate cmp)
 {
   if (array == NULL || addr == NULL || cmp == NULL)
-    return -1;
+    return -EINVAL;
   array->sa_elems = (void **) addr;
   memset (array->sa_elems, 0, sizeof (void *) * max);
   array->sa_size = 0;
