@@ -19,8 +19,6 @@
 #include <libk/libk.h>
 #include <vm/heap.h>
 
-static char *strtok_ptr;
-
 void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
 {

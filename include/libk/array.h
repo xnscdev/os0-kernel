@@ -32,6 +32,9 @@ typedef struct
 
 __BEGIN_DECLS
 
+int default_cmp (const void *a, const void *b);
+int noop_cmp (const void *a, const void *b);
+
 int sorted_array_place (SortedArray *array, void *addr, uint32_t maxsize,
 			ComparePredicate cmp);
 void sorted_array_destroy (SortedArray *array);

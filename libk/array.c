@@ -19,6 +19,18 @@
 #include <libk/libk.h>
 
 int
+default_cmp (const void *a, const void *b)
+{
+  return (uint32_t) a < (uint32_t) b;
+}
+
+int
+noop_cmp (const void *a, const void *b)
+{
+  return 0;
+}
+
+int
 sorted_array_place (SortedArray *array, void *addr, uint32_t max,
 		    ComparePredicate cmp)
 {
