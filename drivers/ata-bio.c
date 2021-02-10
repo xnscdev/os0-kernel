@@ -18,17 +18,16 @@
 
 #include <sys/ata.h>
 #include <sys/device.h>
+#include <errno.h>
 
 int
 ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		  void *buffer)
 {
   int err;
-  if (drive > 3 || !ata_devices[drive].id_reserved)
-    return 1;
-  if (lba + nsects > ata_devices[drive].id_size
-      && ata_devices[drive].id_type == IDE_ATA)
-    return 2;
+  if (drive > 3 || !ata_devices[drive].id_reserved
+      || lba + nsects > ata_devices[drive].id_size)
+    return -EINVAL;
 
   if (ata_devices[drive].id_type == IDE_ATA)
     err = ata_access (ATA_READ, drive, lba, nsects, buffer);
@@ -46,16 +45,14 @@ ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		   void *buffer)
 {
   int err;
-  if (drive > 3 || !ata_devices[drive].id_reserved)
-    return 1;
-  if (lba + nsects > ata_devices[drive].id_size
-      && ata_devices[drive].id_type == IDE_ATA)
-    return 2;
+  if (drive > 3 || !ata_devices[drive].id_reserved
+      || lba + nsects > ata_devices[drive].id_size)
+    return -EINVAL;
 
   if (ata_devices[drive].id_type == IDE_ATA)
     err = ata_access (ATA_WRITE, drive, lba, nsects, buffer);
   else if (ata_devices[drive].id_type == IDE_ATAPI)
-    err = 4;
+    err = -EINVAL;
   err = ata_perror (drive, err);
   return err;
 }
