@@ -24,13 +24,13 @@
 VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 
 void
-fs_init (void)
+vfs_init (void)
 {
   ext2_init ();
 }
 
 int
-fs_register (const VFSFilesystem *fs)
+vfs_register (const VFSFilesystem *fs)
 {
   int i;
   if (fs == NULL || *fs->vfs_name == '\0')

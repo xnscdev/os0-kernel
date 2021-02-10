@@ -136,9 +136,9 @@ __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 
-void fs_init (void);
+void vfs_init (void);
 
-int fs_register (const VFSFilesystem *fs);
+int vfs_register (const VFSFilesystem *fs);
 
 __END_DECLS
 

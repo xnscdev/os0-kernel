@@ -281,6 +281,6 @@ ext2_iput (VFSDirEntry *entry, VFSInode *inode)
 void
 ext2_init (void)
 {
-  if (fs_register (&ext2_vfs) != 0)
+  if (vfs_register (&ext2_vfs) != 0)
     panic ("Failed to register " EXT2_FS_NAME " filesystem");
 }
