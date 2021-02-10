@@ -72,6 +72,21 @@ VFSPath *
 vfs_path_add_component (VFSPath *path, const char *name)
 {
   VFSPath *new;
+
+  /* Special names */
+  if (strcmp (name, ".") == 0)
+    return path;
+  else if (strcmp (name, "..") == 0)
+    {
+      VFSPath *temp = path->vp_parent;
+      if (temp == NULL)
+	return path; /* Root directory .. leads to itself */
+      if (path->vp_long != NULL)
+	kfree (path->vp_long);
+      kfree (path);
+      return temp;
+    }
+
   if (name == NULL || strchr (name, '/') != NULL)
     return NULL;
   new = kmalloc (sizeof (VFSPath));
