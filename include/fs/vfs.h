@@ -93,6 +93,7 @@ struct _VFSSuperblock
   int sb_flags;
   unsigned long sb_magic;
   VFSDirEntry *sb_root;
+  const VFSFilesystem *sb_fstype;
   char sb_name[16];
 };
 
@@ -109,7 +110,7 @@ struct _VFSInode
   struct timespec vi_mtime;
   struct timespec vi_ctime;
   blkcnt_t vi_blocks;
-  VFSInodeOps *vi_ops;
+  const VFSInodeOps *vi_ops;
   void *vi_private;
 };
 
@@ -118,16 +119,16 @@ struct _VFSDirEntry
   uint32_t d_flags;
   VFSInode *d_inode;
   int d_mounted;
-  VFSDirEntry *d_parent;
+  const VFSDirEntry *d_parent;
   char *d_name;
-  VFSDirEntryOps *d_ops;
+  const VFSDirEntryOps *d_ops;
 };
 
 struct _VFSMount
 {
-  VFSFilesystem *vfs_fstype;
+  const VFSFilesystem *vfs_fstype;
   VFSSuperblock vfs_sb;
-  VFSMount *vfs_parent;
+  const VFSMount *vfs_parent;
   const char *vfs_mntpoint;
   void *vfs_private;
 };

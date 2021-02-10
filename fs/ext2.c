@@ -109,6 +109,11 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
   VFSDirEntry *root = kmalloc (sizeof (VFSDirEntry));
   VFSInode *root_inode;
+
+  mp->vfs_sb.sb_fstype = mp->vfs_fstype;
+
+  /* Set root dir entry and inode */
+  root = kmalloc (sizeof (VFSDirEntry));
   if (unlikely (root == NULL))
     return -ENOMEM;
   root->d_flags = 0;
@@ -138,12 +143,15 @@ ext2_unmount (VFSMount *mp, uint32_t flags)
 static VFSInode *
 ext2_alloc_inode (VFSSuperblock *sb)
 {
-  return NULL;
+  VFSInode *inode = kzalloc (sizeof (VFSInode));
+  inode->vi_ops = sb->sb_fstype->vfs_iops;
+  return inode;
 }
 
 static void
 ext2_destroy_inode (VFSInode *inode)
 {
+  kfree (inode);
 }
 
 static void
