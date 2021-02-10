@@ -118,7 +118,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
     return -ENOMEM;
   root->d_flags = 0;
   root->d_mounted = 1;
-  root->d_parent = NULL;
+  root->d_path = vfs_namei ("/");
   root->d_name = strdup ("/");
   root_inode = mp->vfs_fstype->vfs_sops->sb_alloc_inode (&mp->vfs_sb);
   if (unlikely (root_inode == NULL))

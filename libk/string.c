@@ -21,7 +21,6 @@
 
 static char strtok_save;
 static char *strtok_ptr;
-static char *strtok_end;
 
 void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
@@ -239,8 +238,10 @@ strtok (char *__restrict s, const char *__restrict delims)
     strtok_ptr = s;
   else if (strtok_ptr == NULL)
     return NULL; /* No string initialized */
+  else
+    s = strtok_ptr;
   if (strtok_save != '\0')
-    *strtok_end = strtok_save; /* Restore state from previous call */
+    *strtok_ptr = strtok_save; /* Restore state from previous call */
 
   for (end = s; *end != '\0'; end++)
     {
@@ -259,11 +260,10 @@ strtok (char *__restrict s, const char *__restrict delims)
       else if (is_delim && ptr != NULL)
 	{
 	  strtok_save = *end;
-	  strtok_ptr = ptr;
-	  strtok_end = end;
+	  strtok_ptr = end;
 	  *end = '\0';
 	  return ptr;
 	}
     }
-  return NULL;
+  return ptr;
 }

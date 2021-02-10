@@ -32,6 +32,7 @@ typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
 typedef struct _VFSDirEntry VFSDirEntry;
+typedef struct _VFSPath VFSPath;
 
 typedef struct
 {
@@ -119,7 +120,7 @@ struct _VFSDirEntry
   uint32_t d_flags;
   VFSInode *d_inode;
   int d_mounted;
-  const VFSDirEntry *d_parent;
+  const VFSPath *d_path;
   char *d_name;
   const VFSDirEntryOps *d_ops;
 };
@@ -133,6 +134,13 @@ struct _VFSMount
   void *vfs_private;
 };
 
+struct _VFSPath
+{
+  VFSPath *vp_parent;
+  char vp_short[16];
+  char *vp_long;
+};
+
 __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
@@ -141,6 +149,8 @@ void vfs_init (void);
 
 int vfs_register (const VFSFilesystem *fs);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
+VFSPath *vfs_path_add_component (VFSPath *path, const char *name);
+VFSPath *vfs_namei (const char *path);
 
 __END_DECLS
 

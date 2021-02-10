@@ -67,3 +67,38 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
     }
   return -EINVAL; /* No such filesystem type */
 }
+
+VFSPath *
+vfs_path_add_component (VFSPath *path, const char *name)
+{
+  VFSPath *new;
+  if (path == NULL || name == NULL || strchr (name, '/') != NULL)
+    return NULL;
+  new = kmalloc (sizeof (VFSPath));
+  new->vp_parent = path;
+  if (strlen (name) < 16)
+    {
+      strcpy (new->vp_short, name);
+      new->vp_long = NULL;
+    }
+  else
+    new->vp_long = strdup (name);
+  return new;
+}
+
+VFSPath *
+vfs_namei (const char *path)
+{
+  VFSPath *dir = NULL;
+  char *buffer;
+  char *temp;
+
+  if (path == NULL || *path != '/')
+    return NULL;
+
+  buffer = strdup (path);
+  for (temp = strtok (buffer, "/"); temp != NULL; temp = strtok (NULL, "/"))
+    dir = vfs_path_add_component (dir, temp);
+  kfree (buffer);
+  return dir;
+}
