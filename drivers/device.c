@@ -128,10 +128,8 @@ device_lookup (const char *name)
 }
 
 SpecDevice *
-device_lookup_devid (dev_t dev)
+device_lookup_devid (dev_t major, dev_t minor)
 {
-  dev_t major = major (dev);
-  dev_t minor = minor (dev);
   int i;
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)
     {

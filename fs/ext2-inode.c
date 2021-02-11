@@ -27,11 +27,8 @@ static int
 ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		  size_t nblocks)
 {
-  SpecDevice *dev = device_lookup_devid (sb->sb_dev);
-  if (dev == NULL)
-    return -EINVAL;
-  return dev->sd_read (dev, buffer, nblocks * sb->sb_blksize,
-		       block * sb->sb_blksize);
+  return sb->sb_dev->sd_read (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
+			      block * sb->sb_blksize);
 }
 
 static Ext2Inode *

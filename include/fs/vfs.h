@@ -20,6 +20,7 @@
 #define _FS_VFS_H
 
 #include <sys/cdefs.h>
+#include <sys/device.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <stddef.h>
@@ -89,7 +90,7 @@ typedef struct
 
 struct _VFSSuperblock
 {
-  dev_t sb_dev;
+  SpecDevice *sb_dev;
   blksize_t sb_blksize;
   size_t sb_maxsize;
   const VFSSuperblockOps *sb_ops;

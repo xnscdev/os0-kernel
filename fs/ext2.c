@@ -18,8 +18,6 @@
 
 #include <fs/ext2.h>
 #include <libk/libk.h>
-#include <sys/device.h>
-#include <sys/sysmacros.h>
 #include <vm/heap.h>
 #include <errno.h>
 
@@ -124,7 +122,7 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
     }
 
   /* Fill VFS superblock */
-  mp->vfs_sb.sb_dev = makedev (dev->sd_major, dev->sd_minor);
+  mp->vfs_sb.sb_dev = device_lookup_devid (dev->sd_major, dev->sd_minor);
   mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
   mp->vfs_sb.sb_flags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;
@@ -270,8 +268,8 @@ ext2_statfs (VFSSuperblock *sb, struct statfs *st)
   st->f_bavail = esb->esb_fblocks;
   st->f_files = esb->esb_inodes;
   st->f_ffree = esb->esb_finodes;
-  st->f_fsid.f_val[0] = major (sb->sb_dev);
-  st->f_fsid.f_val[1] = minor (sb->sb_dev);
+  st->f_fsid.f_val[0] = sb->sb_dev->sd_major;
+  st->f_fsid.f_val[1] = sb->sb_dev->sd_minor;
   st->f_namelen = 255; /* ext2 name length limit */
   st->f_flags = sb->sb_flags;
   return 0;
