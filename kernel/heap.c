@@ -208,6 +208,97 @@ heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned)
   return NULL;
 }
 
+void *
+heap_realloc (MemHeap *heap, void *ptr, uint32_t size)
+{
+  MemHeader *header;
+  MemFooter *footer;
+  MemHeader *next_header;
+  MemFooter *next_footer;
+  void *new;
+  size_t extra;
+  size_t save;
+  uint32_t i;
+  assert (heap != NULL);
+
+  /* Reallocating a NULL pointer is the same as allocating a new one */
+  if (ptr == NULL)
+    return heap_alloc (heap, size, 0);
+
+  header = (MemHeader *) ((uint32_t) ptr - sizeof (MemHeader));
+  assert (header->mh_magic == MEM_MAGIC);
+  if (!header->mh_alloc)
+    return NULL; /* Reallocating a freed pointer */
+  for (i = 0; i < heap->mh_index.sa_size; i++)
+    {
+      if (sorted_array_lookup (&heap->mh_index, i) == header)
+        goto found;
+    }
+  panic ("Attempted to reallocate memory not in heap index");
+
+ found:
+  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
+			  header->mh_size);
+  assert (footer->mf_cigam == MEM_CIGAM);
+
+  next_header = (MemHeader *) ((uint32_t) footer + sizeof (MemFooter));
+  if ((uint32_t) next_header >= heap->mh_addr + heap->mh_size
+      || next_header->mh_magic != MEM_MAGIC)
+    return NULL;
+
+  /* If the next block is free and large enough, take memory from it */
+  save = header->mh_size;
+  extra = size - save;
+  if (!next_header->mh_alloc)
+    {
+      if (next_header->mh_size > extra + sizeof (MemHeader) +
+	  sizeof (MemFooter))
+	{
+	  header->mh_size = size;
+
+	  /* Create new footer */
+	  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
+				  size);
+	  footer->mf_cigam = MEM_CIGAM;
+	  footer->mf_header = (uint32_t) header;
+
+	  /* Create new header for next block */
+	  next_header = (MemHeader *) ((uint32_t) footer + sizeof (MemFooter));
+	  next_header->mh_magic = MEM_MAGIC;
+	  next_header->mh_alloc = 0;
+	  next_header->mh_size = save - extra - sizeof (MemHeader);
+
+	  /* Create new footer for next block */
+	  next_footer =
+	    (MemFooter *) ((uint32_t) next_header + sizeof (MemHeader) +
+			   next_header->mh_size);
+	  next_footer->mf_cigam = MEM_CIGAM;
+	  next_footer->mf_header = (uint32_t) next_header;
+	  return ptr;
+	}
+      else if (next_header->mh_size >= extra)
+	{
+	  /* Point footer of next block to current header */
+	  footer = (MemFooter *) ((uint32_t) next_header + sizeof (MemHeader) +
+				  next_header->mh_size);
+	  assert (footer->mf_cigam == MEM_CIGAM);
+	  footer->mf_header = (uint32_t) header;
+
+	  /* Set new size of block */
+	  header->mh_size += save + sizeof (MemHeader) + sizeof (MemFooter);
+	  return ptr;
+	}
+    }
+
+  /* Find a new free block large enough */
+  new = heap_alloc (heap, size, 0);
+  if (new == NULL)
+    return NULL;
+  memcpy (new, ptr, header->mh_size);
+  heap_free (heap, ptr);
+  return new;
+}
+
 void
 heap_free (MemHeap *heap, void *ptr)
 {
@@ -303,6 +394,12 @@ kzalloc (size_t size)
     return NULL;
   memset (ptr, 0, size);
   return ptr;
+}
+
+void *
+krealloc (void *ptr, size_t size)
+{
+  return heap_realloc (kernel_heap, ptr, size);
 }
 
 void

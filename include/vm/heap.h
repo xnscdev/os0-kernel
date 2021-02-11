@@ -58,11 +58,13 @@ extern MemHeap *kernel_heap;
 int heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
 	      unsigned char supervisor, unsigned char readonly);
 void *heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned);
+void *heap_realloc (MemHeap *heap, void *ptr, uint32_t size);
 void heap_free (MemHeap *heap, void *ptr);
 
 void *kmalloc (size_t size);
 void *kvalloc (size_t size);
 void *kzalloc (size_t size);
+void *krealloc (void *ptr, size_t size);
 void kfree (void *ptr);
 
 void heap_init (void);
