@@ -83,6 +83,25 @@ cmdline_init (char *cmdline)
     cmdline_parse (ptr);
 }
 
+static void
+mount_rootfs (void)
+{
+  if (strncmp (boot_options.b_root, "/dev/", 5) == 0)
+    {
+      memmove (boot_options.b_root, &boot_options.b_root[5], 11);
+      memset (&boot_options.b_root[11], 0, 5);
+    }
+  else
+    panic ("No root filesystem specified in boot options");
+
+  /* TODO Determine root filesystem type automatically if not specified */
+  if (*boot_options.b_rootfstype == '\0')
+    panic ("Root filesystem type not specified");
+
+  if (vfs_mount (boot_options.b_rootfstype, "/", 0, NULL) != 0)
+    panic ("Failed to mount root filesystem");
+}
+
 void
 kmain (MultibootInfo *info)
 {
@@ -99,11 +118,5 @@ kmain (MultibootInfo *info)
   devices_init ();
   vfs_init ();
 
-  if (strncmp (boot_options.b_root, "/dev/", 5) == 0)
-    {
-      memmove (boot_options.b_root, &boot_options.b_root[5], 11);
-      memset (&boot_options.b_root[11], 0, 5);
-    }
-  else
-    panic ("No root filesystem specified in boot options");
+  mount_rootfs ();
 }
