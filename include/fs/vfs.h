@@ -56,7 +56,7 @@ typedef struct
   int (*vfs_link) (VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_unlink) (VFSInode *, VFSDirEntry *);
   int (*vfs_symlink) (VFSInode *, VFSDirEntry *, const char *);
-  VFSDirEntry *(*vfs_readdir) (VFSSuperblock *, VFSInode *);
+  int (*vfs_readdir) (VFSDirEntry **, VFSSuperblock *, VFSInode *);
   int (*vfs_mkdir) (VFSInode *, VFSDirEntry *, mode_t);
   int (*vfs_rmdir) (VFSInode *, VFSDirEntry *);
   int (*vfs_mknod) (VFSInode *, VFSDirEntry *, mode_t, dev_t);
@@ -110,6 +110,7 @@ struct _VFSInode
   nlink_t vi_nlink;
   dev_t vi_rdev;
   loff_t vi_size;
+  mode_t vi_mode;
   struct timespec vi_atime;
   struct timespec vi_mtime;
   struct timespec vi_ctime;

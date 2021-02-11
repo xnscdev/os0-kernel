@@ -97,10 +97,10 @@ ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
   return -ENOSYS;
 }
 
-VFSDirEntry *
-ext2_readdir (VFSSuperblock *sb, VFSInode *dir)
+int
+ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 {
-  return NULL;
+  return -ENOSYS;
 }
 
 int
