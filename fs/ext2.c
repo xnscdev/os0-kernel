@@ -130,6 +130,20 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
       return ret;
     }
 
+  /* Initial statfs */
+  mp->vfs_sb.sb_stat.f_type = EXT2_MAGIC;
+  mp->vfs_sb.sb_stat.f_bsize = mp->vfs_sb.sb_blksize;
+  mp->vfs_sb.sb_stat.f_blocks = esb->esb_blocks;
+  mp->vfs_sb.sb_stat.f_bfree = esb->esb_fblocks;
+  /* TODO Consider reserved blocks */
+  mp->vfs_sb.sb_stat.f_bavail = esb->esb_fblocks;
+  mp->vfs_sb.sb_stat.f_files = esb->esb_inodes;
+  mp->vfs_sb.sb_stat.f_ffree = esb->esb_finodes;
+  mp->vfs_sb.sb_stat.f_fsid.f_val[0] = dev->sd_major;
+  mp->vfs_sb.sb_stat.f_fsid.f_val[1] = dev->sd_minor;
+  mp->vfs_sb.sb_stat.f_namelen = 255; /* ext2 name length limit */
+  mp->vfs_sb.sb_stat.f_flags = flags;
+
   kfree (esb);
   return 0;
 }
@@ -255,7 +269,8 @@ ext2_update (VFSSuperblock *sb)
 int
 ext2_statfs (VFSSuperblock *sb, struct statfs *st)
 {
-  return -ENOSYS;
+  memcpy (st, &sb->sb_stat, sizeof (struct statfs));
+  return 0;
 }
 
 int
