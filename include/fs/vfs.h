@@ -91,7 +91,6 @@ struct _VFSSuperblock
 {
   dev_t sb_dev;
   blksize_t sb_blksize;
-  struct statfs sb_stat;
   size_t sb_maxsize;
   const VFSSuperblockOps *sb_ops;
   int sb_flags;
