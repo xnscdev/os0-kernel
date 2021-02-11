@@ -29,15 +29,7 @@
 #define DEVICE_TYPE_BLOCK 1
 #define DEVICE_TYPE_CHAR  2
 
-typedef struct
-{
-  dev_t sd_major;
-  dev_t sd_minor;
-  unsigned char sd_type;
-  char sd_name[15];
-  int (*sd_read) (void *, size_t, off_t);
-  int (*sd_write) (void *, size_t, off_t);
-} SpecDevice;
+typedef struct _SpecDevice SpecDevice;
 
 typedef struct
 {
@@ -57,6 +49,17 @@ typedef union
   SpecDevice *dpi_dev;
 } DiskPartInfo;
 
+struct _SpecDevice
+{
+  dev_t sd_major;
+  dev_t sd_minor;
+  unsigned char sd_type;
+  char sd_name[15];
+  void *sd_private;
+  int (*sd_read) (SpecDevice *, void *, size_t, off_t);
+  int (*sd_write) (SpecDevice *, void *, size_t, off_t);
+};
+
 __BEGIN_DECLS
 
 extern SpecDevice device_table[DEVICE_TABLE_SIZE];
@@ -64,7 +67,10 @@ extern SpecDevice device_table[DEVICE_TABLE_SIZE];
 void devices_init (void);
 
 SpecDevice *device_register (dev_t major, dev_t minor, unsigned char type,
-			     const char *name);
+			     const char *name,
+			     int (*read) (SpecDevice *, void *, size_t, off_t),
+			     int (*write) (SpecDevice *, void *, size_t,
+					   off_t));
 
 __END_DECLS
 

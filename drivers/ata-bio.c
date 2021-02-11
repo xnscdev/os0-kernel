@@ -122,5 +122,65 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 int
 ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 {
-  return -ENOSYS;
+  size_t start_diff;
+  size_t end_diff;
+  off_t start_lba;
+  off_t mid_lba;
+  off_t end_lba;
+  size_t sectors;
+  void *temp = NULL;
+  int ret;
+
+  if (buffer == NULL)
+    return -EINVAL;
+  if (len == 0)
+    return 0;
+  start_lba = offset / ATA_SECTSIZE;
+  mid_lba = start_lba + (offset % ATA_SECTSIZE != 0);
+  end_lba = (offset + len) / ATA_SECTSIZE;
+  sectors = end_lba - mid_lba;
+  start_diff = mid_lba * ATA_SECTSIZE - offset;
+  end_diff = offset + len - end_lba * ATA_SECTSIZE;
+
+  /* TODO Proper LBA calculation for MBR partition devices */
+  ret = ata_write_sectors (dev->sd_major - 1, sectors, mid_lba,
+			   buffer + start_diff);
+  if (ret != 0)
+    return ret;
+
+  /* Write unaligned starting bytes */
+  if (start_diff != 0)
+    {
+      temp = kmalloc (ATA_SECTSIZE);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba, temp);
+      if (ret != 0)
+	return ret;
+      memcpy (temp + ATA_SECTSIZE - start_diff, buffer, start_diff);
+      ret = ata_write_sectors (dev->sd_major - 1, 1, start_lba, temp);
+      if (ret != 0)
+	return ret;
+    }
+
+  /* Write unaligned ending bytes */
+  if (end_diff != 0)
+    {
+      if (temp == NULL)
+	{
+	  temp = kmalloc (ATA_SECTSIZE);
+	  if (unlikely (temp == NULL))
+	    return -ENOMEM;
+	}
+      ret = ata_read_sectors (dev->sd_major - 1, 1, end_lba, temp);
+      if (ret != 0)
+	return ret;
+      memcpy (temp, buffer + start_diff + sectors * ATA_SECTSIZE, end_diff);
+      ret = ata_write_sectors (dev->sd_major - 1, 1, end_lba, temp);
+      if (ret != 0)
+	return ret;
+    }
+
+  kfree (temp);
+  return 0;
 }

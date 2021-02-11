@@ -56,7 +56,8 @@ device_disk_init (int drive, SpecDevice *dev)
       if (mbr[i].mpi_attr == 0)
 	continue; /* Unused or invalid */
       *ptr = ++j;
-      device_register (drive + 1, i + 1, DEVICE_TYPE_BLOCK, name);
+      device_register (drive + 1, i + 1, DEVICE_TYPE_BLOCK, name,
+		       ata_device_read, ata_device_write);
     }
 }
 
@@ -78,7 +79,8 @@ devices_init (void)
 
       /* Set device name and register it */
       name[2] = 'a' + j++;
-      dev = device_register (i + 1, 0, DEVICE_TYPE_BLOCK, name);
+      dev = device_register (i + 1, 0, DEVICE_TYPE_BLOCK, name, ata_device_read,
+			     ata_device_write);
 
       /* Create more block devices for each partition */
       device_disk_init (i, dev);
@@ -86,7 +88,9 @@ devices_init (void)
 }
 
 SpecDevice *
-device_register (dev_t major, dev_t minor, unsigned char type, const char *name)
+device_register (dev_t major, dev_t minor, unsigned char type, const char *name,
+		 int (*read) (SpecDevice *, void *, size_t, off_t),
+		 int (*write) (SpecDevice *, void *, size_t, off_t))
 {
   size_t i;
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)
@@ -98,7 +102,10 @@ device_register (dev_t major, dev_t minor, unsigned char type, const char *name)
       dev->sd_minor = minor;
       dev->sd_type = type;
       strncpy (dev->sd_name, name, 15);
+      dev->sd_private = NULL;
       dev->sd_name[15] = '\0';
+      dev->sd_read = read;
+      dev->sd_write = write;
       return dev;
     }
   return NULL;
