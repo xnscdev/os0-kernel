@@ -251,9 +251,19 @@ heap_realloc (MemHeap *heap, void *ptr, uint32_t size)
   extra = size - save;
   if (!next_header->mh_alloc)
     {
+      size_t i;
+      for (i = 0; i < heap->mh_index.sa_size; i++)
+	{
+	  if (sorted_array_lookup (&heap->mh_index, i) == next_header)
+	    goto next;
+	}
+      return NULL; /* Next header not in heap index */
+
+    next:
       if (next_header->mh_size > extra + sizeof (MemHeader) +
 	  sizeof (MemFooter))
 	{
+	  sorted_array_remove (&heap->mh_index, i);
 	  header->mh_size = size;
 
 	  /* Create new footer */
@@ -278,6 +288,8 @@ heap_realloc (MemHeap *heap, void *ptr, uint32_t size)
 	}
       else if (next_header->mh_size >= extra)
 	{
+	  sorted_array_remove (&heap->mh_index, i);
+
 	  /* Point footer of next block to current header */
 	  footer = (MemFooter *) ((uint32_t) next_header + sizeof (MemHeader) +
 				  next_header->mh_size);

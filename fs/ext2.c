@@ -72,20 +72,25 @@ static const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_init_bgdt (VFSSuperblock *sb, Ext2Superblock *esb, SpecDevice *dev)
+ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
 {
+  Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
   uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
   uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
   uint32_t size = a > b ? a : b;
+  void *ptr;
   int ret;
-  sb->sb_private = kmalloc (sizeof (Ext2BGD) * size);
-  if (unlikely (sb->sb_private == NULL))
+  ptr = kmalloc (sizeof (Ext2Superblock) + sizeof (Ext2BGD) * size);
+  if (unlikely (ptr == NULL))
     return -ENOMEM;
-  ret = dev->sd_read (dev, sb->sb_private, sizeof (Ext2BGD) * size,
+  memcpy (ptr, esb, sizeof (Ext2Superblock));
+  sb->sb_private = ptr;
+  ret = dev->sd_read (dev, sb->sb_private + sizeof (Ext2Superblock),
+		      sizeof (Ext2BGD) * size,
 		      sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
   if (ret != 0)
     {
-      kfree (sb->sb_private);
+      kfree (esb);
       return ret;
     }
   return 0;
@@ -124,10 +129,12 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   mp->vfs_sb.sb_flags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;
 
-  ret = ext2_init_bgdt (&mp->vfs_sb, esb, dev);
+  /* Initialize block group descriptor table */
+  mp->vfs_sb.sb_private = esb;
+  ret = ext2_init_bgdt (&mp->vfs_sb, dev);
   if (ret != 0)
     {
-      kfree (esb);
+      kfree (mp->vfs_sb.sb_private);
       return ret;
     }
 
@@ -144,8 +151,6 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   mp->vfs_sb.sb_stat.f_fsid.f_val[1] = dev->sd_minor;
   mp->vfs_sb.sb_stat.f_namelen = 255; /* ext2 name length limit */
   mp->vfs_sb.sb_stat.f_flags = flags;
-
-  kfree (esb);
   return 0;
 }
 
