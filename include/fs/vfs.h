@@ -97,6 +97,7 @@ struct _VFSSuperblock
   unsigned long sb_magic;
   VFSDirEntry *sb_root;
   const VFSFilesystem *sb_fstype;
+  void *sb_private;
 };
 
 struct _VFSInode
