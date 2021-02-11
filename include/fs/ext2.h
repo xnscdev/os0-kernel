@@ -19,7 +19,9 @@
 #ifndef _FS_EXT2_H
 #define _FS_EXT2_H
 
+#include <fs/vfs.h>
 #include <sys/cdefs.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define EXT2_MAGIC   0xef53
@@ -129,6 +131,40 @@ typedef struct
 __BEGIN_DECLS
 
 void ext2_init (void);
+
+int ext2_mount (VFSMount *mp, int flags, void *data);
+int ext2_unmount (VFSMount *mp, int flags);
+VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
+void ext2_destroy_inode (VFSInode *inode);
+void ext2_fill_inode (VFSInode *inode);
+void ext2_write_inode (VFSInode *inode);
+void ext2_delete_inode (VFSInode *inode);
+void ext2_free (VFSSuperblock *sb);
+void ext2_update (VFSSuperblock *sb);
+int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
+int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
+int ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
+int ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
+int ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
+int ext2_unlink (VFSInode *dir, VFSDirEntry *entry);
+int ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
+int ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
+int ext2_rmdir (VFSInode *dir, VFSDirEntry *entry);
+int ext2_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev);
+int ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
+		 VFSDirEntry *newentry);
+int ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len);
+int ext2_truncate (VFSInode *inode);
+int ext2_permission (VFSInode *inode, mode_t mask);
+int ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
+int ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+		   size_t len, int flags);
+int ext2_getxattr (VFSDirEntry *entry, const char *name, void *buffer,
+		   size_t len);
+int ext2_listxattr (VFSDirEntry *entry, char *buffer, size_t len);
+int ext2_removexattr (VFSDirEntry *entry, const char *name);
+int ext2_compare (VFSDirEntry *entry, const char *a, const char *b);
+void ext2_iput (VFSDirEntry *entry, VFSInode *inode);
 
 __END_DECLS
 
