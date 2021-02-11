@@ -71,6 +71,27 @@ static const VFSFilesystem ext2_vfs = {
 };
 
 static int
+ext2_init_bgdt (VFSMount *mp, Ext2Superblock *esb, SpecDevice *dev)
+{
+  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
+  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
+  uint32_t size = a > b ? a : b;
+  int ret;
+  mp->vfs_private = kmalloc (sizeof (Ext2BGD) * size);
+  if (unlikely (mp->vfs_private == NULL))
+    return -ENOMEM;
+  ret =
+    dev->sd_read (dev, mp->vfs_private, sizeof (Ext2BGD) * size,
+		  mp->vfs_sb.sb_blksize >= 4096 ? mp->vfs_sb.sb_blksize : 2048);
+  if (ret != 0)
+    {
+      kfree (mp->vfs_private);
+      return ret;
+    }
+  return 0;
+}
+
+static int
 ext2_init_disk (VFSMount *mp, int flags, const char *devname)
 {
   SpecDevice *dev = device_lookup (devname);
@@ -103,6 +124,13 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   mp->vfs_sb.sb_flags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;
   /* TODO Fill mp->vfs_sb.sb_stat */
+
+  ret = ext2_init_bgdt (mp, esb, dev);
+  if (ret != 0)
+    {
+      kfree (esb);
+      return ret;
+    }
 
   kfree (esb);
   return 0;
@@ -183,6 +211,7 @@ ext2_unmount (VFSMount *mp, int flags)
   kfree (mp->vfs_sb.sb_root->d_inode);
   kfree (mp->vfs_sb.sb_root->d_name);
   kfree (mp->vfs_sb.sb_root);
+  kfree (mp->vfs_private);
   return 0;
 }
 
