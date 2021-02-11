@@ -137,7 +137,8 @@ struct _VFSMount
 
 struct _VFSPath
 {
-  VFSPath *vp_parent;
+  VFSPath *vp_prev;
+  VFSPath *vp_next;
   char vp_short[16];
   char *vp_long;
 };
@@ -157,6 +158,8 @@ void vfs_path_free (VFSPath *path);
 int vfs_namei (VFSPath **result, const char *path);
 int vfs_path_cmp (const VFSPath *a, const VFSPath *b);
 int vfs_path_subdir (const VFSPath *path, const VFSPath *dir);
+VFSPath *vfs_path_first (const VFSPath *path);
+VFSPath *vfs_path_last (const VFSPath *path);
 
 __END_DECLS
 

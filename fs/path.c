@@ -35,6 +35,7 @@ int
 vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
 {
   VFSPath *new;
+  path = vfs_path_last (path);
 
   /* Special names */
   if (strcmp (name, ".") == 0)
@@ -44,7 +45,7 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
     }
   else if (strcmp (name, "..") == 0)
     {
-      VFSPath *temp = path->vp_parent;
+      VFSPath *temp = path->vp_prev;
       if (temp == NULL)
 	{
 	  /* Root directory .. leads to itself */
@@ -54,6 +55,7 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
       if (path->vp_long != NULL)
 	kfree (path->vp_long);
       kfree (path);
+      temp->vp_next = NULL;
       *result = temp;
       return 0;
     }
@@ -66,7 +68,9 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
   new = kmalloc (sizeof (VFSPath));
   if (unlikely (new == NULL))
     return -ENOMEM;
-  new->vp_parent = path;
+  new->vp_prev = path;
+  path->vp_next = new;
+  new->vp_next = NULL;
   if (strlen (name) < 16)
     {
       strcpy (new->vp_short, name);
@@ -81,14 +85,16 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
 void
 vfs_path_free (VFSPath *path)
 {
-  VFSPath *temp = path;
+  VFSPath *temp;
   if (path == NULL)
     return;
+  path = vfs_path_first (path);
+  temp = path;
   while (path != NULL)
     {
       if (path->vp_long != NULL)
 	kfree (path->vp_long);
-      path = temp->vp_parent;
+      path = temp->vp_next;
       kfree (temp);
       temp = path;
     }
@@ -126,36 +132,18 @@ vfs_namei (VFSPath **result, const char *path)
 int
 vfs_path_cmp (const VFSPath *a, const VFSPath *b)
 {
-  size_t la;
-  size_t lb;
-  const VFSPath *ta;
-  const VFSPath *tb;
-
-  /* Special value checks */
-  if (a == b)
-    return 0;
+  for (a = vfs_path_first (a), b = vfs_path_first (b); a != NULL && b != NULL;
+       a = a->vp_next, b = b->vp_next)
+    {
+      int ret = vfs_path_component_cmp (a, b);
+      if (ret != 0)
+	return ret;
+    }
   if (a == NULL || b == NULL)
     {
       if (a == NULL)
 	return b != NULL;
       return -1;
-    }
-
-  for (la = 0, ta = a; ta != NULL; ta = ta->vp_parent)
-    la++;
-  for (lb = 0, tb = b; tb != NULL; tb = tb->vp_parent)
-    lb++;
-  if (lb > la)
-    return 1;
-  if (lb < la)
-    return -1;
-
-  for (ta = a, tb = b; ta != NULL && tb != NULL;
-       ta = ta->vp_parent, tb = tb->vp_parent)
-    {
-      int ret = vfs_path_component_cmp (ta, tb);
-      if (ret != 0)
-	return ret;
     }
   return 0;
 }
@@ -166,10 +154,30 @@ vfs_path_subdir (const VFSPath *path, const VFSPath *dir)
   const VFSPath *temp;
   if (dir == NULL)
     return path != NULL;
-  for (temp = path; temp != NULL; temp++)
+  for (temp = vfs_path_last (path); temp != NULL; temp++)
     {
       if (vfs_path_cmp (temp, dir) == 0)
 	return 1;
     }
   return 0;
+}
+
+VFSPath *
+vfs_path_first (const VFSPath *path)
+{
+  if (path == NULL)
+    return NULL;
+  while (path->vp_prev != NULL)
+    path = path->vp_prev;
+  return (VFSPath *) path;
+}
+
+VFSPath *
+vfs_path_last (const VFSPath *path)
+{
+  if (path == NULL)
+    return NULL;
+  while (path->vp_next != NULL)
+    path = path->vp_next;
+  return (VFSPath *) path;
 }

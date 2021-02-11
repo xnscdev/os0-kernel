@@ -107,9 +107,12 @@ static const VFSFilesystem ext2_vfs = {
 static int
 ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
-  VFSDirEntry *root = kmalloc (sizeof (VFSDirEntry));
+  VFSDirEntry *root;
   VFSInode *root_inode;
   int ret;
+
+  if (data == NULL)
+    return -EINVAL;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
 
