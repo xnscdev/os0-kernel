@@ -21,6 +21,7 @@
 #include <fs/vfs.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
+#include <sys/cmdline.h>
 #include <sys/device.h>
 #include <sys/multiboot.h>
 #include <sys/timer.h>
@@ -28,10 +29,58 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
+BootOptions boot_options;
+
+static struct
+{
+  const char *b_name;
+  int b_arg;
+  void *b_data;
+  size_t b_maxsize;
+} boot_option_table[] = {
+  {"root", 1, boot_options.b_root, 24},
+  {"rootfstype", 1, boot_options.b_rootfstype, 16},
+  {"verbose", 0, &boot_options.b_verbose, 0},
+  {NULL, 0, NULL, 0}
+};
+
 static void
 splash (void)
 {
   printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
+}
+
+static void
+cmdline_parse (char *ptr)
+{
+  char *val = strchr (ptr, '=');
+  int i;
+  if (val != NULL)
+    *val++ = '\0';
+  for (i = 0; boot_option_table[i].b_name != NULL; i++)
+    {
+      if (strcmp (boot_option_table[i].b_name, ptr) == 0)
+	{
+	  if (boot_option_table[i].b_arg && val == NULL)
+	    panic ("Boot option `%s' requires an argument", ptr);
+	  if (boot_option_table[i].b_arg)
+	    memcpy (boot_option_table[i].b_data, val,
+		    boot_option_table[i].b_maxsize);
+	  else
+	    *((int *) boot_option_table[i].b_data) = 1;
+	  return;
+	}
+    }
+  panic ("Unrecognized boot option: %s", ptr);
+}
+
+static void
+cmdline_init (char *cmdline)
+{
+  char *ptr;
+  for (ptr = strtok (cmdline, " \t\n\r\f"); ptr != NULL;
+       ptr = strtok (NULL, " \t\n\r\f"))
+    cmdline_parse (ptr);
 }
 
 void
@@ -40,6 +89,7 @@ kmain (MultibootInfo *info)
   timer_set_freq (1000);
   vga_init ();
   splash ();
+  cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
 
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
