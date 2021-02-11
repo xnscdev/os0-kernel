@@ -53,11 +53,13 @@ device_disk_init (int drive, SpecDevice *dev)
   /* Read MBR entries */
   for (i = 0; i < 4; i++)
     {
+      SpecDevice *part;
       if (mbr[i].mpi_attr == 0)
 	continue; /* Unused or invalid */
       *ptr = ++j;
-      device_register (drive + 1, i + 1, DEVICE_TYPE_BLOCK, name,
-		       ata_device_read, ata_device_write);
+      part = device_register (drive + 1, i + 1, DEVICE_TYPE_BLOCK, name,
+			      ata_device_read, ata_device_write);
+      part->sd_private = (void *) mbr[i].mpi_lba;
     }
 }
 
