@@ -69,7 +69,8 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
   if (unlikely (new == NULL))
     return -ENOMEM;
   new->vp_prev = path;
-  path->vp_next = new;
+  if (path != NULL)
+    path->vp_next = new;
   new->vp_next = NULL;
   if (strlen (name) < 16)
     {

@@ -112,3 +112,17 @@ device_register (dev_t major, dev_t minor, unsigned char type, const char *name,
     }
   return NULL;
 }
+
+SpecDevice *
+device_lookup (const char *name)
+{
+  int i;
+  if (name == NULL)
+    return NULL;
+  for (i = 0; i < DEVICE_TABLE_SIZE; i++)
+    {
+      if (strcmp (device_table[i].sd_name, name) == 0)
+	return &device_table[i];
+    }
+  return NULL;
+}

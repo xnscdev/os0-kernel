@@ -19,6 +19,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
+#include <sys/device.h>
 #include <vm/heap.h>
 #include <errno.h>
 
@@ -105,32 +106,51 @@ static const VFSFilesystem ext2_vfs = {
 };
 
 static int
+ext2_init_disk (const char *devname)
+{
+  SpecDevice *dev = device_lookup (devname);
+  if (dev == NULL)
+    return -ENOENT;
+  return 0;
+}
+
+static int
 ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 {
   VFSDirEntry *root;
+  VFSPath *devpath;
+  VFSPath *temp;
   VFSInode *root_inode;
   int ret;
 
   if (data == NULL)
     return -EINVAL;
+  ret = vfs_namei (&devpath, (char *) data);
+  if (ret != 0)
+    return ret;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
 
   /* Set root dir entry and inode */
   root = kmalloc (sizeof (VFSDirEntry));
   if (unlikely (root == NULL))
-    return -ENOMEM;
+    {
+      vfs_path_free (devpath);
+      return -ENOMEM;
+    }
   root->d_flags = 0;
   root->d_mounted = 1;
   ret = vfs_namei (&root->d_path, "/");
   if (unlikely (ret != 0))
     {
+      vfs_path_free (devpath);
       kfree (root);
       return ret;
     }
   root->d_name = strdup ("/");
   if (unlikely (root->d_name == NULL))
     {
+      vfs_path_free (devpath);
       vfs_path_free (root->d_path);
       kfree (root);
       return -ENOMEM;
@@ -138,6 +158,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
   root_inode = ext2_alloc_inode (&mp->vfs_sb);
   if (unlikely (root_inode == NULL))
     {
+      vfs_path_free (devpath);
       vfs_path_free (root->d_path);
       kfree (root->d_name);
       kfree (root);
@@ -145,6 +166,18 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
     }
   root->d_inode = root_inode;
   mp->vfs_sb.sb_root = root;
+
+  temp = vfs_path_first (devpath);
+  if (temp == NULL || strcmp (temp->vp_short, "dev") != 0
+      || temp != devpath->vp_prev || *devpath->vp_short == '\0')
+    return -EINVAL;
+  ret = ext2_init_disk (devpath->vp_short);
+  if (ret != 0)
+    {
+      vfs_path_free (devpath);
+      return ret;
+    }
+  vfs_path_free (devpath);
   return 0;
 }
 
