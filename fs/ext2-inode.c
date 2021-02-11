@@ -17,7 +17,58 @@
  *************************************************************************/
 
 #include <fs/ext2.h>
+#include <libk/compile.h>
+#include <sys/device.h>
+#include <vm/heap.h>
 #include <errno.h>
+#include <string.h>
+
+static int
+ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
+		  size_t nblocks)
+{
+  SpecDevice *dev = device_lookup_devid (sb->sb_dev);
+  if (dev == NULL)
+    return -EINVAL;
+  return dev->sd_read (dev, buffer, nblocks * sb->sb_blksize,
+		       block * sb->sb_blksize);
+}
+
+static Ext2Inode *
+ext2_read_inode (VFSSuperblock *sb, ino_t inode)
+{
+  Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
+  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  uint32_t inosize = 1 << (esb->esb_inosize + 10);
+  uint32_t inotbl = bgdt[(inode - 1) / esb->esb_ipg].eb_inotbl;
+  uint32_t index = (inode - 1) % esb->esb_ipg;
+  uint32_t block = inotbl + index * inosize / sb->sb_blksize;
+  uint32_t offset = index % (sb->sb_blksize / inosize);
+  void *buffer;
+  Ext2Inode *result;
+
+  if (inode == 0)
+    return NULL;
+
+  buffer = kmalloc (sb->sb_blksize);
+  if (unlikely (buffer == NULL))
+    return NULL;
+  if (ext2_read_blocks (buffer, sb, block, 1) != 0)
+    {
+      kfree (buffer);
+      return NULL;
+    }
+
+  result = kmalloc (sizeof (Ext2Inode));
+  if (unlikely (result == NULL))
+    {
+      kfree (buffer);
+      return NULL;
+    }
+  memcpy (result, buffer + offset * inosize, sizeof (Ext2Inode));
+  kfree (buffer);
+  return result;
+}
 
 int
 ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)

@@ -18,6 +18,7 @@
 
 #include <libk/libk.h>
 #include <sys/ata.h>
+#include <sys/sysmacros.h>
 #include <vm/heap.h>
 
 static unsigned char mbr_buffer[512];
@@ -121,6 +122,21 @@ device_lookup (const char *name)
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)
     {
       if (strcmp (device_table[i].sd_name, name) == 0)
+	return &device_table[i];
+    }
+  return NULL;
+}
+
+SpecDevice *
+device_lookup_devid (dev_t dev)
+{
+  dev_t major = major (dev);
+  dev_t minor = minor (dev);
+  int i;
+  for (i = 0; i < DEVICE_TABLE_SIZE; i++)
+    {
+      if (device_table[i].sd_major == major
+	  || device_table[i].sd_minor == minor)
 	return &device_table[i];
     }
   return NULL;
