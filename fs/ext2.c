@@ -24,8 +24,8 @@
 #include <vm/heap.h>
 #include <errno.h>
 
-static int ext2_mount (VFSMount *mp, uint32_t flags, void *data);
-static int ext2_unmount (VFSMount *mp, uint32_t flags);
+static int ext2_mount (VFSMount *mp, int flags, void *data);
+static int ext2_unmount (VFSMount *mp, int flags);
 static VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 static void ext2_destroy_inode (VFSInode *inode);
 static void ext2_fill_inode (VFSInode *inode);
@@ -107,7 +107,7 @@ static const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_init_disk (VFSMount *mp, uint32_t flags, const char *devname)
+ext2_init_disk (VFSMount *mp, int flags, const char *devname)
 {
   SpecDevice *dev = device_lookup (devname);
   Ext2Superblock *esb;
@@ -136,13 +136,16 @@ ext2_init_disk (VFSMount *mp, uint32_t flags, const char *devname)
   /* Fill VFS superblock */
   mp->vfs_sb.sb_dev = makedev (dev->sd_major, dev->sd_minor);
   mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
+  mp->vfs_sb.sb_flags = flags;
+  mp->vfs_sb.sb_magic = esb->esb_magic;
+  /* TODO Fill mp->vfs_sb.sb_stat */
 
   kfree (esb);
   return 0;
 }
 
 static int
-ext2_mount (VFSMount *mp, uint32_t flags, void *data)
+ext2_mount (VFSMount *mp, int flags, void *data)
 {
   VFSDirEntry *root;
   VFSPath *devpath;
@@ -157,6 +160,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
     return ret;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
+  mp->vfs_sb.sb_ops = &ext2_sops;
 
   /* Set root dir entry and inode */
   root = kmalloc (sizeof (VFSDirEntry));
@@ -209,7 +213,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
 }
 
 static int
-ext2_unmount (VFSMount *mp, uint32_t flags)
+ext2_unmount (VFSMount *mp, int flags)
 {
   vfs_path_free (mp->vfs_sb.sb_root->d_path);
   kfree (mp->vfs_sb.sb_root->d_inode);

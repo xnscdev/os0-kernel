@@ -79,8 +79,8 @@ typedef struct
 {
   char vfs_name[16];
   int vfs_flags;
-  int (*vfs_mount) (VFSMount *, uint32_t, void *);
-  int (*vfs_unmount) (VFSMount *, uint32_t);
+  int (*vfs_mount) (VFSMount *, int, void *);
+  int (*vfs_unmount) (VFSMount *, int);
   const VFSSuperblockOps *vfs_sops;
   const VFSInodeOps *vfs_iops;
   const VFSDirEntryOps *vfs_dops;
@@ -92,12 +92,11 @@ struct _VFSSuperblock
   blksize_t sb_blksize;
   struct statfs sb_stat;
   size_t sb_maxsize;
-  VFSSuperblockOps *sb_ops;
+  const VFSSuperblockOps *sb_ops;
   int sb_flags;
   unsigned long sb_magic;
   VFSDirEntry *sb_root;
   const VFSFilesystem *sb_fstype;
-  char sb_name[16];
 };
 
 struct _VFSInode
