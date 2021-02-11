@@ -31,6 +31,84 @@ ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 			      block * sb->sb_blksize);
 }
 
+static off_t
+ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block)
+{
+  uint32_t *bptr1 = NULL;
+  uint32_t *bptr2 = NULL;
+  uint32_t *bptr3 = NULL;
+  off_t realblock;
+
+  /* First 12 data blocks stored directly in inode */
+  if (block < EXT2_STORED_INODES)
+    return inode->ei_bptr0[block];
+
+  /* Read indirect block pointer */
+  bptr1 = kmalloc (sb->sb_blksize);
+  if (block < sb->sb_blksize + EXT2_STORED_INODES)
+    {
+      if (ext2_read_blocks (bptr1, sb, inode->ei_bptr1, 1) != 0)
+        goto err;
+      realblock = bptr1[block - EXT2_STORED_INODES];
+      kfree (bptr1);
+      return realblock;
+    }
+
+  /* Read doubly indirect block pointer */
+  bptr2 = kmalloc (sb->sb_blksize);
+  if (block < sb->sb_blksize * sb->sb_blksize + sb->sb_blksize +
+      EXT2_STORED_INODES)
+    {
+      realblock = block - sb->sb_blksize - EXT2_STORED_INODES;
+      if (ext2_read_blocks (bptr1, sb, inode->ei_bptr2, 1) != 0)
+	goto err;
+      if (ext2_read_blocks (bptr2, sb,
+			    bptr1[realblock / sb->sb_blksize], 1) != 0)
+	goto err;
+      realblock = bptr2[realblock % sb->sb_blksize];
+      kfree (bptr1);
+      kfree (bptr2);
+      return realblock;
+    }
+
+  /* Read triply indirect block pointer */
+  bptr3 = kmalloc (sb->sb_blksize);
+  if (block < sb->sb_blksize * sb->sb_blksize * sb->sb_blksize +
+      sb->sb_blksize * sb->sb_blksize + sb->sb_blksize + EXT2_STORED_INODES)
+    {
+      realblock = block - sb->sb_blksize * sb->sb_blksize - sb->sb_blksize -
+	EXT2_STORED_INODES;
+      if (ext2_read_blocks (bptr1, sb, inode->ei_bptr3, 1) != 0)
+	goto err;
+      if (ext2_read_blocks (bptr2, sb, bptr1[realblock / (sb->sb_blksize *
+							  sb->sb_blksize)],
+			    1) != 0)
+	goto err;
+      if (ext2_read_blocks (bptr3, sb, bptr2[realblock % (sb->sb_blksize *
+							  sb->sb_blksize) /
+					     sb->sb_blksize], 1) != 0)
+	goto err;
+      realblock = bptr3[realblock % sb->sb_blksize];
+      kfree (bptr1);
+      kfree (bptr2);
+      kfree (bptr3);
+      return realblock;
+    }
+
+  /* Block offset too large */
+  return -EINVAL;
+
+  /* Read error */
+ err:
+  if (bptr1 != NULL)
+    kfree (bptr1);
+  if (bptr2 != NULL)
+    kfree (bptr2);
+  if (bptr3 != NULL)
+    kfree (bptr3);
+  return -EIO;
+}
+
 static Ext2Inode *
 ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 {

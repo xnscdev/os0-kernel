@@ -24,8 +24,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define EXT2_MAGIC   0xef53
-#define EXT2_FS_NAME "ext2"
+#define EXT2_MAGIC         0xef53
+#define EXT2_FS_NAME       "ext2"
+#define EXT2_STORED_INODES 12
 
 #define EXT2_ROOT_INODE 2
 
@@ -109,7 +110,7 @@ typedef struct
   uint32_t ei_sectors;
   uint32_t ei_flags;
   uint32_t ei_oss1;
-  uint32_t ei_bptr0[12];
+  uint32_t ei_bptr0[EXT2_STORED_INODES];
   uint32_t ei_bptr1;
   uint32_t ei_bptr2;
   uint32_t ei_bptr3;
