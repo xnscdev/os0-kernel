@@ -98,4 +98,12 @@ kmain (MultibootInfo *info)
   ata_init (PATA_BAR0, PATA_BAR1, PATA_BAR2, PATA_BAR3, PATA_BAR4);
   devices_init ();
   vfs_init ();
+
+  if (strncmp (boot_options.b_root, "/dev/", 5) == 0)
+    {
+      memmove (boot_options.b_root, &boot_options.b_root[5], 11);
+      memset (&boot_options.b_root[11], 0, 5);
+    }
+  else
+    panic ("No root filesystem specified in boot options");
 }
