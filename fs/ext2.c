@@ -106,11 +106,37 @@ static const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_init_disk (const char *devname)
+ext2_init_disk (VFSMount *mp, uint32_t flags, const char *devname)
 {
   SpecDevice *dev = device_lookup (devname);
+  Ext2Superblock *esb;
+  int ret;
+
   if (dev == NULL)
     return -ENOENT;
+  esb = kmalloc (sizeof (Ext2Superblock));
+  if (unlikely (esb == NULL))
+    return -ENOMEM;
+
+  ret = dev->sd_read (dev, esb, sizeof (Ext2Superblock), 1024);
+  if (ret != 0)
+    {
+      kfree (esb);
+      return ret;
+    }
+
+  /* Check ext2 magic number */
+  if (esb->esb_magic != EXT2_MAGIC)
+    {
+      kfree (esb);
+      return -EINVAL;
+    }
+
+  /* Fill VFS superblock */
+  mp->vfs_sb.sb_dev = dev->sd_major; /* TODO Implement makedev() */
+  mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
+
+  kfree (esb);
   return 0;
 }
 
@@ -171,7 +197,7 @@ ext2_mount (VFSMount *mp, uint32_t flags, void *data)
   if (temp == NULL || strcmp (temp->vp_short, "dev") != 0
       || temp != devpath->vp_prev || *devpath->vp_short == '\0')
     return -EINVAL;
-  ret = ext2_init_disk (devpath->vp_short);
+  ret = ext2_init_disk (mp, flags, devpath->vp_short);
   if (ret != 0)
     {
       vfs_path_free (devpath);
