@@ -49,6 +49,12 @@ ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
   return -ENOSYS;
 }
 
+VFSDirEntry *
+ext2_readdir (VFSSuperblock *sb, VFSInode *dir)
+{
+  return NULL;
+}
+
 int
 ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 {

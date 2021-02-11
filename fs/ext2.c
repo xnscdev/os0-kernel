@@ -41,6 +41,7 @@ static const VFSInodeOps ext2_iops = {
   .vfs_link = ext2_link,
   .vfs_unlink = ext2_unlink,
   .vfs_symlink = ext2_symlink,
+  .vfs_readdir = ext2_readdir,
   .vfs_mkdir = ext2_mkdir,
   .vfs_rmdir = ext2_rmdir,
   .vfs_mknod = ext2_mknod,

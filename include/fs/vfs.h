@@ -55,6 +55,7 @@ typedef struct
   int (*vfs_link) (VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_unlink) (VFSInode *, VFSDirEntry *);
   int (*vfs_symlink) (VFSInode *, VFSDirEntry *, const char *);
+  VFSDirEntry *(*vfs_readdir) (VFSSuperblock *, VFSInode *);
   int (*vfs_mkdir) (VFSInode *, VFSDirEntry *, mode_t);
   int (*vfs_rmdir) (VFSInode *, VFSDirEntry *);
   int (*vfs_mknod) (VFSInode *, VFSDirEntry *, mode_t, dev_t);
@@ -125,6 +126,8 @@ struct _VFSDirEntry
   VFSPath *d_path;
   char *d_name;
   const VFSDirEntryOps *d_ops;
+  VFSDirEntry *d_prev;
+  VFSDirEntry *d_next;
 };
 
 struct _VFSMount
