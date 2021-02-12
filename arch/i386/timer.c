@@ -20,14 +20,12 @@
 #include <sys/io.h>
 #include <sys/timer.h>
 
-static uint32_t tick;
-static int record;
+static long tick;
 
 void
 timer_tick (void)
 {
-  if (record)
-    tick++;
+  tick++;
 }
 
 void
@@ -42,9 +40,13 @@ timer_set_freq (uint32_t freq)
 void
 msleep (uint32_t ms)
 {
-  record = 1;
   tick = 0;
   while (tick < ms)
     ;
-  record = 0;
+}
+
+long
+timer_poll (void)
+{
+  return tick;
 }
