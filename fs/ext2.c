@@ -202,6 +202,7 @@ ext2_alloc_inode (VFSSuperblock *sb)
 {
   VFSInode *inode = kzalloc (sizeof (VFSInode));
   inode->vi_ops = &ext2_iops;
+  inode->vi_sb = sb;
   return inode;
 }
 
@@ -214,6 +215,27 @@ ext2_destroy_inode (VFSInode *inode)
 void
 ext2_fill_inode (VFSInode *inode)
 {
+  Ext2Superblock *esb = (Ext2Superblock *) inode->vi_sb->sb_private;
+  Ext2Inode *ei = ext2_read_inode (inode->vi_sb, inode->vi_ino);
+  if (ei == NULL)
+    return;
+  inode->vi_uid = ei->ei_uid;
+  inode->vi_gid = ei->ei_gid;
+  inode->vi_flags = ei->ei_flags;
+  inode->vi_nlink = ei->ei_nlinks;
+  inode->vi_rdev = 0; /* TODO Get device numbers */
+  inode->vi_size = ei->ei_sizel;
+  if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0)
+    inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
+  inode->vi_mode = ei->ei_mode & 0x0fff;
+  inode->vi_atime.tv_sec = ei->ei_atime;
+  inode->vi_atime.tv_nsec = 0;
+  inode->vi_mtime.tv_sec = ei->ei_mtime;
+  inode->vi_mtime.tv_nsec = 0;
+  inode->vi_ctime.tv_sec = ei->ei_ctime;
+  inode->vi_ctime.tv_nsec = 0;
+  inode->vi_blocks = ei->ei_sectors / (2 << esb->esb_blksize);
+  kfree (ei);
 }
 
 void

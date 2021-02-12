@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <string.h>
 
-static int
+int
 ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		  size_t nblocks)
 {
@@ -31,7 +31,7 @@ ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 			      block * sb->sb_blksize);
 }
 
-static off_t
+off_t
 ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block)
 {
   uint32_t *bptr1 = NULL;
@@ -109,7 +109,7 @@ ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block)
   return -EIO;
 }
 
-static Ext2Inode *
+Ext2Inode *
 ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
@@ -238,6 +238,7 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 
   kfree (buffer);
   kfree (ei);
+  *entries = result;
   return 0;
 }
 

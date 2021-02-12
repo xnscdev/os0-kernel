@@ -116,6 +116,7 @@ struct _VFSInode
   struct timespec vi_ctime;
   blkcnt_t vi_blocks;
   const VFSInodeOps *vi_ops;
+  VFSSuperblock *vi_sb;
   void *vi_private;
 };
 
