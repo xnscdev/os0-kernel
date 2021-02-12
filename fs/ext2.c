@@ -223,11 +223,9 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_gid = ei->ei_gid;
   inode->vi_flags = ei->ei_flags;
   inode->vi_nlink = ei->ei_nlinks;
-  inode->vi_rdev = 0; /* TODO Get device numbers */
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0)
     inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
-  inode->vi_mode = ei->ei_mode & 0x0fff;
   inode->vi_atime.tv_sec = ei->ei_atime;
   inode->vi_atime.tv_nsec = 0;
   inode->vi_mtime.tv_sec = ei->ei_mtime;
@@ -235,6 +233,45 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_ctime.tv_sec = ei->ei_ctime;
   inode->vi_ctime.tv_nsec = 0;
   inode->vi_blocks = ei->ei_sectors / (2 << esb->esb_blksize);
+
+  /* Set mode and device numbers if applicable */
+  switch (ei->ei_mode & 0xf000)
+    {
+    case EXT2_TYPE_FIFO:
+      inode->vi_mode = S_IFIFO;
+      inode->vi_rdev = 0;
+      break;
+    case EXT2_TYPE_CHRDEV:
+      inode->vi_mode = S_IFCHR;
+      inode->vi_rdev = *((dev_t *) ei->ei_bptr0);
+      break;
+    case EXT2_TYPE_DIR:
+      inode->vi_mode = S_IFDIR;
+      inode->vi_rdev = 0;
+      break;
+    case EXT2_TYPE_BLKDEV:
+      inode->vi_mode = S_IFBLK;
+      inode->vi_rdev = *((dev_t *) ei->ei_bptr0);
+      break;
+    case EXT2_TYPE_FILE:
+      inode->vi_mode = S_IFREG;
+      inode->vi_rdev = 0;
+      break;
+    case EXT2_TYPE_LINK:
+      inode->vi_mode = S_IFLNK;
+      inode->vi_rdev = 0;
+      break;
+    case EXT2_TYPE_SOCKET:
+      inode->vi_mode = S_IFSOCK;
+      inode->vi_rdev = 0;
+      break;
+    default:
+      /* Should not happen */
+      inode->vi_mode = 0;
+      inode->vi_rdev = 0;
+    }
+  inode->vi_mode |= ei->ei_mode & 07777;
+
   kfree (ei);
 }
 
