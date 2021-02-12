@@ -19,6 +19,7 @@
 #include <fs/ext2.h>
 #include <libk/compile.h>
 #include <sys/device.h>
+#include <sys/sysmacros.h>
 #include <vm/heap.h>
 #include <errno.h>
 #include <string.h>
@@ -220,7 +221,9 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 
 	  temp = kmalloc (sizeof (VFSDirEntry));
 	  temp->d_flags = 0;
-	  temp->d_inode = guess->ed_inode;
+	  temp->d_inode = ext2_alloc_inode (sb);
+	  temp->d_inode->vi_ino = guess->ed_inode;
+	  ext2_fill_inode (temp->d_inode);
 	  temp->d_mounted = 0;
 	  temp->d_name = kmalloc (guess->ed_namelen + 1);
 	  strncpy (temp->d_name, buffer + bytes + 8, guess->ed_namelen);
@@ -288,7 +291,24 @@ ext2_permission (VFSInode *inode, mode_t mask)
 int
 ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
 {
-  return -ENOSYS;
+  VFSInode *inode = entry->d_inode;
+  if (inode == NULL)
+    return -EINVAL;
+  st->st_dev = makedev (inode->vi_sb->sb_dev->sd_major,
+			inode->vi_sb->sb_dev->sd_minor);
+  st->st_ino = inode->vi_ino;
+  st->st_mode = inode->vi_mode;
+  st->st_nlink = inode->vi_nlink;
+  st->st_uid = inode->vi_uid;
+  st->st_gid = inode->vi_gid;
+  st->st_rdev = inode->vi_rdev;
+  st->st_size = inode->vi_size;
+  st->st_atime = inode->vi_atime.tv_sec;
+  st->st_mtime = inode->vi_mtime.tv_sec;
+  st->st_ctime = inode->vi_ctime.tv_sec;
+  st->st_blksize = mp->vfs_sb.sb_blksize;
+  st->st_blocks = inode->vi_blocks;
+  return 0;
 }
 
 int

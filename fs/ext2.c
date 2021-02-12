@@ -171,8 +171,6 @@ ext2_mount (VFSMount *mp, int flags, void *data)
       kfree (root);
       return -ENOMEM;
     }
-  root->d_inode = EXT2_ROOT_INODE;
-  mp->vfs_sb.sb_root = root;
 
   temp = vfs_path_first (devpath);
   if (temp == NULL || strcmp (temp->vp_short, "dev") != 0
@@ -182,15 +180,23 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   if (ret != 0)
     {
       vfs_path_free (devpath);
+      ext2_destroy_inode (root->d_inode);
+      kfree (root);
       return ret;
     }
   vfs_path_free (devpath);
+
+  root->d_inode = ext2_alloc_inode (&mp->vfs_sb);
+  root->d_inode->vi_ino = EXT2_ROOT_INODE;
+  ext2_fill_inode (root->d_inode);
+  mp->vfs_sb.sb_root = root;
   return 0;
 }
 
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
+  ext2_destroy_inode (mp->vfs_sb.sb_root->d_inode);
   kfree (mp->vfs_sb.sb_root->d_name);
   kfree (mp->vfs_sb.sb_root);
   kfree (mp->vfs_sb.sb_private);
@@ -201,6 +207,8 @@ VFSInode *
 ext2_alloc_inode (VFSSuperblock *sb)
 {
   VFSInode *inode = kzalloc (sizeof (VFSInode));
+  if (unlikely (inode == NULL))
+    return NULL;
   inode->vi_ops = &ext2_iops;
   inode->vi_sb = sb;
   return inode;
@@ -222,7 +230,7 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
   inode->vi_flags = ei->ei_flags;
-  inode->vi_nlink = ei->ei_nlinks;
+  inode->vi_nlink = ei->ei_nlink;
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0)
     inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
@@ -271,7 +279,6 @@ ext2_fill_inode (VFSInode *inode)
       inode->vi_rdev = 0;
     }
   inode->vi_mode |= ei->ei_mode & 07777;
-
   kfree (ei);
 }
 

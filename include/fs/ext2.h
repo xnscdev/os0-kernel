@@ -106,7 +106,7 @@ typedef struct
   uint32_t ei_mtime;
   uint32_t ei_dtime;
   uint16_t ei_gid;
-  uint16_t ei_nlinks;
+  uint16_t ei_nlink;
   uint32_t ei_sectors;
   uint32_t ei_flags;
   uint32_t ei_oss1;

@@ -123,7 +123,7 @@ struct _VFSInode
 struct _VFSDirEntry
 {
   int d_flags;
-  ino_t d_inode;
+  VFSInode *d_inode;
   int d_mounted;
   char *d_name;
   const VFSDirEntryOps *d_ops;
