@@ -47,6 +47,16 @@ vfs_register (const VFSFilesystem *fs)
   return -ENOSPC;
 }
 
+void
+vfs_destroy_dir_entry (VFSDirEntry *entry)
+{
+  if (entry == NULL)
+    return;
+  vfs_destroy_inode (entry->d_inode);
+  kfree (entry->d_name);
+  kfree (entry);
+}
+
 int
 vfs_mount (const char *type, const char *dir, int flags, void *data)
 {
@@ -108,8 +118,14 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
   return -EINVAL; /* No such filesystem type */
 }
 
+VFSInode *
+vfs_alloc_inode (VFSSuperblock *sb)
+{
+  return sb->sb_ops->sb_alloc_inode (sb);
+}
+
 void
-vfs_inode_destroy (VFSInode *inode)
+vfs_destroy_inode (VFSInode *inode)
 {
   if (inode == NULL)
     return;
@@ -117,11 +133,171 @@ vfs_inode_destroy (VFSInode *inode)
 }
 
 void
-vfs_dir_entry_destroy (VFSDirEntry *entry)
+vfs_fill_inode (VFSInode *inode)
 {
-  if (entry == NULL)
-    return;
-  vfs_inode_destroy (entry->d_inode);
-  kfree (entry->d_name);
-  kfree (entry);
+  inode->vi_sb->sb_ops->sb_fill_inode (inode);
+}
+
+void
+vfs_write_inode (VFSInode *inode)
+{
+  inode->vi_sb->sb_ops->sb_write_inode (inode);
+}
+
+void
+vfs_delete_inode (VFSInode *inode)
+{
+  inode->vi_sb->sb_ops->sb_delete_inode (inode);
+}
+
+void
+vfs_free_sb (VFSSuperblock *sb)
+{
+  sb->sb_ops->sb_free (sb);
+}
+
+void
+vfs_update_sb (VFSSuperblock *sb)
+{
+  sb->sb_ops->sb_update (sb);
+}
+
+int
+vfs_statfs (VFSSuperblock *sb, struct statfs *st)
+{
+  return sb->sb_ops->sb_statfs (sb, st);
+}
+
+int
+vfs_remount (VFSSuperblock *sb, int *flags, void *data)
+{
+  return sb->sb_ops->sb_remount (sb, flags, data);
+}
+
+int
+vfs_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_create (dir, entry, mode);
+}
+
+int
+vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
+{
+  return sb->sb_fstype->vfs_iops->vfs_lookup (entry, sb, path);
+}
+
+int
+vfs_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_link (old, dir, new);
+}
+
+int
+vfs_unlink (VFSInode *dir, VFSDirEntry *entry)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_unlink (dir, entry);
+}
+
+int
+vfs_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_symlink (dir, entry, name);
+}
+
+int
+vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
+{
+  return sb->sb_fstype->vfs_iops->vfs_readdir (entries, sb, dir);
+}
+
+int
+vfs_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_mkdir (dir, entry, mode);
+}
+
+int
+vfs_rmdir (VFSInode *dir, VFSDirEntry *entry)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_rmdir (dir, entry);
+}
+
+int
+vfs_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev)
+{
+  return dir->vi_sb->sb_fstype->vfs_iops->vfs_mknod (dir, entry, mode, rdev);
+}
+
+int
+vfs_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
+	    VFSDirEntry *newentry)
+{
+  return olddir->vi_sb->sb_fstype->vfs_iops->
+    vfs_rename (olddir, oldentry, newdir, newentry);
+}
+
+int
+vfs_readlink (VFSDirEntry *entry, char *buffer, size_t len)
+{
+  return entry->d_inode->vi_sb->sb_fstype->vfs_iops->
+    vfs_readlink (entry, buffer, len);
+}
+
+int
+vfs_truncate (VFSInode *inode)
+{
+  return inode->vi_sb->sb_fstype->vfs_iops->vfs_truncate (inode);
+}
+
+int
+vfs_permission (VFSInode *inode, mode_t mask)
+{
+  return inode->vi_sb->sb_fstype->vfs_iops->vfs_permission (inode, mask);
+}
+
+int
+vfs_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
+{
+  return mp->vfs_fstype->vfs_iops->vfs_getattr (mp, entry, st);
+}
+
+int
+vfs_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+	      size_t len, int flags)
+{
+  return entry->d_inode->vi_sb->sb_fstype->vfs_iops->
+    vfs_setxattr (entry, name, value, len, flags);
+}
+
+int
+vfs_getxattr (VFSDirEntry *entry, const char *name, void *buffer, size_t len)
+{
+  return entry->d_inode->vi_sb->sb_fstype->vfs_iops->
+    vfs_getxattr (entry, name, buffer, len);
+}
+
+int
+vfs_listxattr (VFSDirEntry *entry, char *buffer, size_t len)
+{
+  return entry->d_inode->vi_sb->sb_fstype->vfs_iops->
+    vfs_listxattr (entry, buffer, len);
+}
+
+int
+vfs_removexattr (VFSDirEntry *entry, const char *name)
+{
+  return entry->d_inode->vi_sb->sb_fstype->vfs_iops->
+    vfs_removexattr (entry, name);
+}
+
+int
+vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b)
+{
+  return entry->d_ops->d_compare (entry, a, b);
+}
+
+void
+vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode)
+{
+  entry->d_ops->d_iput (entry, inode);
 }

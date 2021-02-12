@@ -196,7 +196,7 @@ ext2_mount (VFSMount *mp, int flags, void *data)
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
-  vfs_dir_entry_destroy (mp->vfs_sb.sb_root);
+  vfs_destroy_dir_entry (mp->vfs_sb.sb_root);
   kfree (mp->vfs_sb.sb_private);
   return 0;
 }
