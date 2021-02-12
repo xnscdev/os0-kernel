@@ -155,7 +155,46 @@ ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 int
 ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 {
-  return -ENOSYS;
+  VFSDirEntry *dir = sb->sb_root;
+  int ret;
+
+  for (path = vfs_path_first (path); path != NULL; path = path->vp_next)
+    {
+      VFSDirEntry *entries;
+      ret = ext2_readdir (&entries, sb, dir->d_inode);
+      if (ret != 0)
+	return ret;
+      for (; entries != NULL; entries = entries->d_next)
+	{
+	  char *name = path->vp_long == NULL ? path->vp_short : path->vp_long;
+	  vfs_destroy_dir_entry (entries->d_prev);
+	  entries->d_prev = NULL;
+	  if (strcmp (entries->d_name, name) == 0)
+	    goto found;
+	}
+      vfs_destroy_dir_entry (entries);
+      if (dir != sb->sb_root)
+	vfs_destroy_dir_entry (dir);
+      return -ENOENT;
+
+    found:
+      dir = entries;
+      dir->d_next = NULL;
+      /* Clean up all unchecked entries */
+      for (entries = entries->d_next; entries != NULL;
+	   entries = entries->d_next)
+        vfs_destroy_dir_entry (entries);
+
+      if (path->vp_next != NULL && !S_ISDIR (dir->d_inode->vi_mode))
+	{
+	  vfs_destroy_dir_entry (dir);
+	  return -ENOTDIR;
+	}
+    }
+
+  memcpy (entry, dir, sizeof (VFSDirEntry));
+  kfree (dir);
+  return 0;
 }
 
 int
@@ -241,6 +280,8 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 
   kfree (buffer);
   kfree (ei);
+  for (; result->d_prev != NULL; result = result->d_prev)
+    ;
   *entries = result;
   return 0;
 }
