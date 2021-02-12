@@ -178,7 +178,67 @@ ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
 int
 ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 {
-  return -ENOSYS;
+  Ext2Inode *ei;
+  VFSDirEntry *result = NULL;
+  VFSDirEntry *temp;
+  void *buffer;
+  int blocks;
+  int i;
+
+  if (dir->vi_ino == 0)
+    return -EINVAL;
+  ei = ext2_read_inode (sb, dir->vi_ino);
+  if (ei == NULL)
+    return -EINVAL;
+
+  if ((ei->ei_mode & 0xf000) != EXT2_TYPE_DIR)
+    {
+      kfree (ei);
+      return -ENOTDIR;
+    }
+
+  blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
+  buffer = kmalloc (sb->sb_blksize);
+
+  for (i = 0; i < blocks; i++)
+    {
+      int bytes = 0;
+      if (ext2_read_blocks (buffer, sb, ext2_data_block (ei, sb, i), 1) != 0)
+	{
+	  kfree (buffer);
+	  kfree (ei);
+	  return -EIO;
+	}
+      while (bytes < sb->sb_blksize)
+	{
+	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
+	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	    {
+	      bytes += 4;
+	      continue;
+	    }
+
+	  temp = kmalloc (sizeof (VFSDirEntry));
+	  temp->d_flags = 0;
+	  temp->d_inode = guess->ed_inode;
+	  temp->d_mounted = 0;
+	  temp->d_name = kmalloc (guess->ed_namelen + 1);
+	  strncpy (temp->d_name, buffer + bytes + 8, guess->ed_namelen);
+	  temp->d_name[guess->ed_namelen] = '\0';
+	  temp->d_ops = &ext2_dops;
+	  temp->d_prev = result;
+	  if (result != NULL)
+	    result->d_next = temp;
+	  temp->d_next = NULL;
+	  result = temp;
+
+	  bytes += guess->ed_size;
+	}
+    }
+
+  kfree (buffer);
+  kfree (ei);
+  return 0;
 }
 
 int

@@ -131,6 +131,11 @@ typedef struct
 
 __BEGIN_DECLS
 
+extern const VFSSuperblockOps ext2_sops;
+extern const VFSInodeOps ext2_iops;
+extern const VFSDirEntryOps ext2_dops;
+extern const VFSFilesystem ext2_vfs;
+
 void ext2_init (void);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);

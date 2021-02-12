@@ -121,10 +121,9 @@ struct _VFSInode
 
 struct _VFSDirEntry
 {
-  uint32_t d_flags;
-  VFSInode *d_inode;
+  int d_flags;
+  ino_t d_inode;
   int d_mounted;
-  VFSPath *d_path;
   char *d_name;
   const VFSDirEntryOps *d_ops;
   VFSDirEntry *d_prev;

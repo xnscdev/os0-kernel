@@ -21,7 +21,7 @@
 #include <vm/heap.h>
 #include <errno.h>
 
-static const VFSSuperblockOps ext2_sops = {
+const VFSSuperblockOps ext2_sops = {
   .sb_alloc_inode = ext2_alloc_inode,
   .sb_destroy_inode = ext2_destroy_inode,
   .sb_fill_inode = ext2_fill_inode,
@@ -33,7 +33,7 @@ static const VFSSuperblockOps ext2_sops = {
   .sb_remount = ext2_remount
 };
 
-static const VFSInodeOps ext2_iops = {
+const VFSInodeOps ext2_iops = {
   .vfs_create = ext2_create,
   .vfs_lookup = ext2_lookup,
   .vfs_link = ext2_link,
@@ -54,12 +54,12 @@ static const VFSInodeOps ext2_iops = {
   .vfs_removexattr = ext2_removexattr
 };
 
-static const VFSDirEntryOps ext2_dops = {
+const VFSDirEntryOps ext2_dops = {
   .d_compare = ext2_compare,
   .d_iput = ext2_iput
 };
 
-static const VFSFilesystem ext2_vfs = {
+const VFSFilesystem ext2_vfs = {
   .vfs_name = "ext2",
   .vfs_flags = 0,
   .vfs_mount = ext2_mount,
@@ -144,7 +144,6 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   VFSDirEntry *root;
   VFSPath *devpath;
   VFSPath *temp;
-  VFSInode *root_inode;
   int ret;
 
   if (data == NULL)
@@ -165,31 +164,14 @@ ext2_mount (VFSMount *mp, int flags, void *data)
     }
   root->d_flags = 0;
   root->d_mounted = 1;
-  ret = vfs_namei (&root->d_path, "/");
-  if (unlikely (ret != 0))
-    {
-      vfs_path_free (devpath);
-      kfree (root);
-      return ret;
-    }
   root->d_name = strdup ("/");
   if (unlikely (root->d_name == NULL))
     {
       vfs_path_free (devpath);
-      vfs_path_free (root->d_path);
       kfree (root);
       return -ENOMEM;
     }
-  root_inode = ext2_alloc_inode (&mp->vfs_sb);
-  if (unlikely (root_inode == NULL))
-    {
-      vfs_path_free (devpath);
-      vfs_path_free (root->d_path);
-      kfree (root->d_name);
-      kfree (root);
-      return -ENOMEM;
-    }
-  root->d_inode = root_inode;
+  root->d_inode = EXT2_ROOT_INODE;
   mp->vfs_sb.sb_root = root;
 
   temp = vfs_path_first (devpath);
@@ -209,8 +191,6 @@ ext2_mount (VFSMount *mp, int flags, void *data)
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
-  vfs_path_free (mp->vfs_sb.sb_root->d_path);
-  kfree (mp->vfs_sb.sb_root->d_inode);
   kfree (mp->vfs_sb.sb_root->d_name);
   kfree (mp->vfs_sb.sb_root);
   kfree (mp->vfs_sb.sb_private);
