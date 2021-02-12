@@ -107,3 +107,21 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
     }
   return -EINVAL; /* No such filesystem type */
 }
+
+void
+vfs_inode_destroy (VFSInode *inode)
+{
+  if (inode == NULL)
+    return;
+  inode->vi_sb->sb_ops->sb_destroy_inode (inode);
+}
+
+void
+vfs_dir_entry_destroy (VFSDirEntry *entry)
+{
+  if (entry == NULL)
+    return;
+  vfs_inode_destroy (entry->d_inode);
+  kfree (entry->d_name);
+  kfree (entry);
+}
