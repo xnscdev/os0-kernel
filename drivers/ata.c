@@ -20,6 +20,7 @@
 #include <sys/ata.h>
 #include <sys/io.h>
 #include <sys/timer.h>
+#include <errno.h>
 
 static unsigned char ata_buffer[2048];
 
@@ -426,7 +427,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 
   /* Run the command */
   if (dma)
-    ; /* TODO DMA support */
+    return -ENOSYS; /* TODO DMA support */
   else
     {
       if (op == ATA_WRITE)

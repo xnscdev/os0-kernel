@@ -45,13 +45,14 @@ vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name)
     }
   else if (strcmp (name, "..") == 0)
     {
-      VFSPath *temp = path->vp_prev;
-      if (temp == NULL)
+      VFSPath *temp;
+      if (path == NULL)
 	{
 	  /* Root directory .. leads to itself */
-	  *result = path;
+	  *result = NULL;
 	  return 0;
 	}
+      temp = path->vp_prev;
       if (path->vp_long != NULL)
 	kfree (path->vp_long);
       kfree (path);
