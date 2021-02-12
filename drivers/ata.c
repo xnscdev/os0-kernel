@@ -198,7 +198,6 @@ ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL,
 	       0x80 | ata_channels[channel].icr_noint);
-  __asm__ volatile ("push %es; mov %ds, %ax; mov %ax, %es");
   if (reg < 0x08)
     insl (ata_channels[channel].icr_base + reg, buffer, quads);
   else if (reg < 0x0c)
@@ -207,7 +206,6 @@ ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
     insl (ata_channels[channel].icr_ctrl + reg - 0x0a, buffer, quads);
   else if (reg < 0x16)
     insl (ata_channels[channel].icr_bmide + reg - 0x0e, buffer, quads);
-  __asm__ volatile ("pop %es");
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
 }

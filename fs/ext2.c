@@ -122,7 +122,7 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
     }
 
   /* Fill VFS superblock */
-  mp->vfs_sb.sb_dev = device_lookup_devid (dev->sd_major, dev->sd_minor);
+  mp->vfs_sb.sb_dev = dev;
   mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
   mp->vfs_sb.sb_flags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;

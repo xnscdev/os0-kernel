@@ -115,7 +115,7 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
   Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
-  uint32_t inosize = 1 << (esb->esb_inosize + 10);
+  uint32_t inosize = esb->esb_versmaj > 0 ? esb->esb_inosize : 128;
   uint32_t inotbl = bgdt[(inode - 1) / esb->esb_ipg].eb_inotbl;
   uint32_t index = (inode - 1) % esb->esb_ipg;
   uint32_t block = inotbl + index * inosize / sb->sb_blksize;
@@ -129,6 +129,7 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
   buffer = kmalloc (sb->sb_blksize);
   if (unlikely (buffer == NULL))
     return NULL;
+
   if (ext2_read_blocks (buffer, sb, block, 1) != 0)
     {
       kfree (buffer);
@@ -142,6 +143,7 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
       return NULL;
     }
   memcpy (result, buffer + offset * inosize, sizeof (Ext2Inode));
+
   kfree (buffer);
   return result;
 }
