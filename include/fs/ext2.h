@@ -27,8 +27,8 @@
 #define EXT2_MAGIC         0xef53
 #define EXT2_FS_NAME       "ext2"
 #define EXT2_STORED_INODES 12
-
-#define EXT2_ROOT_INODE 2
+#define EXT2_ROOT_INODE    2
+#define EXT2_MAX_NAME_LEN  255
 
 #define EXT2_TYPE_FIFO   0x1000
 #define EXT2_TYPE_CHRDEV 0x2000

@@ -319,7 +319,7 @@ ext2_statfs (VFSSuperblock *sb, struct statfs *st)
   st->f_ffree = esb->esb_finodes;
   st->f_fsid.f_val[0] = sb->sb_dev->sd_major;
   st->f_fsid.f_val[1] = sb->sb_dev->sd_minor;
-  st->f_namelen = 255; /* ext2 name length limit */
+  st->f_namelen = EXT2_MAX_NAME_LEN;
   st->f_flags = sb->sb_flags;
   return 0;
 }

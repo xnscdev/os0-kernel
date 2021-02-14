@@ -192,6 +192,11 @@ ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 	  vfs_destroy_dir_entry (dir);
 	  return -ENOTDIR;
 	}
+      if (strlen (dir->d_name) > EXT2_MAX_NAME_LEN)
+	{
+	  vfs_destroy_dir_entry (dir);
+	  return -ENAMETOOLONG;
+	}
     }
 
   memcpy (entry, dir, sizeof (VFSDirEntry));
