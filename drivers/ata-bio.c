@@ -89,10 +89,13 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   else
     part_offset = 0;
 
-  ret = ata_read_sectors (dev->sd_major - 1, sectors, mid_lba + part_offset,
-			  buffer + start_diff);
-  if (ret != 0)
-    return ret;
+  if (sectors > 0)
+    {
+      ret = ata_read_sectors (dev->sd_major - 1, sectors, mid_lba + part_offset,
+			      buffer + start_diff);
+      if (ret != 0)
+	return ret;
+    }
 
   /* Read unaligned starting bytes */
   if (start_diff != 0)
@@ -157,10 +160,13 @@ ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   else
     part_offset = 0;
 
-  ret = ata_write_sectors (dev->sd_major - 1, sectors, mid_lba + part_offset,
-			   buffer + start_diff);
-  if (ret != 0)
-    return ret;
+  if (sectors > 0)
+    {
+      ret = ata_write_sectors (dev->sd_major - 1, sectors,
+			       mid_lba + part_offset, buffer + start_diff);
+      if (ret != 0)
+	return ret;
+    }
 
   /* Write unaligned starting bytes */
   if (start_diff != 0)

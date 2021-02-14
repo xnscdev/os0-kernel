@@ -117,6 +117,8 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   /* Check ext2 magic number */
   if (esb->esb_magic != EXT2_MAGIC)
     {
+      printk ("fs-ext2: bad magic number 0x%x in ext2 filesystem",
+	      esb->esb_magic);
       kfree (esb);
       return -EINVAL;
     }
