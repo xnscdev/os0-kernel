@@ -218,6 +218,18 @@ ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
 }
 
 int
+ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
+{
+  return -ENOSYS;
+}
+
+int
+ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
+{
+  return -ENOSYS;
+}
+
+int
 ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 {
   Ext2Inode *ei;

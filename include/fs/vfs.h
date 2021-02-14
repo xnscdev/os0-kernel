@@ -56,6 +56,8 @@ typedef struct
   int (*vfs_link) (VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_unlink) (VFSInode *, VFSDirEntry *);
   int (*vfs_symlink) (VFSInode *, VFSDirEntry *, const char *);
+  int (*vfs_read) (VFSInode *, void *, size_t, off_t);
+  int (*vfs_write) (VFSInode *, void *, size_t, off_t);
   int (*vfs_readdir) (VFSDirEntry **, VFSSuperblock *, VFSInode *);
   int (*vfs_mkdir) (VFSInode *, VFSDirEntry *, mode_t);
   int (*vfs_rmdir) (VFSInode *, VFSDirEntry *);
@@ -174,6 +176,8 @@ int vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
 int vfs_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
 int vfs_unlink (VFSInode *dir, VFSDirEntry *entry);
 int vfs_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
+int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
+int vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);
 int vfs_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
 int vfs_rmdir (VFSInode *dir, VFSDirEntry *entry);

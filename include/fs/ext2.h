@@ -159,6 +159,8 @@ int ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
 int ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
 int ext2_unlink (VFSInode *dir, VFSDirEntry *entry);
 int ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
+int ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
+int ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);
 int ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
 int ext2_rmdir (VFSInode *dir, VFSDirEntry *entry);
