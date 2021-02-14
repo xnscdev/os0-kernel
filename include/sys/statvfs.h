@@ -1,5 +1,5 @@
 /*************************************************************************
- * mount.h -- This file is part of OS/0.                                 *
+ * statvfs.h -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,8 +16,8 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_MOUNT_H
-#define _SYS_MOUNT_H
+#ifndef _SYS_STATVFS_H
+#define _SYS_STATVFS_H
 
 #include <sys/types.h>
 
@@ -26,7 +26,7 @@ typedef struct
   int f_val[2];
 } fsid_t;
 
-struct statfs
+struct statvfs
 {
   long f_type;
   blksize_t f_bsize;

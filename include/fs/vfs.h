@@ -21,8 +21,8 @@
 
 #include <sys/cdefs.h>
 #include <sys/device.h>
-#include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
@@ -45,7 +45,7 @@ typedef struct
   void (*sb_delete_inode) (VFSInode *);
   void (*sb_free) (VFSSuperblock *);
   void (*sb_update) (VFSSuperblock *);
-  int (*sb_statfs) (VFSSuperblock *, struct statfs *);
+  int (*sb_statvfs) (VFSSuperblock *, struct statvfs *);
   int (*sb_remount) (VFSSuperblock *, int *, void *);
 } VFSSuperblockOps;
 
@@ -167,7 +167,7 @@ void vfs_write_inode (VFSInode *inode);
 void vfs_delete_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);
 void vfs_update_sb (VFSSuperblock *sb);
-int vfs_statfs (VFSSuperblock *sb, struct statfs *st);
+int vfs_statvfs (VFSSuperblock *sb, struct statvfs *st);
 int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int vfs_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);

@@ -163,9 +163,9 @@ vfs_update_sb (VFSSuperblock *sb)
 }
 
 int
-vfs_statfs (VFSSuperblock *sb, struct statfs *st)
+vfs_statvfs (VFSSuperblock *sb, struct statvfs *st)
 {
-  return sb->sb_ops->sb_statfs (sb, st);
+  return sb->sb_ops->sb_statvfs (sb, st);
 }
 
 int

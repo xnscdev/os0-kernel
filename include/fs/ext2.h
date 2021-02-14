@@ -152,7 +152,7 @@ void ext2_write_inode (VFSInode *inode);
 void ext2_delete_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);
 void ext2_update (VFSSuperblock *sb);
-int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
+int ext2_statvfs (VFSSuperblock *sb, struct statvfs *st);
 int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 int ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
 int ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);

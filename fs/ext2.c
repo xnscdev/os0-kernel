@@ -29,7 +29,7 @@ const VFSSuperblockOps ext2_sops = {
   .sb_delete_inode = ext2_delete_inode,
   .sb_free = ext2_free,
   .sb_update = ext2_update,
-  .sb_statfs = ext2_statfs,
+  .sb_statvfs = ext2_statvfs,
   .sb_remount = ext2_remount
 };
 
@@ -305,7 +305,7 @@ ext2_update (VFSSuperblock *sb)
 }
 
 int
-ext2_statfs (VFSSuperblock *sb, struct statfs *st)
+ext2_statvfs (VFSSuperblock *sb, struct statvfs *st)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
   st->f_type = EXT2_MAGIC;
