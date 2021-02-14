@@ -219,6 +219,7 @@ ext2_alloc_inode (VFSSuperblock *sb)
 void
 ext2_destroy_inode (VFSInode *inode)
 {
+  kfree (inode->vi_private);
   kfree (inode);
 }
 
@@ -281,7 +282,7 @@ ext2_fill_inode (VFSInode *inode)
       inode->vi_rdev = 0;
     }
   inode->vi_mode |= ei->ei_mode & 07777;
-  kfree (ei);
+  inode->vi_private = ei;
 }
 
 void

@@ -328,7 +328,52 @@ ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
 int
 ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
 {
-  return -ENOSYS;
+  int i;
+  loff_t size = entry->d_inode->vi_size;
+  Ext2Inode *inode = entry->d_inode->vi_private;
+
+  if (size <= 60)
+    {
+      /* Path stored directly in block pointers */
+      for (i = 0; i < len && i < size && i < 48; i++)
+	buffer[i] = ((char *) inode->ei_bptr0)[i];
+      for (; i < len && i < size && i < 52; i++)
+	buffer[i] = ((char *) &inode->ei_bptr1)[i - 48];
+      for (; i < len && i < size && i < 56; i++)
+	buffer[i] = ((char *) &inode->ei_bptr2)[i - 52];
+      for (; i < len && i < size && i < 60; i++)
+	buffer[i] = ((char *) &inode->ei_bptr3)[i - 56];
+    }
+  else
+    {
+      uint32_t block = 0;
+      VFSSuperblock *sb = entry->d_inode->vi_sb;
+      uint32_t realblock = ext2_data_block (inode, sb, block);
+      void *currblock = kmalloc (sb->sb_blksize);
+      if (unlikely (currblock == NULL))
+	return -ENOMEM;
+
+      while (1)
+	{
+	  if (ext2_read_blocks (currblock, sb, realblock, 1) != 0)
+	    {
+	      kfree (currblock);
+	      return -EIO;
+	    }
+	  if (i + sb->sb_blksize > len)
+	    {
+	      /* Copy this block to the max length */
+	      memcpy (buffer + i, currblock, len - i);
+	      break;
+	    }
+
+	  memcpy (buffer + i, currblock, sb->sb_blksize);
+	  i += sb->sb_blksize;
+	  realblock = ext2_data_block (inode, sb, ++block);
+	}
+      kfree (currblock);
+    }
+  return 0;
 }
 
 int
