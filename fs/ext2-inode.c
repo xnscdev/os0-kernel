@@ -225,7 +225,55 @@ ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
 int
 ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return -ENOSYS;
+  char *currblock;
+  uint32_t realblock;
+  loff_t block;
+  blksize_t blksize = blksize;
+  size_t i = 0;
+
+  if (S_ISDIR (inode->vi_mode))
+    return -EISDIR;
+  if (offset > inode->vi_size)
+    return -EINVAL;
+
+  block = offset / blksize;
+  realblock = ext2_data_block (inode->vi_private, inode->vi_sb, block);
+  if (realblock < 0)
+    return -EIO;
+
+  currblock = kmalloc (blksize);
+  if (unlikely (currblock == NULL))
+    return -ENOMEM;
+
+  while (1)
+    {
+      if (ext2_read_blocks (currblock, inode->vi_sb, realblock, 1) != 0)
+	{
+	  kfree (currblock);
+	  return -EIO;
+	}
+      if (i + blksize > inode->vi_size)
+	{
+	  memcpy (buffer + i, currblock, inode->vi_size - i);
+	  kfree (currblock);
+	  return 0; /* Return 0 on EOF */
+	}
+      if (i + blksize > len)
+	{
+	  memcpy (buffer + i, currblock, len - i);
+	  kfree (currblock);
+	  return i;
+	}
+
+      memcpy (buffer + i, currblock, blksize);
+      i += blksize;
+      realblock = ext2_data_block (inode->vi_private, inode->vi_sb, ++block);
+      if (realblock < 0)
+	{
+	  kfree (currblock);
+	  return -EIO;
+	}
+    }
 }
 
 int
@@ -353,8 +401,14 @@ ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
     {
       uint32_t block = 0;
       VFSSuperblock *sb = entry->d_inode->vi_sb;
-      uint32_t realblock = ext2_data_block (inode, sb, block);
-      void *currblock = kmalloc (sb->sb_blksize);
+      uint32_t realblock;
+      void *currblock;
+
+      realblock = ext2_data_block (inode, sb, block);
+      if (realblock < 0)
+        return -EIO;
+
+      currblock = kmalloc (sb->sb_blksize);
       if (unlikely (currblock == NULL))
 	return -ENOMEM;
 
@@ -365,18 +419,28 @@ ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
 	      kfree (currblock);
 	      return -EIO;
 	    }
+	  if (i + sb->sb_blksize > entry->d_inode->vi_size)
+	    {
+	      memcpy (buffer + i, currblock, entry->d_inode->vi_size - i);
+	      kfree (currblock);
+	      return i;
+	    }
 	  if (i + sb->sb_blksize > len)
 	    {
-	      /* Copy this block to the max length */
 	      memcpy (buffer + i, currblock, len - i);
-	      break;
+	      kfree (currblock);
+	      return i;
 	    }
 
 	  memcpy (buffer + i, currblock, sb->sb_blksize);
 	  i += sb->sb_blksize;
 	  realblock = ext2_data_block (inode, sb, ++block);
+	  if (realblock < 0)
+	    {
+	      kfree (currblock);
+	      return -EIO;
+	    }
 	}
-      kfree (currblock);
     }
   return 0;
 }
