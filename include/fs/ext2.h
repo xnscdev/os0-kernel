@@ -169,7 +169,6 @@ int ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
 		 VFSDirEntry *newentry);
 int ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len);
 int ext2_truncate (VFSInode *inode);
-int ext2_permission (VFSInode *inode, mode_t mask);
 int ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
 int ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
 		   size_t len, int flags);

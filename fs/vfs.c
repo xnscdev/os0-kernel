@@ -250,12 +250,6 @@ vfs_truncate (VFSInode *inode)
 }
 
 int
-vfs_permission (VFSInode *inode, mode_t mask)
-{
-  return inode->vi_sb->sb_fstype->vfs_iops->vfs_permission (inode, mask);
-}
-
-int
 vfs_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
 {
   return mp->vfs_fstype->vfs_iops->vfs_getattr (mp, entry, st);

@@ -388,12 +388,6 @@ ext2_truncate (VFSInode *inode)
 }
 
 int
-ext2_permission (VFSInode *inode, mode_t mask)
-{
-  return -ENOSYS;
-}
-
-int
 ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
 {
   VFSInode *inode = entry->d_inode;

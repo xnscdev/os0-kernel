@@ -48,7 +48,6 @@ const VFSInodeOps ext2_iops = {
   .vfs_rename = ext2_rename,
   .vfs_readlink = ext2_readlink,
   .vfs_truncate = ext2_truncate,
-  .vfs_permission = ext2_permission,
   .vfs_getattr = ext2_getattr,
   .vfs_setxattr = ext2_setxattr,
   .vfs_getxattr = ext2_getxattr,

@@ -65,7 +65,6 @@ typedef struct
   int (*vfs_rename) (VFSInode *, VFSDirEntry *, VFSInode *, VFSDirEntry *);
   int (*vfs_readlink) (VFSDirEntry *, char *, size_t);
   int (*vfs_truncate) (VFSInode *);
-  int (*vfs_permission) (VFSInode *, mode_t);
   int (*vfs_getattr) (VFSMount *, VFSDirEntry *, struct stat *);
   int (*vfs_setxattr) (VFSDirEntry *, const char *, const void *, size_t, int);
   int (*vfs_getxattr) (VFSDirEntry *, const char *, void *, size_t);
@@ -186,7 +185,6 @@ int vfs_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
 		 VFSDirEntry *newentry);
 int vfs_readlink (VFSDirEntry *entry, char *buffer, size_t len);
 int vfs_truncate (VFSInode *inode);
-int vfs_permission (VFSInode *inode, mode_t mask);
 int vfs_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
 int vfs_setxattr (VFSDirEntry *entry, const char *name, const void *value,
 		   size_t len, int flags);
