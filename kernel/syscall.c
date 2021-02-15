@@ -266,31 +266,80 @@ sys_rmdir (const char *path)
 int
 sys_symlink (const char *old, const char *new)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (new, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_symlink (entry.d_inode, old, name);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
 sys_readlink (const char *path, char *buffer, size_t len)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_readlink (&entry, buffer, len);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_truncate (const char *path, off_t len)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  entry.d_inode->vi_size = len;
+  ret = vfs_truncate (entry.d_inode);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_statvfs (const char *path, struct statvfs *st)
 {
-  return -ENOSYS;
+  VFSPath *vpath;
+  int ret = vfs_namei (&vpath, path);
+  if (ret != 0)
+    return ret;
+  ret = vfs_path_find_mount (vpath);
+  vfs_path_free (vpath);
+  if (ret < 0)
+    return ret;
+  return vfs_statvfs (&mount_table[ret].vfs_sb, st);
 }
 
 int
 sys_stat (const char *path, struct stat *st)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  VFSPath *vpath;
+  VFSMount *mp;
+  int ret = vfs_namei (&vpath, path);
+  if (ret != 0)
+    return ret;
+  ret = vfs_path_find_mount (vpath);
+  vfs_path_free (vpath);
+  if (ret < 0)
+    return ret;
+  mp = &mount_table[ret];
+  ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_getattr (mp, &entry, st);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
