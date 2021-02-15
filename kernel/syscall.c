@@ -18,12 +18,66 @@
 
 #include <fs/vfs.h>
 #include <sys/syscall.h>
+#include <vm/heap.h>
 #include <errno.h>
+#include <string.h>
+
+static int
+sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
+{
+  VFSPath *vpath;
+  VFSPath *rvpath;
+  VFSPath *temp;
+  VFSMount *mp;
+  int ret = vfs_namei (&vpath, path);
+  if (ret != 0)
+    return ret;
+
+  ret = vfs_path_find_mount (vpath);
+  if (ret < 0)
+    {
+      vfs_path_free (vpath);
+      return ret;
+    }
+
+  mp = &mount_table[ret];
+  ret = vfs_path_rel (&rvpath, vpath, mp);
+  if (ret != 0)
+    {
+      vfs_path_free (vpath);
+      return ret;
+    }
+  temp = rvpath;
+  if (rvpath != NULL)
+    {
+      rvpath = rvpath->vp_prev;
+      rvpath->vp_next = NULL;
+    }
+
+  ret = vfs_lookup (entry, &mp->vfs_sb, rvpath);
+  if (rvpath != NULL)
+    vfs_path_free (rvpath);
+  if (ret == 0)
+    *name = strdup (temp->vp_long == NULL ? temp->vp_short : temp->vp_long);
+  else
+    *name = NULL;
+  vfs_path_free (vpath);
+  return ret;
+}
 
 int
 sys_creat (const char *path, mode_t mode)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (path, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_create (entry.d_inode, name, mode);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int

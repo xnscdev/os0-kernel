@@ -197,30 +197,32 @@ vfs_path_find_mount (const VFSPath *path)
 }
 
 int
-vfs_path_rel (VFSPath **result, VFSPath *path)
+vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp)
 {
-  int i;
-  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+  VFSPath *temp;
+  VFSPath *mntpoint;
+
+  if (mp == NULL)
     {
-      VFSPath *temp;
-      VFSPath *mntpoint = mount_table[i].vfs_mntpoint;
-      if (path == mntpoint)
+      *result = NULL;
+      return -1;
+    }
+  mntpoint = mp->vfs_mntpoint;
+
+  /* Check if path is root dir relative to mount */
+  if (path == mntpoint)
+    return vfs_namei (result, "/");
+
+  for (temp = vfs_path_last (path); temp != NULL; temp = temp->vp_prev)
+    {
+      if (vfs_path_cmp (temp, mntpoint) == 0)
 	{
-	  /* Path is root dir relative to that mount point */
-	  *result = NULL;
+	  /* Disconnect and free the previous path components */
+	  temp->vp_next->vp_prev = NULL;
+	  temp->vp_next = NULL;
+	  vfs_path_free (temp);
+	  *result = vfs_path_last (path);
 	  return 0;
-	}
-      for (temp = vfs_path_last (path); temp != NULL; temp = temp->vp_prev)
-	{
-	  if (vfs_path_cmp (temp, mntpoint) == 0)
-	    {
-	      /* Disconnect and free the previous path components */
-	      temp->vp_next->vp_prev = NULL;
-	      temp->vp_next = NULL;
-	      vfs_path_free (temp);
-	      *result = vfs_path_first (path);
-	      return 0;
-	    }
 	}
     }
 

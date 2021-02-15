@@ -208,7 +208,7 @@ int vfs_path_subdir (const VFSPath *path, const VFSPath *dir);
 VFSPath *vfs_path_first (const VFSPath *path);
 VFSPath *vfs_path_last (const VFSPath *path);
 int vfs_path_find_mount (const VFSPath *path);
-int vfs_path_rel (VFSPath **result, VFSPath *path);
+int vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp);
 
 __END_DECLS
 
