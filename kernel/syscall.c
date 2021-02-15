@@ -23,6 +23,36 @@
 #include <string.h>
 
 static int
+sys_path_rel_lookup (const char *path, VFSDirEntry *entry)
+{
+  VFSPath *vpath;
+  VFSPath *rvpath;
+  VFSMount *mp;
+  int ret = vfs_namei (&vpath, path);
+  if (ret != 0)
+    return ret;
+
+  ret = vfs_path_find_mount (vpath);
+  if (ret < 0)
+    {
+      vfs_path_free (vpath);
+      return ret;
+    }
+
+  mp = &mount_table[ret];
+  ret = vfs_path_rel (&rvpath, vpath, mp);
+  if (ret != 0)
+    {
+      vfs_path_free (vpath);
+      return ret;
+    }
+
+  ret = vfs_lookup (entry, &mp->vfs_sb, rvpath);
+  vfs_path_free (vpath);
+  return ret;
+}
+
+static int
 sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
 {
   VFSPath *vpath;
@@ -83,13 +113,42 @@ sys_creat (const char *path, mode_t mode)
 int
 sys_link (const char *old, const char *new)
 {
-  return -ENOSYS;
+  VFSDirEntry old_entry;
+  VFSDirEntry new_entry;
+  char *name;
+  int ret = sys_path_sep (new, &new_entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = sys_path_rel_lookup (old, &old_entry);
+  if (ret != 0)
+    {
+      vfs_destroy_inode (new_entry.d_inode);
+      kfree (new_entry.d_name);
+      kfree (name);
+      return ret;
+    }
+  ret = vfs_link (old_entry.d_inode, new_entry.d_inode, name);
+  vfs_destroy_inode (old_entry.d_inode);
+  kfree (old_entry.d_name);
+  vfs_destroy_inode (new_entry.d_inode);
+  kfree (new_entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
 sys_unlink (const char *path)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (path, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_unlink (entry.d_inode, name);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
