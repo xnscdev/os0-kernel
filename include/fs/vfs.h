@@ -53,9 +53,9 @@ typedef struct
 {
   int (*vfs_create) (VFSInode *, const char *, mode_t);
   int (*vfs_lookup) (VFSDirEntry *, VFSSuperblock *, VFSPath *);
-  int (*vfs_link) (VFSDirEntry *, VFSInode *, VFSDirEntry *);
-  int (*vfs_unlink) (VFSInode *, VFSDirEntry *);
-  int (*vfs_symlink) (VFSInode *, VFSDirEntry *, const char *);
+  int (*vfs_link) (VFSInode *, VFSInode *, const char *);
+  int (*vfs_unlink) (VFSInode *, const char *);
+  int (*vfs_symlink) (VFSInode *, const char *, const char *);
   int (*vfs_read) (VFSInode *, void *, size_t, off_t);
   int (*vfs_write) (VFSInode *, void *, size_t, off_t);
   int (*vfs_readdir) (VFSDirEntry **, VFSSuperblock *, VFSInode *);
@@ -174,9 +174,9 @@ int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int vfs_create (VFSInode *dir, const char *name, mode_t mode);
 int vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
-int vfs_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new);
-int vfs_unlink (VFSInode *dir, VFSDirEntry *entry);
-int vfs_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
+int vfs_link (VFSInode *old, VFSInode *dir, const char *new);
+int vfs_unlink (VFSInode *dir, const char *name);
+int vfs_symlink (VFSInode *dir, const char *old, const char *new);
 int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);

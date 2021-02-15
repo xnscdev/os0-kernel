@@ -187,21 +187,21 @@ vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 }
 
 int
-vfs_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new)
+vfs_link (VFSInode *old, VFSInode *dir, const char *new)
 {
   return dir->vi_ops->vfs_link (old, dir, new);
 }
 
 int
-vfs_unlink (VFSInode *dir, VFSDirEntry *entry)
+vfs_unlink (VFSInode *dir, const char *name)
 {
-  return dir->vi_ops->vfs_unlink (dir, entry);
+  return dir->vi_ops->vfs_unlink (dir, name);
 }
 
 int
-vfs_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
+vfs_symlink (VFSInode *dir, const char *old, const char *new)
 {
-  return dir->vi_ops->vfs_symlink (dir, entry, name);
+  return dir->vi_ops->vfs_symlink (dir, old, new);
 }
 
 int

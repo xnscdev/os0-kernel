@@ -205,19 +205,19 @@ ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 }
 
 int
-ext2_link (VFSDirEntry *old, VFSInode *dir, VFSDirEntry *new)
+ext2_link (VFSInode *old, VFSInode *dir, const char *new)
 {
   return -ENOSYS;
 }
 
 int
-ext2_unlink (VFSInode *dir, VFSDirEntry *entry)
+ext2_unlink (VFSInode *dir, const char *name)
 {
   return -ENOSYS;
 }
 
 int
-ext2_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name)
+ext2_symlink (VFSInode *dir, const char *old, const char *new)
 {
   return -ENOSYS;
 }
