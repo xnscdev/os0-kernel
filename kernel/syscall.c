@@ -154,19 +154,42 @@ sys_unlink (const char *path)
 int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (path, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_mknod (entry.d_inode, name, mode, dev);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
 sys_chmod (const char *path, mode_t mode)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_chmod (entry.d_inode, mode);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_chown (const char *path, uid_t uid, gid_t gid)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_chown (entry.d_inode, uid, gid);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
@@ -185,19 +208,59 @@ sys_umount (const char *dir)
 int
 sys_rename (const char *old, const char *new)
 {
-  return -ENOSYS;
+  VFSDirEntry old_entry;
+  VFSDirEntry new_entry;
+  char *old_name;
+  char *new_name;
+  int ret = sys_path_sep (old, &old_entry, &old_name);
+  if (ret != 0)
+    return ret;
+  ret = sys_path_sep (new, &new_entry, &new_name);
+  if (ret != 0)
+    {
+      vfs_destroy_inode (old_entry.d_inode);
+      kfree (old_entry.d_name);
+      kfree (old_name);
+      return ret;
+    }
+  ret = vfs_rename (old_entry.d_inode, old_name, new_entry.d_inode, new_name);
+  vfs_destroy_inode (old_entry.d_inode);
+  kfree (old_entry.d_name);
+  kfree (old_name);
+  vfs_destroy_inode (new_entry.d_inode);
+  kfree (new_entry.d_name);
+  kfree (new_name);
+  return ret;
 }
 
 int
 sys_mkdir (const char *path, mode_t mode)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (path, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_mkdir (entry.d_inode, name, mode);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
 sys_rmdir (const char *path)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  char *name;
+  int ret = sys_path_sep (path, &entry, &name);
+  if (ret != 0)
+    return ret;
+  ret = vfs_rmdir (entry.d_inode, name);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  kfree (name);
+  return ret;
 }
 
 int
