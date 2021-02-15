@@ -346,23 +346,51 @@ int
 sys_setxattr (const char *path, const char *name, const void *value, size_t len,
 	      int flags)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_setxattr (&entry, name, value, len, flags);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_getxattr (const char *path, const char *name, void *value, size_t len)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_getxattr (&entry, name, value, len);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_listxattr (const char *path, char *buffer, size_t len)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_listxattr (&entry, buffer, len);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
 
 int
 sys_removexattr (const char *path, const char *name)
 {
-  return -ENOSYS;
+  VFSDirEntry entry;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  ret = vfs_removexattr (&entry, name);
+  vfs_destroy_inode (entry.d_inode);
+  kfree (entry.d_name);
+  return ret;
 }
