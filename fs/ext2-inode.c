@@ -149,7 +149,7 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 }
 
 int
-ext2_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+ext2_create (VFSInode *dir, const char *name, mode_t mode)
 {
   return -ENOSYS;
 }

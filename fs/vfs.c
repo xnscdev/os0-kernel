@@ -175,9 +175,9 @@ vfs_remount (VFSSuperblock *sb, int *flags, void *data)
 }
 
 int
-vfs_create (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+vfs_create (VFSInode *dir, const char *name, mode_t mode)
 {
-  return dir->vi_ops->vfs_create (dir, entry, mode);
+  return dir->vi_ops->vfs_create (dir, name, mode);
 }
 
 int
