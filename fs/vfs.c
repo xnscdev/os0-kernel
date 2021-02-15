@@ -235,28 +235,28 @@ vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 }
 
 int
-vfs_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  return dir->vi_ops->vfs_mkdir (dir, entry, mode);
+  return dir->vi_ops->vfs_mkdir (dir, name, mode);
 }
 
 int
-vfs_rmdir (VFSInode *dir, VFSDirEntry *entry)
+vfs_rmdir (VFSInode *dir, const char *name)
 {
-  return dir->vi_ops->vfs_rmdir (dir, entry);
+  return dir->vi_ops->vfs_rmdir (dir, name);
 }
 
 int
-vfs_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev)
+vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
-  return dir->vi_ops->vfs_mknod (dir, entry, mode, rdev);
+  return dir->vi_ops->vfs_mknod (dir, name, mode, rdev);
 }
 
 int
-vfs_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
-	    VFSDirEntry *newentry)
+vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
+	    const char *newname)
 {
-  return olddir->vi_ops->vfs_rename (olddir, oldentry, newdir, newentry);
+  return olddir->vi_ops->vfs_rename (olddir, oldname, newdir, newname);
 }
 
 int

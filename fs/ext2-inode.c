@@ -366,26 +366,26 @@ ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 }
 
 int
-ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
+ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
   return -ENOSYS;
 }
 
 int
-ext2_rmdir (VFSInode *dir, VFSDirEntry *entry)
+ext2_rmdir (VFSInode *dir, const char *name)
 {
   return -ENOSYS;
 }
 
 int
-ext2_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev)
+ext2_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
   return -ENOSYS;
 }
 
 int
-ext2_rename (VFSInode *olddir, VFSDirEntry *oldentry, VFSInode *newdir,
-	     VFSDirEntry *newentry)
+ext2_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
+	     const char *newname)
 {
   return -ENOSYS;
 }
