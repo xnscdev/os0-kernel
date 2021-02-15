@@ -59,6 +59,8 @@ typedef struct
   int (*vfs_read) (VFSInode *, void *, size_t, off_t);
   int (*vfs_write) (VFSInode *, void *, size_t, off_t);
   int (*vfs_readdir) (VFSDirEntry **, VFSSuperblock *, VFSInode *);
+  int (*vfs_chmod) (VFSInode *, mode_t);
+  int (*vfs_chown) (VFSInode *, uid_t, gid_t);
   int (*vfs_mkdir) (VFSInode *, VFSDirEntry *, mode_t);
   int (*vfs_rmdir) (VFSInode *, VFSDirEntry *);
   int (*vfs_mknod) (VFSInode *, VFSDirEntry *, mode_t, dev_t);
@@ -178,6 +180,8 @@ int vfs_symlink (VFSInode *dir, VFSDirEntry *entry, const char *name);
 int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);
+int vfs_chmod (VFSInode *inode, mode_t mode);
+int vfs_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int vfs_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode);
 int vfs_rmdir (VFSInode *dir, VFSDirEntry *entry);
 int vfs_mknod (VFSInode *dir, VFSDirEntry *entry, mode_t mode, dev_t rdev);

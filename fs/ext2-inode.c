@@ -354,6 +354,18 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 }
 
 int
+ext2_chmod (VFSInode *inode, mode_t mode)
+{
+  return -ENOSYS;
+}
+
+int
+ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
+{
+  return -ENOSYS;
+}
+
+int
 ext2_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 {
   return -ENOSYS;

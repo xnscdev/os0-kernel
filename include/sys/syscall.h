@@ -115,7 +115,7 @@ int sys_link (const char *old, const char *new);
 int sys_unlink (const char *path);
 int sys_mknod (const char *path, mode_t mode, dev_t dev);
 int sys_chmod (const char *path, mode_t mode);
-int sys_chown (const char *path, uid_t owner, gid_t group);
+int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_mount (const char *src, const char *dir, const char *type, int flags,
 	       void *data);
 int sys_umount (const char *dir);

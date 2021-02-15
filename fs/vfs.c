@@ -223,6 +223,18 @@ vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 }
 
 int
+vfs_chmod (VFSInode *inode, mode_t mode)
+{
+  return inode->vi_ops->vfs_chmod (inode, mode);
+}
+
+int
+vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
+{
+  return inode->vi_ops->vfs_chown (inode, uid, gid);
+}
+
+int
 vfs_mkdir (VFSInode *dir, VFSDirEntry *entry, mode_t mode)
 {
   return dir->vi_ops->vfs_mkdir (dir, entry, mode);

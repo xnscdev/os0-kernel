@@ -51,7 +51,7 @@ sys_chmod (const char *path, mode_t mode)
 }
 
 int
-sys_chown (const char *path, uid_t owner, gid_t group)
+sys_chown (const char *path, uid_t uid, gid_t gid)
 {
   return -ENOSYS;
 }
