@@ -38,6 +38,22 @@
 #define EXT2_TYPE_LINK   0xa000
 #define EXT2_TYPE_SOCKET 0xc000
 
+#define EXT2_FT_OPT_PREALLOC  0x01
+#define EXT2_FT_OPT_AFSINODES 0x02
+#define EXT2_FT_OPT_JOURNALED 0x04
+#define EXT2_FT_OPT_XATTR     0x08
+#define EXT2_FT_OPT_FSRESIZE  0x10
+#define EXT2_FT_OPT_DIRHASH   0x20
+
+#define EXT2_FT_REQ_COMPRESS  0x01
+#define EXT2_FT_REQ_DIRTYPE   0x02
+#define EXT2_FT_REQ_RPLAYJRNL 0x04
+#define EXT2_FT_REQ_JRNLDEV   0x08
+
+#define EXT2_FT_RO_SPARSE     0x01
+#define EXT2_FT_RO_FILESIZE64 0x02
+#define EXT2_FT_RO_BTREEDIR   0x04
+
 typedef struct
 {
   uint32_t esb_inodes;
@@ -125,8 +141,8 @@ typedef struct
 {
   uint32_t ed_inode;
   uint16_t ed_size;
-  unsigned char ed_type;
-  uint16_t ed_namelen;
+  uint8_t ed_namelenl;
+  uint8_t ed_namelenh;
 } __attribute__ ((packed)) Ext2DirEntry;
 
 __BEGIN_DECLS

@@ -181,11 +181,12 @@ ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
 
     found:
       dir = entries;
-      dir->d_next = NULL;
+
       /* Clean up all unchecked entries */
       for (entries = entries->d_next; entries != NULL;
 	   entries = entries->d_next)
         vfs_destroy_dir_entry (entries);
+      dir->d_next = NULL;
 
       if (path->vp_next != NULL && !S_ISDIR (dir->d_inode->vi_mode))
 	{
@@ -285,6 +286,7 @@ ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
 int
 ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 {
+  Ext2Superblock *esb;
   Ext2Inode *ei;
   VFSDirEntry *result = NULL;
   VFSDirEntry *temp;
@@ -304,6 +306,7 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
       return -ENOTDIR;
     }
 
+  esb = sb->sb_private;
   blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   buffer = kmalloc (sb->sb_blksize);
 
@@ -319,11 +322,16 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
       while (bytes < sb->sb_blksize)
 	{
 	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
+	  uint16_t namelen;
 	  if (guess->ed_inode == 0 || guess->ed_size == 0)
 	    {
 	      bytes += 4;
 	      continue;
 	    }
+
+	  namelen = guess->ed_namelenl;
+	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
+	    namelen |= guess->ed_namelenh << 8;
 
 	  temp = kmalloc (sizeof (VFSDirEntry));
 	  temp->d_flags = 0;
@@ -331,9 +339,9 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 	  temp->d_inode->vi_ino = guess->ed_inode;
 	  ext2_fill_inode (temp->d_inode);
 	  temp->d_mounted = 0;
-	  temp->d_name = kmalloc (guess->ed_namelen + 1);
-	  strncpy (temp->d_name, buffer + bytes + 8, guess->ed_namelen);
-	  temp->d_name[guess->ed_namelen] = '\0';
+	  temp->d_name = kmalloc (namelen + 1);
+	  strncpy (temp->d_name, buffer + bytes + 8, namelen);
+	  temp->d_name[namelen] = '\0';
 	  temp->d_ops = &ext2_dops;
 	  temp->d_prev = result;
 	  if (result != NULL)
