@@ -194,7 +194,14 @@ ext2_alloc_block (VFSSuperblock *sb)
 	  uint32_t offset = j % 8;
 	  if (busage[index] & 1 << offset)
 	    continue;
+
+	  /* Mark the block as allocated and return */
+	  busage[index] |= 1 << offset;
+	  ret = dev->sd_write (dev, busage, esb->esb_bpg >> 3,
+			       bgdt[i].eb_busage * sb->sb_blksize);
 	  kfree (busage);
+	  if (ret != 0)
+	    return ret;
 	  return esb->esb_bpg * i + j;
 	}
       kfree (busage);
