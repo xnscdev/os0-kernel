@@ -209,6 +209,48 @@ ext2_alloc_block (VFSSuperblock *sb)
   return -ENOSPC;
 }
 
+ino_t
+ext2_create_inode (VFSSuperblock *sb)
+{
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  SpecDevice *dev = sb->sb_dev;
+  int i;
+  int j;
+  for (i = 0; i < ext2_bgdt_size (esb); i++)
+    {
+      unsigned char *iusage;
+      int ret;
+      if (bgdt[i].eb_ifree == 0)
+	continue; /* No free inodes */
+      iusage = kmalloc (esb->esb_ipg >> 3);
+      if (unlikely (iusage == NULL))
+	return -ENOMEM;
+      ret = dev->sd_read (dev, iusage, esb->esb_ipg >> 3,
+			  bgdt[i].eb_iusage * sb->sb_blksize);
+      if (ret != 0)
+	return ret;
+      for (j = 0; j < esb->esb_ipg; j++)
+	{
+	  uint32_t index = j >> 3;
+	  uint32_t offset = j % 8;
+	  if (iusage[index] & 1 << offset)
+	    continue;
+
+	  /* Mark the inode as allocated and return */
+	  iusage[index] |= 1 << offset;
+	  ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
+			       bgdt[i].eb_iusage * sb->sb_blksize);
+	  kfree (iusage);
+	  if (ret != 0)
+	    return ret;
+	  return esb->esb_ipg * i + j;
+	}
+      kfree (iusage);
+    }
+  return -ENOSPC;
+}
+
 int
 ext2_create (VFSInode *dir, const char *name, mode_t mode)
 {

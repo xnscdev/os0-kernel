@@ -162,6 +162,7 @@ off_t ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block);
 uint32_t ext2_inode_offset (VFSSuperblock *sb, ino_t inode);
 Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino_t inode);
 loff_t ext2_alloc_block (VFSSuperblock *sb);
+ino_t ext2_create_inode (VFSSuperblock *sb);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
