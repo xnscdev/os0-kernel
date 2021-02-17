@@ -32,6 +32,14 @@ ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 			      block * sb->sb_blksize);
 }
 
+int
+ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
+		   size_t nblocks)
+{
+  return sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
+			       block * sb->sb_blksize);
+}
+
 off_t
 ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block)
 {
@@ -146,6 +154,12 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 
   kfree (buffer);
   return result;
+}
+
+loff_t
+ext2_alloc_block (VFSSuperblock *sb)
+{
+  return -1; /* TODO Implement */
 }
 
 int
