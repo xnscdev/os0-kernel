@@ -161,6 +161,8 @@ int ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 off_t ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block);
 uint32_t ext2_inode_offset (VFSSuperblock *sb, ino_t inode);
 Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino_t inode);
+loff_t ext2_alloc_block (VFSSuperblock *sb);
+uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);
@@ -168,7 +170,6 @@ VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 void ext2_destroy_inode (VFSInode *inode);
 void ext2_fill_inode (VFSInode *inode);
 void ext2_write_inode (VFSInode *inode);
-void ext2_delete_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);
 void ext2_update (VFSSuperblock *sb);
 int ext2_statvfs (VFSSuperblock *sb, struct statvfs *st);

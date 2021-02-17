@@ -27,7 +27,6 @@ const VFSSuperblockOps ext2_sops = {
   .sb_destroy_inode = ext2_destroy_inode,
   .sb_fill_inode = ext2_fill_inode,
   .sb_write_inode = ext2_write_inode,
-  .sb_delete_inode = ext2_delete_inode,
   .sb_free = ext2_free,
   .sb_update = ext2_update,
   .sb_statvfs = ext2_statvfs,
@@ -72,14 +71,6 @@ const VFSFilesystem ext2_vfs = {
   .vfs_iops = &ext2_iops,
   .vfs_dops = &ext2_dops
 };
-
-static uint32_t
-ext2_bgdt_size (Ext2Superblock *esb)
-{
-  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
-  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
-  return a > b ? a : b;
-}
 
 static int
 ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
@@ -150,6 +141,14 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
       return ret;
     }
   return 0;
+}
+
+uint32_t
+ext2_bgdt_size (Ext2Superblock *esb)
+{
+  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
+  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
+  return a > b ? a : b;
 }
 
 int
@@ -315,11 +314,6 @@ ext2_write_inode (VFSInode *inode)
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
     ei->ei_sizeh = inode->vi_size >> 32;
   dev->sd_write (dev, ei, sizeof (Ext2Inode), offset);
-}
-
-void
-ext2_delete_inode (VFSInode *inode)
-{
 }
 
 void

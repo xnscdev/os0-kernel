@@ -42,7 +42,6 @@ typedef struct
   void (*sb_destroy_inode) (VFSInode *);
   void (*sb_fill_inode) (VFSInode *);
   void (*sb_write_inode) (VFSInode *);
-  void (*sb_delete_inode) (VFSInode *);
   void (*sb_free) (VFSSuperblock *);
   void (*sb_update) (VFSSuperblock *);
   int (*sb_statvfs) (VFSSuperblock *, struct statvfs *);
@@ -167,7 +166,6 @@ VFSInode *vfs_alloc_inode (VFSSuperblock *sb);
 void vfs_destroy_inode (VFSInode *inode);
 void vfs_fill_inode (VFSInode *inode);
 void vfs_write_inode (VFSInode *inode);
-void vfs_delete_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);
 void vfs_update_sb (VFSSuperblock *sb);
 int vfs_statvfs (VFSSuperblock *sb, struct statvfs *st);

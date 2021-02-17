@@ -145,12 +145,6 @@ vfs_write_inode (VFSInode *inode)
 }
 
 void
-vfs_delete_inode (VFSInode *inode)
-{
-  inode->vi_sb->sb_ops->sb_delete_inode (inode);
-}
-
-void
 vfs_free_sb (VFSSuperblock *sb)
 {
   sb->sb_ops->sb_free (sb);

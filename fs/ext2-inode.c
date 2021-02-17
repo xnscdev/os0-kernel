@@ -170,7 +170,36 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 loff_t
 ext2_alloc_block (VFSSuperblock *sb)
 {
-  return -1; /* TODO Implement */
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  SpecDevice *dev = sb->sb_dev;
+  int i;
+  int j;
+  for (i = 0; i < ext2_bgdt_size (esb); i++)
+    {
+      unsigned char *busage;
+      int ret;
+      if (bgdt[i].eb_bfree == 0)
+	continue; /* No free blocks */
+      busage = kmalloc (esb->esb_bpg >> 3);
+      if (unlikely (busage == NULL))
+	return -ENOMEM;
+      ret = dev->sd_read (dev, busage, esb->esb_bpg >> 3,
+			  bgdt[i].eb_busage * sb->sb_blksize);
+      if (ret != 0)
+	return ret;
+      for (j = 0; j < esb->esb_bpg; j++)
+	{
+	  uint32_t index = j >> 3;
+	  uint32_t offset = j % 8;
+	  if (busage[index] & 1 << offset)
+	    continue;
+	  kfree (busage);
+	  return esb->esb_bpg * i + j;
+	}
+      kfree (busage);
+    }
+  return -ENOSPC;
 }
 
 int
