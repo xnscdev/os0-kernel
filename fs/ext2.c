@@ -72,13 +72,19 @@ const VFSFilesystem ext2_vfs = {
   .vfs_dops = &ext2_dops
 };
 
+static uint32_t
+ext2_bgdt_size (Ext2Superblock *esb)
+{
+  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
+  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
+  return a > b ? a : b;
+}
+
 static int
 ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
-  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
-  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
-  uint32_t size = a > b ? a : b;
+  size_t size = ext2_bgdt_size (esb);
   void *ptr;
   int ret;
   ptr = kmalloc (sizeof (Ext2Superblock) + sizeof (Ext2BGD) * size);
@@ -201,8 +207,6 @@ ext2_mount (VFSMount *mp, int flags, void *data)
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
-  vfs_destroy_dir_entry (mp->vfs_sb.sb_root);
-  kfree (mp->vfs_sb.sb_private);
   return 0;
 }
 
@@ -299,11 +303,25 @@ ext2_delete_inode (VFSInode *inode)
 void
 ext2_free (VFSSuperblock *sb)
 {
+  vfs_destroy_dir_entry (sb->sb_root);
+  kfree (sb->sb_private);
 }
 
 void
 ext2_update (VFSSuperblock *sb)
 {
+  Ext2Superblock *esb = sb->sb_private;
+  int ret;
+
+  /* Update superblock */
+  ret = sb->sb_dev->sd_write (sb->sb_dev, esb, sizeof (Ext2Superblock), 1024);
+  if (ret != 0)
+    return;
+
+  /* Update block group descriptor table */
+  sb->sb_dev->sd_write (sb->sb_dev, sb->sb_private + sizeof (Ext2Superblock),
+			sizeof (Ext2BGD) * ext2_bgdt_size (esb),
+			sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
 }
 
 int
