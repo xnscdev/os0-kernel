@@ -118,10 +118,21 @@ ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block)
   return -EIO;
 }
 
+uint32_t
+ext2_inode_offset (VFSSuperblock *sb, ino_t inode)
+{
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  uint32_t inosize = esb->esb_versmaj > 0 ? esb->esb_inosize : 128;
+  uint32_t inotbl = bgdt[(inode - 1) / esb->esb_ipg].eb_inotbl;
+  uint32_t index = (inode - 1) % esb->esb_ipg;
+  return inotbl * sb->sb_blksize + index * inosize;
+}
+
 Ext2Inode *
 ext2_read_inode (VFSSuperblock *sb, ino_t inode)
 {
-  Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
+  Ext2Superblock *esb = sb->sb_private;
   Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
   uint32_t inosize = esb->esb_versmaj > 0 ? esb->esb_inosize : 128;
   uint32_t inotbl = bgdt[(inode - 1) / esb->esb_ipg].eb_inotbl;

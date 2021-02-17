@@ -113,6 +113,7 @@ struct _VFSInode
   nlink_t vi_nlink;
   dev_t vi_rdev;
   loff_t vi_size;
+  size_t vi_sectors;
   mode_t vi_mode;
   struct timespec vi_atime;
   struct timespec vi_mtime;

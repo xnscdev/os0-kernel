@@ -18,6 +18,7 @@
 
 #include <fs/ext2.h>
 #include <libk/libk.h>
+#include <sys/ata.h>
 #include <vm/heap.h>
 #include <errno.h>
 
@@ -138,6 +139,8 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   mp->vfs_sb.sb_flags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;
 
+  esb->esb_fsck++;
+
   /* Initialize block group descriptor table */
   mp->vfs_sb.sb_private = esb;
   ret = ext2_init_bgdt (&mp->vfs_sb, dev);
@@ -240,7 +243,8 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_flags = ei->ei_flags;
   inode->vi_nlink = ei->ei_nlink;
   inode->vi_size = ei->ei_sizel;
-  if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0)
+  if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
+      && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
     inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
   inode->vi_atime.tv_sec = ei->ei_atime;
   inode->vi_atime.tv_nsec = 0;
@@ -248,7 +252,8 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_mtime.tv_nsec = 0;
   inode->vi_ctime.tv_sec = ei->ei_ctime;
   inode->vi_ctime.tv_nsec = 0;
-  inode->vi_blocks = ei->ei_sectors / (2 << esb->esb_blksize);
+  inode->vi_sectors = ei->ei_sectors;
+  inode->vi_blocks = ei->ei_sectors * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
 
   /* Set mode and device numbers if applicable */
   switch (ei->ei_mode & 0xf000)
@@ -293,6 +298,23 @@ ext2_fill_inode (VFSInode *inode)
 void
 ext2_write_inode (VFSInode *inode)
 {
+  Ext2Superblock *esb = inode->vi_sb->sb_private;
+  Ext2Inode *ei = inode->vi_private;
+  SpecDevice *dev = inode->vi_sb->sb_dev;
+  uint32_t offset = ext2_inode_offset (inode->vi_sb, inode->vi_ino);
+  ei->ei_uid = inode->vi_uid;
+  ei->ei_sizel = inode->vi_size & 0xffffffff;
+  ei->ei_atime = inode->vi_atime.tv_sec;
+  ei->ei_ctime = inode->vi_ctime.tv_sec;
+  ei->ei_mtime = inode->vi_mtime.tv_sec;
+  ei->ei_gid = inode->vi_gid;
+  ei->ei_nlink = inode->vi_nlink;
+  ei->ei_sectors = inode->vi_sectors;
+  ei->ei_flags = inode->vi_flags;
+  if (S_ISREG (inode->vi_mode) && esb->esb_versmaj > 0
+      && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
+    ei->ei_sizeh = inode->vi_size >> 32;
+  dev->sd_write (dev, ei, sizeof (Ext2Inode), offset);
 }
 
 void
@@ -311,17 +333,16 @@ void
 ext2_update (VFSSuperblock *sb)
 {
   Ext2Superblock *esb = sb->sb_private;
-  int ret;
+  SpecDevice *dev = sb->sb_dev;
 
   /* Update superblock */
-  ret = sb->sb_dev->sd_write (sb->sb_dev, esb, sizeof (Ext2Superblock), 1024);
-  if (ret != 0)
+  if (dev->sd_write (dev, esb, sizeof (Ext2Superblock), 1024) != 0)
     return;
 
   /* Update block group descriptor table */
-  sb->sb_dev->sd_write (sb->sb_dev, sb->sb_private + sizeof (Ext2Superblock),
-			sizeof (Ext2BGD) * ext2_bgdt_size (esb),
-			sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
+  dev->sd_write (dev, sb->sb_private + sizeof (Ext2Superblock),
+		 sizeof (Ext2BGD) * ext2_bgdt_size (esb),
+		 sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
 }
 
 int
