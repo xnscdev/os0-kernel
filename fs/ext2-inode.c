@@ -255,13 +255,16 @@ int
 ext2_add_entry (VFSInode *dir, VFSDirEntry *entry)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
-  void *data = kmalloc (dir->vi_sb->sb_blksize);
+  void *data;
   size_t size;
   off_t block;
   off_t ret;
+  size = strlen (entry->d_name);
+  if (size > EXT2_MAX_NAME_LEN)
+    return -ENAMETOOLONG;
+  data = kmalloc (dir->vi_sb->sb_blksize);
   if (unlikely (data == NULL))
     return -ENOMEM;
-  size = strlen (entry->d_name);
 
   for (block = 0; (loff_t) block * dir->vi_sb->sb_blksize < dir->vi_size;
        block++)
