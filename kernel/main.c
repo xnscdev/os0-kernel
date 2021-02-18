@@ -47,7 +47,8 @@ static struct
 static void
 splash (void)
 {
-  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n");
+  printk ("Welcome to OS/0 " VERSION "\nCopyright (C) XNSC 2021\n\n"
+	  "System time: %lu\n\n", time (NULL));
 }
 
 static void

@@ -19,6 +19,8 @@
 #include <sys/cmos.h>
 #include <sys/io.h>
 #include <sys/types.h>
+#include <stddef.h>
+#include <time.h>
 
 static unsigned char dpm[] = {
   31, /* January */
@@ -37,6 +39,18 @@ static unsigned char dpm[] = {
 
 time_t rtc_time;
 
+static void
+rtc_wait_update (void)
+{
+  unsigned char x;
+  do
+    {
+      outb (CMOS_RTC_ASTAT, CMOS_PORT_REGISTER);
+      x = inb (CMOS_PORT_DATA);
+    }
+  while (x & 0x80);
+}
+
 void
 rtc_init (void)
 {
@@ -51,17 +65,18 @@ rtc_init (void)
   int i;
 
   /* Read CMOS real time clock data */
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_SECONDS | 0x80);
+  rtc_wait_update ();
+  outb_p (CMOS_RTC_SECONDS | 0x80, CMOS_PORT_REGISTER);
   seconds = inb (CMOS_PORT_DATA);
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_MINUTES | 0x80);
+  outb_p (CMOS_RTC_MINUTES | 0x80, CMOS_PORT_REGISTER);
   minutes = inb (CMOS_PORT_DATA);
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_HOURS | 0x80);
+  outb_p (CMOS_RTC_HOURS | 0x80, CMOS_PORT_REGISTER);
   hours = inb (CMOS_PORT_DATA);
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_DOM | 0x80);
+  outb_p (CMOS_RTC_DOM | 0x80, CMOS_PORT_REGISTER);
   dom = inb (CMOS_PORT_DATA);
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_MONTH | 0x80);
+  outb_p (CMOS_RTC_MONTH | 0x80, CMOS_PORT_REGISTER);
   month = inb (CMOS_PORT_DATA);
-  outb (CMOS_PORT_REGISTER, CMOS_RTC_YEAR | 0x80);
+  outb_p (CMOS_RTC_YEAR | 0x80, CMOS_PORT_REGISTER);
   year = inb (CMOS_PORT_DATA);
 
   /* Calculate day of year and year since 1900 */
@@ -76,4 +91,13 @@ rtc_init (void)
   rtc_time = seconds + minutes * 60 + hours * 3600 + doy * 86400 +
     (ys1900 - 70) * 31536000 + ((ys1900 - 69) / 4) * 86000 -
     ((ys1900 - 1) / 100) * 86400 + ((ys1900 + 299) / 400) * 86400;
+}
+
+time_t
+time (time_t *t)
+{
+  /* TODO Update rtc_time using PIT */
+  if (t != NULL)
+    *t = rtc_time;
+  return rtc_time;
 }
