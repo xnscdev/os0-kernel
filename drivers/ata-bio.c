@@ -106,7 +106,10 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
 			      temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
       memcpy (buffer, temp + ATA_SECTSIZE - start_diff, start_diff);
     }
 
@@ -122,7 +125,10 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
       ret = ata_read_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
 			      temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
       memcpy (buffer + start_diff + sectors * ATA_SECTSIZE, temp, end_diff);
     }
 
@@ -177,12 +183,18 @@ ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
 			      temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
       memcpy (temp + ATA_SECTSIZE - start_diff, buffer, start_diff);
       ret = ata_write_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
 			       temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
     }
 
   /* Write unaligned ending bytes */
@@ -197,12 +209,18 @@ ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
       ret = ata_read_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
 			      temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
       memcpy (temp, buffer + start_diff + sectors * ATA_SECTSIZE, end_diff);
       ret = ata_write_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
 			       temp);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (temp);
+	  return ret;
+	}
     }
 
   kfree (temp);
