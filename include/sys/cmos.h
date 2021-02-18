@@ -1,5 +1,5 @@
 /*************************************************************************
- * time.h -- This file is part of OS/0.                                  *
+ * cmos.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,36 +16,21 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _TIME_H
-#define _TIME_H
+#ifndef _SYS_CMOS_H
+#define _SYS_CMOS_H
 
-#include <sys/types.h>
+#define CMOS_PORT_REGISTER 0x70
+#define CMOS_PORT_DATA     0x71
 
-struct tm
-{
-  int tm_sec;
-  int tm_min;
-  int tm_hour;
-  int tm_mday;
-  int tm_mon;
-  int tm_year;
-  int tm_wday;
-  int tm_yday;
-  int tm_isdst;
-};
-
-struct timespec
-{
-  time_t tv_sec;
-  long tv_nsec;
-};
-
-struct itimerspec
-{
-  struct timespec it_interval;
-  struct timespec it_value;
-};
-
-time_t time (time_t *t);
+#define CMOS_RTC_SECONDS 0x00
+#define CMOS_RTC_MINUTES 0x02
+#define CMOS_RTC_HOURS   0x04
+#define CMOS_RTC_WEEKDAY 0x06
+#define CMOS_RTC_DOM     0x07
+#define CMOS_RTC_MONTH   0x08
+#define CMOS_RTC_YEAR    0x09
+#define CMOS_RTC_CENTURY 0x32
+#define CMOS_RTC_ASTAT   0x0a
+#define CMOS_RTC_BSTAT   0x0b
 
 #endif

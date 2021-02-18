@@ -90,6 +90,7 @@ higher_start:
 	call	paging_init
 	call	gdt_init
 	call	idt_init
+	call	rtc_init
 
 	sti
 
