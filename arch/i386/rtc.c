@@ -51,46 +51,86 @@ rtc_wait_update (void)
   while (x & 0x80);
 }
 
+static unsigned char
+rtc_read (unsigned char reg)
+{
+  outb_p (reg, CMOS_PORT_REGISTER);
+  return inb (CMOS_PORT_DATA);
+}
+
 void
 rtc_init (void)
 {
-  unsigned char seconds;
-  unsigned char minutes;
-  unsigned char hours;
+  unsigned char last_second;
+  unsigned char last_minute;
+  unsigned char last_hour;
+  unsigned char last_dom;
+  unsigned char last_month;
+  unsigned char last_year;
+  unsigned char second;
+  unsigned char minute;
+  unsigned char hour;
   unsigned char dom;
   unsigned char month;
   unsigned char year;
-  unsigned short doy;
-  unsigned short ys1900;
+  unsigned char bstat;
+  unsigned char doy;
+  unsigned short posix_year; /* Year since 1900 */
   int i;
 
-  /* Read CMOS real time clock data */
   rtc_wait_update ();
-  outb_p (CMOS_RTC_SECONDS | 0x80, CMOS_PORT_REGISTER);
-  seconds = inb (CMOS_PORT_DATA);
-  outb_p (CMOS_RTC_MINUTES | 0x80, CMOS_PORT_REGISTER);
-  minutes = inb (CMOS_PORT_DATA);
-  outb_p (CMOS_RTC_HOURS | 0x80, CMOS_PORT_REGISTER);
-  hours = inb (CMOS_PORT_DATA);
-  outb_p (CMOS_RTC_DOM | 0x80, CMOS_PORT_REGISTER);
-  dom = inb (CMOS_PORT_DATA);
-  outb_p (CMOS_RTC_MONTH | 0x80, CMOS_PORT_REGISTER);
-  month = inb (CMOS_PORT_DATA);
-  outb_p (CMOS_RTC_YEAR | 0x80, CMOS_PORT_REGISTER);
-  year = inb (CMOS_PORT_DATA);
+  second = rtc_read (CMOS_RTC_SECONDS);
+  minute = rtc_read (CMOS_RTC_MINUTES);
+  hour = rtc_read (CMOS_RTC_HOURS);
+  dom = rtc_read (CMOS_RTC_DOM);
+  month = rtc_read (CMOS_RTC_MONTH);
+  year = rtc_read (CMOS_RTC_YEAR);
 
-  /* Calculate day of year and year since 1900 */
+  /* Keep re-reading until the same values are read twice */
+  do
+    {
+      last_second = second;
+      last_minute = minute;
+      last_hour = hour;
+      last_dom = dom;
+      last_month = month;
+      last_year = year;
+
+      rtc_wait_update ();
+      second = rtc_read (CMOS_RTC_SECONDS);
+      minute = rtc_read (CMOS_RTC_MINUTES);
+      hour = rtc_read (CMOS_RTC_HOURS);
+      dom = rtc_read (CMOS_RTC_DOM);
+      month = rtc_read (CMOS_RTC_MONTH);
+      year = rtc_read (CMOS_RTC_YEAR);
+    }
+  while (second != last_second || minute != last_minute || hour != last_hour
+	 || dom != last_dom || month != last_month || year != last_year);
+
+  /* Normalize values */
+  bstat = rtc_read (CMOS_RTC_BSTAT);
+  if ((bstat & 0x04) == 0)
+    {
+      /* Convert BCD to binary */
+      second = (second & 0x0f) + (second >> 4) * 10;
+      minute = (minute & 0x0f) + (minute >> 4) * 10;
+      hour = ((hour & 0x0f) + ((hour & 0x70) >> 4) * 10) | (hour & 0x80);
+      dom = (dom & 0x0f) + (dom >> 4) * 10;
+      month = (month & 0x0f) + (month >> 4) * 10;
+      year = (year & 0x0f) + (year >> 4) * 10;
+    }
+  if ((bstat & 0x02) == 0 && hour & 0x80)
+    hour = ((hour & 0x7f) + 12) % 24; /* Convert 12 to 24-hour time */
+
+  posix_year = year + 100; /* Assume 20xx year */
   doy = dom - 1;
   for (i = 0; i < month - 1; i++)
     doy += dpm[i];
-  if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0))
-    doy++; /* Leap day */
-  ys1900 = year + 100; /* Assume year is 20xx */
 
   /* POSIX epoch time formula */
-  rtc_time = seconds + minutes * 60 + hours * 3600 + doy * 86400 +
-    (ys1900 - 70) * 31536000 + ((ys1900 - 69) / 4) * 86000 -
-    ((ys1900 - 1) / 100) * 86400 + ((ys1900 + 299) / 400) * 86400;
+  rtc_time = second + minute * 60 + hour * 3600 + doy * 86400 +
+    (posix_year - 70) * 31536000 + ((posix_year - 69) / 4) * 86000 -
+    ((posix_year - 1) / 100) * 86400 + ((posix_year + 299) / 400) * 86400;
 }
 
 time_t
