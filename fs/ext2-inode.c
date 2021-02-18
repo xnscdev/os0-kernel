@@ -259,6 +259,7 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   void *data;
   size_t size;
   off_t block;
+  off_t realblock;
   off_t ret;
   size = strlen (name);
   if (size > EXT2_MAX_NAME_LEN)
@@ -271,13 +272,13 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
        block++)
     {
       int i = 0;
-      ret = ext2_data_block (dir->vi_private, dir->vi_sb, block);
+      realblock = ext2_data_block (dir->vi_private, dir->vi_sb, block);
       if (ret < 0)
 	{
 	  kfree (data);
-	  return ret;
+	  return realblock;
 	}
-      ret = ext2_read_blocks (data, dir->vi_sb, block, 1);
+      ret = ext2_read_blocks (data, dir->vi_sb, realblock, 1);
       if (ret != 0)
 	{
 	  kfree (data);
@@ -330,10 +331,12 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 		       new->ed_size - sizeof (Ext2DirEntry));
 	      guess->ed_size = skip;
 
-	      ret = ext2_write_blocks (data, dir->vi_sb, block, 1);
+	      ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
 	      kfree (data);
 	      return ret;
 	    }
+	  else
+	    i += guess->ed_size;
 	}
     }
 
@@ -349,6 +352,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   VFSInode *inode;
   Ext2Inode *ei;
   ino_t ino;
+  time_t newtime = time (NULL);
   int ret;
 
   inode = ext2_alloc_inode (dir->vi_sb);
@@ -360,7 +364,6 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
       kfree (inode);
       return -ENOSPC;
     }
-  printk ("New inode: %lu\n", ino);
 
   ei = kmalloc (sizeof (Ext2Inode));
   if (unlikely (ei == NULL))
@@ -369,28 +372,13 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
       return -ENOMEM;
     }
 
-  /* Set inode data */
-  if (S_ISFIFO (mode))
-    ei->ei_mode = EXT2_TYPE_FIFO;
-  else if (S_ISCHR (mode))
-    ei->ei_mode = EXT2_TYPE_CHRDEV;
-  else if (S_ISDIR (mode))
-    ei->ei_mode = EXT2_TYPE_DIR;
-  else if (S_ISBLK (mode))
-    ei->ei_mode = EXT2_TYPE_BLKDEV;
-  else if (S_ISREG (mode))
-    ei->ei_mode = EXT2_TYPE_FILE;
-  else if (S_ISLNK (mode))
-    ei->ei_mode = EXT2_TYPE_LINK;
-  else if (S_ISSOCK (mode))
-    ei->ei_mode = EXT2_TYPE_SOCKET;
-  else
-    ei->ei_mode = 0;
-  ei->ei_mode |= mode & 07777;
-
+  ei->ei_mode = EXT2_TYPE_FILE | (mode & 07777);
   ei->ei_uid = 0;
   ei->ei_sizel = 0;
-  /* TODO Fill atime, ctime, mtime, dtime */
+  ei->ei_atime = newtime;
+  ei->ei_ctime = newtime;
+  ei->ei_mtime = newtime;
+  ei->ei_dtime = 0;
   ei->ei_gid = 0;
   ei->ei_nlink = 1;
   ei->ei_sectors = 0;
