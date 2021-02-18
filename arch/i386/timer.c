@@ -19,13 +19,19 @@
 #include <i386/timer.h>
 #include <sys/io.h>
 #include <sys/timer.h>
+#include <sys/types.h>
+
+extern time_t rtc_time;
 
 static long tick;
+static uint32_t timer_freq;
 
 void
 timer_tick (void)
 {
   tick++;
+  if (tick % timer_freq == 0)
+    rtc_time++;
 }
 
 void
@@ -35,6 +41,13 @@ timer_set_freq (uint32_t freq)
   outb (0x36, TIMER_PORT_COMMAND);
   outb ((unsigned char) (div & 0xff), TIMER_PORT_CHANNEL0);
   outb ((unsigned char) ((div >> 8) & 0xff), TIMER_PORT_CHANNEL0);
+  timer_freq = freq;
+}
+
+uint32_t
+timer_get_freq (void)
+{
+  return timer_freq;
 }
 
 void

@@ -25,6 +25,7 @@
 __BEGIN_DECLS
 
 void timer_set_freq (uint32_t freq);
+uint32_t timer_get_freq (void);
 
 void msleep (uint32_t ms);
 long timer_poll (void);
