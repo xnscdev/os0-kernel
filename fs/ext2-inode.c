@@ -499,7 +499,95 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 int
 ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return -ENOSYS;
+  char *temp;
+  uint32_t realblock;
+  blksize_t blksize = inode->vi_sb->sb_blksize;
+  off_t start_block = offset / blksize;
+  off_t mid_block = start_block + (offset % blksize != 0);
+  off_t end_block = (offset + len) / blksize;
+  size_t blocks = end_block - mid_block;
+  size_t start_diff = mid_block * blksize - offset;
+  size_t end_diff = offset + len - end_block * blksize;
+  size_t i;
+  int ret;
+
+  if (S_ISDIR (inode->vi_mode))
+    return -EISDIR;
+  if (offset > inode->vi_size)
+    return -EINVAL;
+
+  for (i = 0; i < blocks; i++)
+    {
+      realblock = ext2_data_block (inode->vi_private, inode->vi_sb, i);
+      if (realblock < 0)
+	return realblock;
+      ret = ext2_write_blocks (buffer + start_diff + i * blksize, inode->vi_sb,
+			       realblock, 1);
+      if (ret != 0)
+        return ret;
+    }
+
+  /* Write unaligned starting bytes */
+  if (start_diff != 0)
+    {
+      temp = kmalloc (blksize);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      realblock =
+	ext2_data_block (inode->vi_private, inode->vi_sb, start_block);
+      if (realblock < 0)
+	{
+	  kfree (temp);
+	  return realblock;
+	}
+      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (temp + blksize - start_diff, buffer, start_diff);
+      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+    }
+
+  /* Write unaligned ending bytes */
+  if (end_diff != 0)
+    {
+      if (temp == NULL)
+	{
+	  temp = kmalloc (blksize);
+	  if (unlikely (temp == NULL))
+	    return -ENOMEM;
+	}
+      realblock =
+	ext2_data_block (inode->vi_private, inode->vi_sb, end_block);
+      if (realblock < 0)
+	{
+	  kfree (temp);
+	  return realblock;
+	}
+      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (temp, buffer + start_diff + blocks * blksize, end_diff);
+      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+    }
+
+  kfree (temp);
+  return 0;
 }
 
 int
