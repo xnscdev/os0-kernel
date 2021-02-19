@@ -196,13 +196,19 @@ ext2_alloc_block (VFSSuperblock *sb)
 	  if (busage[index] & 1 << offset)
 	    continue;
 
-	  /* Mark the block as allocated and return */
+	  /* Mark the block as allocated */
 	  busage[index] |= 1 << offset;
 	  ret = dev->sd_write (dev, busage, esb->esb_bpg >> 3,
 			       bgdt[i].eb_busage * sb->sb_blksize);
 	  kfree (busage);
 	  if (ret != 0)
 	    return ret;
+
+	  /* Subtract from free blocks in superblock and BGDT */
+	  esb->esb_fblocks--;
+	  bgdt[i].eb_bfree--;
+	  ext2_update (sb);
+
 	  return esb->esb_bpg * i + j;
 	}
       kfree (busage);
@@ -256,6 +262,8 @@ int
 ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
+  VFSDirEntry *entries;
+  VFSDirEntry *temp;
   void *data;
   size_t size;
   off_t block;
@@ -267,6 +275,23 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   data = kmalloc (dir->vi_sb->sb_blksize);
   if (unlikely (data == NULL))
     return -ENOMEM;
+
+  ret = ext2_readdir (&entries, dir->vi_sb, dir);
+  if (ret != 0)
+    return ret;
+  temp = entries->d_next;
+  while (1)
+    {
+      if (strcmp (entries->d_name, name) == 0)
+        ret = -EEXIST;
+      vfs_destroy_dir_entry (entries);
+      entries = temp;
+      if (entries == NULL)
+	break;
+      temp = entries->d_next;
+    }
+  if (ret != 0)
+    return ret;
 
   for (block = 0; (loff_t) block * dir->vi_sb->sb_blksize < dir->vi_size;
        block++)
@@ -293,8 +318,6 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
 	    testsize |= guess->ed_namelenh << 8;
 	  extra = (guess->ed_size - sizeof (Ext2DirEntry) - testsize) & ~3;
-	  printk ("%p %d %lu %lu %lu %lu\n", guess, i, guess->ed_inode,
-		  guess->ed_size, testsize, extra);
 	  if (guess->ed_inode == 0 || guess->ed_size == 0)
 	    i += 4;
 	  else if (extra >= size + sizeof (Ext2DirEntry))
@@ -331,8 +354,7 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 		}
 	      else
 		new->ed_namelenh = size >> 8 & 0xff;
-	      strncpy ((char *) (new + sizeof (Ext2DirEntry)), name,
-		       new->ed_size - sizeof (Ext2DirEntry));
+	      memcpy ((char *) new + sizeof (Ext2DirEntry), name, size);
 	      guess->ed_size = skip;
 
 	      ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
