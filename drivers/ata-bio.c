@@ -89,6 +89,24 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   else
     part_offset = 0;
 
+  if (mid_lba > end_lba)
+    {
+      /* Completely contained in a single sector */
+      temp = kmalloc (ATA_SECTSIZE);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
+			      temp);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (buffer, temp + ATA_SECTSIZE - start_diff, len);
+      kfree (temp);
+      return 0;
+    }
+
   if (sectors > 0)
     {
       ret = ata_read_sectors (dev->sd_major - 1, sectors, mid_lba + part_offset,
@@ -165,6 +183,26 @@ ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
     part_offset = (uint32_t) dev->sd_private;
   else
     part_offset = 0;
+
+  if (mid_lba > end_lba)
+    {
+      /* Completely contained in a single sector */
+      temp = kmalloc (ATA_SECTSIZE);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
+			      temp);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (temp + ATA_SECTSIZE - start_diff, buffer, len);
+      ret = ata_write_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
+			       temp);
+      kfree (temp);
+      return ret;
+    }
 
   if (sectors > 0)
     {

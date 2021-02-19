@@ -541,6 +541,27 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   if (offset > inode->vi_size)
     return -EINVAL;
 
+  if (mid_block > end_block)
+    {
+      /* Completely contained in a single block */
+      realblock =
+	ext2_data_block (inode->vi_private, inode->vi_sb, start_block);
+      if (realblock < 0)
+	return realblock;
+      temp = kmalloc (blksize);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (buffer, temp + blksize - start_diff, len);
+      kfree (temp);
+      return 0;
+    }
+
   for (i = 0; i < blocks; i++)
     {
       realblock = ext2_data_block (inode->vi_private, inode->vi_sb, i);
@@ -622,6 +643,28 @@ ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
     return -EISDIR;
   if (offset > inode->vi_size)
     return -EINVAL;
+
+  if (mid_block > end_block)
+    {
+      /* Completely contained in a single block */
+      realblock =
+	ext2_data_block (inode->vi_private, inode->vi_sb, start_block);
+      if (realblock < 0)
+	return realblock;
+      temp = kmalloc (blksize);
+      if (unlikely (temp == NULL))
+	return -ENOMEM;
+      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
+      if (ret != 0)
+	{
+	  kfree (temp);
+	  return ret;
+	}
+      memcpy (temp + blksize - start_diff, buffer, len);
+      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
+      kfree (temp);
+      return ret;
+    }
 
   for (i = 0; i < blocks; i++)
     {

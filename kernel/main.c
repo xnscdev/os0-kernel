@@ -84,6 +84,8 @@ cmdline_init (char *cmdline)
     cmdline_parse (ptr);
 }
 
+#include <fs/ext2.h>
+
 static void
 mount_rootfs (void)
 {
