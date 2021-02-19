@@ -244,13 +244,19 @@ ext2_create_inode (VFSSuperblock *sb)
 	  if (iusage[index] & 1 << offset)
 	    continue;
 
-	  /* Mark the inode as allocated and return */
+	  /* Mark the inode as allocated */
 	  iusage[index] |= 1 << offset;
 	  ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
 			       bgdt[i].eb_iusage * sb->sb_blksize);
 	  kfree (iusage);
 	  if (ret != 0)
-	    return 0;
+	    return ret;
+
+	  /* Subtract from free inodes in superblock and BGDT */
+	  esb->esb_finodes--;
+	  bgdt[i].eb_ifree--;
+	  ext2_update (sb);
+
 	  return esb->esb_ipg * i + j;
 	}
       kfree (iusage);
