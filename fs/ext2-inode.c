@@ -292,12 +292,16 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 	  size_t extra;
 	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
 	    testsize |= guess->ed_namelenh << 8;
-	  extra = (guess->ed_size - testsize) & ~3;
-	  if (extra >= size + sizeof (Ext2DirEntry))
+	  extra = (guess->ed_size - sizeof (Ext2DirEntry) - testsize) & ~3;
+	  printk ("%p %d %lu %lu %lu %lu\n", guess, i, guess->ed_inode,
+		  guess->ed_size, testsize, extra);
+	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	    i += 4;
+	  else if (extra >= size + sizeof (Ext2DirEntry))
 	    {
 	      size_t skip = testsize + sizeof (Ext2DirEntry);
 	      Ext2DirEntry *new;
-	      if (skip % 4)
+	      if (skip & 3)
 		{
 		  skip &= ~3;
 		  skip += 4;
