@@ -37,8 +37,11 @@ int
 ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		   size_t nblocks)
 {
-  return sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
-			       block * sb->sb_blksize);
+  int ret = sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
+				  block * sb->sb_blksize);
+  if (ret == 0)
+    ((Ext2Superblock *) sb->sb_private)->esb_wtime = time (NULL);
+  return ret;
 }
 
 off_t

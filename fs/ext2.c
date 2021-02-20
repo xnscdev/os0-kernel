@@ -131,6 +131,7 @@ ext2_init_disk (VFSMount *mp, int flags, const char *devname)
   mp->vfs_sb.sb_magic = esb->esb_magic;
 
   esb->esb_fsck++;
+  esb->esb_mtime = time (NULL);
 
   /* Initialize block group descriptor table */
   mp->vfs_sb.sb_private = esb;
