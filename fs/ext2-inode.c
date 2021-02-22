@@ -407,6 +407,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
       return -ENOMEM;
     }
 
+  /* TODO Pre-allocate data blocks */
   ei->ei_mode = EXT2_TYPE_FILE | (mode & 07777);
   ei->ei_uid = 0;
   ei->ei_sizel = 0;
@@ -430,7 +431,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   memset (ei->ei_oss2, 0, 3);
 
   inode->vi_ino = ino;
-  inode->vi_mode = mode;
+  inode->vi_mode = mode | S_IFREG;
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
   inode->vi_flags = ei->ei_flags;
