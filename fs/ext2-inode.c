@@ -219,50 +219,68 @@ ext2_alloc_block (VFSSuperblock *sb)
   return -ENOSPC;
 }
 
-ino_t
-ext2_create_inode (VFSSuperblock *sb)
+static ino_t
+ext2_try_create_inode (VFSSuperblock *sb, int index)
 {
   Ext2Superblock *esb = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
   Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  unsigned char *iusage;
+  int ret;
   int i;
-  int j;
-  for (i = 0; i < ext2_bgdt_size (esb); i++)
+  if (bgdt[index].eb_ifree == 0)
+    return 0; /* No free inodes */
+  iusage = kmalloc (esb->esb_ipg >> 3);
+  if (unlikely (iusage == NULL))
+    return 0;
+  ret = dev->sd_read (dev, iusage, esb->esb_ipg >> 3,
+		      bgdt[index].eb_iusage * sb->sb_blksize);
+  if (ret != 0)
+    return ret;
+  for (i = 0; i < esb->esb_ipg; i++)
     {
-      unsigned char *iusage;
-      int ret;
-      if (bgdt[i].eb_ifree == 0)
-	continue; /* No free inodes */
-      iusage = kmalloc (esb->esb_ipg >> 3);
-      if (unlikely (iusage == NULL))
-	return 0;
-      ret = dev->sd_read (dev, iusage, esb->esb_ipg >> 3,
-			  bgdt[i].eb_iusage * sb->sb_blksize);
+      uint32_t index = i >> 3;
+      uint32_t offset = i % 8;
+      if (iusage[index] & 1 << offset)
+	continue;
+
+      /* Mark the inode as allocated */
+      iusage[index] |= 1 << offset;
+      ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
+			   bgdt[index].eb_iusage * sb->sb_blksize);
+      kfree (iusage);
       if (ret != 0)
 	return ret;
-      for (j = 0; j < esb->esb_ipg; j++)
-	{
-	  uint32_t index = j >> 3;
-	  uint32_t offset = j % 8;
-	  if (iusage[index] & 1 << offset)
-	    continue;
 
-	  /* Mark the inode as allocated */
-	  iusage[index] |= 1 << offset;
-	  ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
-			       bgdt[i].eb_iusage * sb->sb_blksize);
-	  kfree (iusage);
-	  if (ret != 0)
-	    return ret;
+      /* Subtract from free inodes in superblock and BGDT */
+      esb->esb_finodes--;
+      bgdt[index].eb_ifree--;
+      ext2_update (sb);
 
-	  /* Subtract from free inodes in superblock and BGDT */
-	  esb->esb_finodes--;
-	  bgdt[i].eb_ifree--;
-	  ext2_update (sb);
+      return esb->esb_ipg * index + i + 1;
+    }
+  kfree (iusage);
+  return 0;
+}
 
-	  return esb->esb_ipg * i + j;
-	}
-      kfree (iusage);
+ino_t
+ext2_create_inode (VFSSuperblock *sb, int prefbg)
+{
+  int i;
+  if (prefbg >= 0)
+    {
+      ino_t inode = ext2_try_create_inode (sb, prefbg);
+      if (inode > 0)
+	return inode;
+    }
+  for (i = 0; i < ext2_bgdt_size (sb->sb_private); i++)
+    {
+      ino_t inode;
+      if (i == prefbg)
+	continue; /* Already tried this block group */
+      inode = ext2_try_create_inode (sb, i);
+      if (inode > 0)
+	return inode;
     }
   return 0;
 }
@@ -393,7 +411,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   inode = ext2_alloc_inode (dir->vi_sb);
   if (unlikely (inode == NULL))
     return -ENOMEM;
-  ino = ext2_create_inode (dir->vi_sb);
+  ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->esb_ipg);
   if (ino == 0)
     {
       kfree (inode);
