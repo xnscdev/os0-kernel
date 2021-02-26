@@ -42,7 +42,10 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
   ret = dev->sd_read (dev, busage, esb->esb_bpg >> 3,
 		      bgdt[index].eb_busage * sb->sb_blksize);
   if (ret != 0)
-    return ret;
+    {
+      kfree (busage);
+      return ret;
+    }
   for (i = 0; i < esb->esb_bpg; i++)
     {
       uint32_t byte = i >> 3;
@@ -53,14 +56,14 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
       /* Mark the block as allocated */
       busage[byte] |= 1 << offset;
       ret = dev->sd_write (dev, busage, esb->esb_bpg >> 3,
-			   bgdt[byte].eb_busage * sb->sb_blksize);
+			   bgdt[index].eb_busage * sb->sb_blksize);
       kfree (busage);
       if (ret != 0)
 	return ret;
 
       /* Subtract from free blocks in superblock and BGDT */
       esb->esb_fblocks--;
-      bgdt[byte].eb_bfree--;
+      bgdt[index].eb_bfree--;
       ext2_update (sb);
 
       return esb->esb_bpg * byte + i;
@@ -86,7 +89,10 @@ ext2_try_create_inode (VFSSuperblock *sb, int index)
   ret = dev->sd_read (dev, iusage, esb->esb_ipg >> 3,
 		      bgdt[index].eb_iusage * sb->sb_blksize);
   if (ret != 0)
-    return ret;
+    {
+      kfree (iusage);
+      return ret;
+    }
   for (i = 0; i < esb->esb_ipg; i++)
     {
       uint32_t byte = i >> 3;
@@ -97,19 +103,57 @@ ext2_try_create_inode (VFSSuperblock *sb, int index)
       /* Mark the inode as allocated */
       iusage[byte] |= 1 << offset;
       ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
-			   bgdt[byte].eb_iusage * sb->sb_blksize);
+			   bgdt[index].eb_iusage * sb->sb_blksize);
       kfree (iusage);
       if (ret != 0)
 	return ret;
 
       /* Subtract from free inodes in superblock and BGDT */
       esb->esb_finodes--;
-      bgdt[byte].eb_ifree--;
+      bgdt[index].eb_ifree--;
       ext2_update (sb);
 
-      return esb->esb_ipg * byte + i + 1;
+      return esb->esb_ipg * index + i + 1;
     }
   kfree (iusage);
+  return 0;
+}
+
+static int
+ext2_clear_inode (VFSSuperblock *sb, ino_t inode)
+{
+  Ext2Superblock *esb = sb->sb_private;
+  SpecDevice *dev = sb->sb_dev;
+  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  unsigned char *iusage;
+  uint32_t blkgrp = inode / esb->esb_ipg;
+  uint32_t rem = inode % esb->esb_ipg;
+  uint32_t byte = rem >> 3;
+  uint32_t offset = rem % 8;
+  int ret;
+  iusage = kmalloc (esb->esb_ipg >> 3);
+  if (unlikely (iusage == NULL))
+    return 0;
+  ret = dev->sd_read (dev, iusage, esb->esb_ipg >> 3,
+		      bgdt[blkgrp].eb_iusage * sb->sb_blksize);
+  if (ret != 0)
+    {
+      kfree (iusage);
+      return ret;
+    }
+
+  /* Mark the inode as unallocated */
+  iusage[byte] &= ~(1 << offset);
+  ret = dev->sd_write (dev, iusage, esb->esb_ipg >> 3,
+		       bgdt[blkgrp].eb_iusage * sb->sb_blksize);
+  kfree (iusage);
+  if (ret != 0)
+    return ret;
+
+  /* Add to free inodes in superblock and BGDT */
+  esb->esb_finodes++;
+  bgdt[blkgrp].eb_ifree++;
+  ext2_update (sb);
   return 0;
 }
 
@@ -264,6 +308,7 @@ ext2_unref_inode (VFSSuperblock *sb, ino_t inode)
 {
   VFSInode *vi = ext2_alloc_inode (sb);
   Ext2Inode *ei;
+  int ret = 0;
   if (unlikely (vi == NULL))
     return -ENOMEM;
   ext2_fill_inode (vi);
@@ -274,6 +319,7 @@ ext2_unref_inode (VFSSuperblock *sb, ino_t inode)
       goto finish;
     case 1:
       ei->ei_dtime = time (NULL);
+      ret = ext2_clear_inode (sb, inode);
     default:
       ei->ei_nlink--;
       ext2_write_inode (vi);
@@ -281,7 +327,7 @@ ext2_unref_inode (VFSSuperblock *sb, ino_t inode)
 
  finish:
   ext2_destroy_inode (vi);
-  return 0;
+  return ret;
 }
 
 loff_t
