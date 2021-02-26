@@ -460,7 +460,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   ei->ei_sectors = 0;
   ei->ei_flags = 0;
   ei->ei_oss1 = 0;
-  memset (ei->ei_bptr0, 0, EXT2_STORED_INODES);
+  memset (ei->ei_bptr0, 0, 4 * EXT2_STORED_INODES);
   ei->ei_bptr1 = 0;
   ei->ei_bptr2 = 0;
   ei->ei_bptr3 = 0;
