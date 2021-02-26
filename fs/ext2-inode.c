@@ -259,6 +259,31 @@ ext2_read_inode (VFSSuperblock *sb, ino_t inode)
   return result;
 }
 
+int
+ext2_unref_inode (VFSSuperblock *sb, ino_t inode)
+{
+  VFSInode *vi = ext2_alloc_inode (sb);
+  Ext2Inode *ei;
+  if (unlikely (vi == NULL))
+    return -ENOMEM;
+  ext2_fill_inode (vi);
+  ei = vi->vi_private;
+  switch (ei->ei_nlink)
+    {
+    case 0:
+      goto finish;
+    case 1:
+      ei->ei_dtime = time (NULL);
+    default:
+      ei->ei_nlink--;
+      ext2_write_inode (vi);
+    }
+
+ finish:
+  ext2_destroy_inode (vi);
+  return 0;
+}
+
 loff_t
 ext2_alloc_block (VFSSuperblock *sb, int prefbg)
 {
