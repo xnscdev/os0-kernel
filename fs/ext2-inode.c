@@ -311,8 +311,11 @@ ext2_unref_inode (VFSSuperblock *sb, ino_t inode)
   int ret = 0;
   if (unlikely (vi == NULL))
     return -ENOMEM;
+  vi->vi_ino = inode;
   ext2_fill_inode (vi);
   ei = vi->vi_private;
+  if (ei == NULL)
+    return -EIO;
   switch (ei->ei_nlink)
     {
     case 0:
@@ -627,7 +630,80 @@ ext2_link (VFSInode *old, VFSInode *dir, const char *new)
 int
 ext2_unlink (VFSInode *dir, const char *name)
 {
-  return -ENOSYS;
+  VFSSuperblock *sb = dir->vi_sb;
+  Ext2Superblock *esb;
+  Ext2Inode *ei;
+  void *buffer;
+  char *guessname;
+  int blocks;
+  int ret;
+  int i;
+
+  if (dir->vi_ino == 0)
+    return -EINVAL;
+  ei = ext2_read_inode (sb, dir->vi_ino);
+  if (ei == NULL)
+    return -EINVAL;
+
+  if ((ei->ei_mode & 0xf000) != EXT2_TYPE_DIR)
+    {
+      kfree (ei);
+      return -ENOTDIR;
+    }
+
+  esb = sb->sb_private;
+  blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
+  buffer = kmalloc (sb->sb_blksize);
+
+  for (i = 0; i < blocks; i++)
+    {
+      int bytes = 0;
+      loff_t block = ext2_data_block (ei, sb, i);
+      Ext2DirEntry *last = NULL;
+      if (ext2_read_blocks (buffer, sb, block, 1) != 0)
+	{
+	  kfree (buffer);
+	  kfree (ei);
+	  return -EIO;
+	}
+      while (bytes < sb->sb_blksize)
+	{
+	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
+	  uint16_t namelen;
+	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	    {
+	      bytes += 4;
+	      continue;
+	    }
+
+	  namelen = guess->ed_namelenl;
+	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
+	    namelen |= guess->ed_namelenh << 8;
+
+	  guessname = (char *) guess + sizeof (Ext2DirEntry);
+	  if (strlen (name) == namelen
+	      && strncmp (guessname, name, namelen) == 0)
+	    {
+	      ino_t temp = guess->ed_inode;
+	      kfree (ei);
+	      if (last != NULL)
+	        last->ed_size += guess->ed_size;
+	      memset (guess, 0, sizeof (Ext2DirEntry));
+	      ret = ext2_write_blocks (buffer, sb, block, 1);
+	      kfree (buffer);
+	      if (ret != 0)
+		return ret;
+	      return ext2_unref_inode (sb, temp);
+	    }
+
+	  bytes += guess->ed_size;
+	  last = guess;
+	}
+    }
+
+  kfree (buffer);
+  kfree (ei);
+  return -ENOENT;
 }
 
 int
