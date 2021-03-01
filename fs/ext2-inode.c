@@ -328,6 +328,10 @@ ext2_unalloc_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off_t start,
 	      goto err;
 	    }
 	  ret = ext2_unalloc_block (sb, bptr1[block - EXT2_STORED_INODES]);
+	  bptr1[block - EXT2_STORED_INODES] = 0;
+	  if (ret != 0)
+	    goto err;
+	  ret = ext2_write_blocks (bptr1, sb, inode->ei_bptr1, 1);
 	  if (ret != 0)
 	    goto err;
 	  continue;
@@ -351,8 +355,12 @@ ext2_unalloc_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off_t start,
 	      ret = -EIO;
 	      goto err;
 	    }
-	  realblock = bptr2[realblock % sb->sb_blksize];
-	  ret = ext2_unalloc_block (sb, realblock);
+	  ret = ext2_unalloc_block (sb, bptr2[realblock % sb->sb_blksize]);
+	  bptr2[realblock % sb->sb_blksize] = 0;
+	  if (ret != 0)
+	    goto err;
+	  ret = ext2_write_blocks (bptr2, sb,
+				   bptr1[realblock / sb->sb_blksize], 1);
 	  if (ret != 0)
 	    goto err;
 	  continue;
@@ -385,8 +393,14 @@ ext2_unalloc_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off_t start,
 	      ret = -EIO;
 	      goto err;
 	    }
-	  realblock = bptr3[realblock % sb->sb_blksize];
-	  ret = ext2_unalloc_block (sb, realblock);
+	  ret = ext2_unalloc_block (sb, bptr3[realblock % sb->sb_blksize]);
+	  bptr3[realblock % sb->sb_blksize] = 0;
+	  if (ret != 0)
+	    goto err;
+	  ret = ext2_write_blocks (bptr3, sb,
+				   bptr2[realblock % (sb->sb_blksize *
+						      sb->sb_blksize) /
+					 sb->sb_blksize], 1);
 	  if (ret != 0)
 	    goto err;
 	  continue;

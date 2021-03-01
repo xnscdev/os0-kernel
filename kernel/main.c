@@ -98,6 +98,16 @@ mount_rootfs (void)
 
   if (vfs_mount (boot_options.b_rootfstype, "/", 0, boot_options.b_root) != 0)
     panic ("Failed to mount root filesystem");
+
+  {
+    VFSPath *dirpath;
+    VFSDirEntry dir;
+    vfs_namei (&dirpath, "/dir/hello.c");
+    vfs_lookup (&dir, &mount_table->vfs_sb, dirpath);
+    vfs_path_free (dirpath);
+    dir.d_inode->vi_size = 19;
+    printk ("%d\n", vfs_truncate (dir.d_inode));
+  }
 }
 
 void
