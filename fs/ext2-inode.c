@@ -1273,6 +1273,10 @@ ext2_truncate (VFSInode *inode)
   uint64_t origsize = ei->ei_sizel;
   uint64_t newsize = inode->vi_size & 0xffffffff;
   blksize_t blksize = inode->vi_sb->sb_blksize;
+
+  if (S_ISDIR (inode->vi_mode))
+    return -EISDIR;
+
   if (esb->esb_versmaj > 0 && S_ISREG (inode->vi_mode)
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
     {
