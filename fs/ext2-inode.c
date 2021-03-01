@@ -302,6 +302,7 @@ ext2_unalloc_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off_t start,
   blkcnt_t i;
   int ret = 0;
 
+  /* TODO Free indirect blocks pointed to by doubly/triply indirect blocks */
   for (i = 0; i < nblocks; i++)
     {
       off_t block = start + i;
@@ -1269,11 +1270,34 @@ ext2_truncate (VFSInode *inode)
 {
   Ext2Superblock *esb = inode->vi_sb->sb_private;
   Ext2Inode *ei = inode->vi_private;
-  ei->ei_sizel = inode->vi_size & 0xffffffff;
+  uint64_t origsize = ei->ei_sizel;
+  uint64_t newsize = inode->vi_size & 0xffffffff;
+  blksize_t blksize = inode->vi_sb->sb_blksize;
   if (esb->esb_versmaj > 0 && S_ISREG (inode->vi_mode)
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    ei->ei_sizeh = inode->vi_size >> 32;
-  return -ENOSYS;
+    {
+      origsize |= (uint64_t) ei->ei_sizeh << 32;
+      ei->ei_sizeh = inode->vi_size >> 32;
+      newsize |= inode->vi_size >> 32 << 32;
+    }
+  inode->vi_size = newsize;
+  inode->vi_sectors = (newsize + blksize - 1) / blksize * ATA_SECTSIZE;
+  ext2_write_inode (inode);
+
+  if (origsize == newsize)
+    return 0;
+  else if (origsize > newsize)
+    {
+      off_t start = (newsize + blksize - 1) / blksize;
+      blkcnt_t nblocks = (origsize + blksize - 1) / blksize - start;
+      if (nblocks != 0)
+	return ext2_unalloc_data_blocks (ei, inode->vi_sb, start, nblocks);
+      else
+	return 0;
+    }
+  else
+    return -ENOTSUP; /* TODO File enlargement support */
+  return 0;
 }
 
 int
