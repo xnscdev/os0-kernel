@@ -24,7 +24,7 @@ vfs_guess_ext2 (SpecDevice *dev)
   uint16_t magic[1];
   if (dev->sd_read (dev, magic, 2, 0x438) != 0)
     return 0;
-  return magic == EXT2_MAGIC;
+  return *magic == EXT2_MAGIC;
 }
 
 int
