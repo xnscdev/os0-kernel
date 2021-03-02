@@ -546,13 +546,20 @@ ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
 int
 ext2_chmod (VFSInode *inode, mode_t mode)
 {
-  return -ENOSYS;
+  Ext2Inode *ei = inode->vi_private;
+  inode->vi_mode = (inode->vi_mode & S_IFMT) | (mode & 07777);
+  ei->ei_mode = (ei->ei_mode & 0xf000) | (mode & 07777);
+  ext2_write_inode (inode);
+  return 0;
 }
 
 int
 ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 {
-  return -ENOSYS;
+  inode->vi_uid = uid;
+  inode->vi_gid = gid;
+  ext2_write_inode (inode);
+  return 0;
 }
 
 int
