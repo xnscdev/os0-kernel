@@ -90,10 +90,33 @@ mount_rootfs (void)
   if (*boot_options.b_root == '\0')
     panic ("No root filesystem specified in boot options");
 
-  /* TODO Determine root filesystem type automatically if not specified */
   if (*boot_options.b_rootfstype == '\0')
-    panic ("Root filesystem type not specified");
+    {
+      VFSPath *devpath;
+      SpecDevice *dev;
+      int type;
+      if (vfs_namei (&devpath, boot_options.b_root) != 0)
+	goto err;
+      if (devpath->vp_prev == NULL || devpath->vp_prev->vp_prev != NULL
+	  || strcmp (devpath->vp_prev->vp_short, "dev") != 0)
+	goto err;
+      dev = device_lookup (devpath->vp_long == NULL ? devpath->vp_short :
+			   devpath->vp_long);
+      if (dev == NULL)
+	goto err;
+      type = vfs_guess_type (dev);
+      switch (type)
+	{
+	case FS_TYPE_EXT2:
+	  strcpy (boot_options.b_rootfstype, "ext2");
+	  goto finish;
+	}
 
+    err:
+      panic ("Root filesystem type not specified");
+    }
+
+ finish:
   if (vfs_mount (boot_options.b_rootfstype, "/", 0, boot_options.b_root) != 0)
     panic ("Failed to mount root filesystem");
 }

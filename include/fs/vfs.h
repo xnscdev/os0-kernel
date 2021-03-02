@@ -30,6 +30,9 @@
 #define VFS_FS_TABLE_SIZE 8
 #define VFS_MOUNT_TABLE_SIZE 16
 
+#define FS_TYPE_UNKNOWN 0
+#define FS_TYPE_EXT2    1
+
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
@@ -160,6 +163,7 @@ void vfs_init (void);
 
 int vfs_register (const VFSFilesystem *fs);
 void vfs_destroy_dir_entry (VFSDirEntry *entry);
+int vfs_guess_type (SpecDevice *dev);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
 
 VFSInode *vfs_alloc_inode (VFSSuperblock *sb);
