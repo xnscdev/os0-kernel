@@ -168,8 +168,7 @@ int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 int ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		       size_t nblocks);
 off_t ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block);
-int ext2_unalloc_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off_t start,
-			      blkcnt_t nblocks);
+int ext2_unalloc_data_blocks (VFSInode *inode, off_t start, blkcnt_t nblocks);
 uint32_t ext2_inode_offset (VFSSuperblock *sb, ino_t inode);
 Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino_t inode);
 int ext2_unref_inode (VFSSuperblock *sb, ino_t inode);
