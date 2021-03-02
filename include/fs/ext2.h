@@ -163,6 +163,8 @@ extern const VFSFilesystem ext2_vfs;
 
 void ext2_init (void);
 
+int ext2_extend_inode (VFSInode *inode, blkcnt_t origblocks,
+		       blkcnt_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		      size_t nblocks);
 int ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
@@ -174,6 +176,7 @@ Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino_t inode);
 int ext2_unref_inode (VFSSuperblock *sb, ino_t inode);
 loff_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
+int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
