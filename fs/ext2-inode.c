@@ -362,7 +362,12 @@ ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
   if (S_ISDIR (inode->vi_mode))
     return -EISDIR;
   if (offset > inode->vi_size)
-    return -EINVAL; /* TODO Truncate file to (offset + len) bytes */
+    {
+      inode->vi_size = offset + len;
+      ret = ext2_truncate (inode);
+      if (ret != 0)
+	return ret;
+    }
 
   if (mid_block > end_block)
     {
