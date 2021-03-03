@@ -565,7 +565,91 @@ ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  return -ENOSYS;
+  Ext2Superblock *esb = dir->vi_sb->sb_private;
+  VFSInode *inode;
+  Ext2Inode *ei;
+  ino_t ino;
+  time_t newtime = time (NULL);
+  int ret;
+
+  inode = ext2_alloc_inode (dir->vi_sb);
+  if (unlikely (inode == NULL))
+    return -ENOMEM;
+  ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->esb_ipg);
+  if (ino == 0)
+    {
+      kfree (inode);
+      return -ENOSPC;
+    }
+
+  ei = kmalloc (sizeof (Ext2Inode));
+  if (unlikely (ei == NULL))
+    {
+      kfree (inode);
+      return -ENOMEM;
+    }
+
+  /* TODO Pre-allocate data blocks */
+  ei->ei_mode = EXT2_TYPE_DIR | (mode & 07777);
+  ei->ei_uid = 0;
+  ei->ei_sizel = 0;
+  ei->ei_atime = newtime;
+  ei->ei_ctime = newtime;
+  ei->ei_mtime = newtime;
+  ei->ei_dtime = 0;
+  ei->ei_gid = 0;
+  ei->ei_nlink = 1;
+  ei->ei_sectors = 0;
+  ei->ei_flags = 0;
+  ei->ei_oss1 = 0;
+  memset (ei->ei_bptr0, 0, EXT2_STORED_INODES << 2);
+  ei->ei_bptr1 = 0;
+  ei->ei_bptr2 = 0;
+  ei->ei_bptr3 = 0;
+  ei->ei_gen = 0; /* ??? */
+  ei->ei_acl = 0;
+  ei->ei_sizeh = 0;
+  ei->ei_fragbaddr = 0; /* ??? */
+  memset (ei->ei_oss2, 0, 3);
+
+  inode->vi_ino = ino;
+  inode->vi_mode = mode | S_IFREG;
+  inode->vi_uid = ei->ei_uid;
+  inode->vi_gid = ei->ei_gid;
+  inode->vi_flags = ei->ei_flags;
+  inode->vi_nlink = ei->ei_nlink;
+  inode->vi_size = ei->ei_sizel;
+  if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
+      && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
+    inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
+  inode->vi_atime.tv_sec = ei->ei_atime;
+  inode->vi_atime.tv_nsec = 0;
+  inode->vi_mtime.tv_sec = ei->ei_mtime;
+  inode->vi_mtime.tv_nsec = 0;
+  inode->vi_ctime.tv_sec = ei->ei_ctime;
+  inode->vi_ctime.tv_nsec = 0;
+  inode->vi_sectors = ei->ei_sectors;
+  inode->vi_blocks = ei->ei_sectors * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
+  inode->vi_private = ei;
+
+  ext2_write_inode (inode);
+  ret = ext2_add_entry (dir, inode, name);
+  if (ret != 0)
+    {
+      vfs_destroy_inode (inode);
+      return ret;
+    }
+
+  /* Setup default . and .. entries */
+  ret = ext2_add_entry (inode, inode, ".");
+  if (ret != 0)
+    {
+      vfs_destroy_inode (inode);
+      return ret;
+    }
+  ret = ext2_add_entry (inode, dir, "..");
+  vfs_destroy_inode (inode);
+  return ret;
 }
 
 int

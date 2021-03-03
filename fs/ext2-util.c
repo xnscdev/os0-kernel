@@ -18,6 +18,7 @@
 
 #include <fs/ext2.h>
 #include <libk/libk.h>
+#include <sys/ata.h>
 #include <vm/heap.h>
 
 static loff_t
@@ -772,6 +773,7 @@ int
 ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
+  Ext2DirEntry *newent;
   VFSDirEntry *entries;
   VFSDirEntry *temp;
   void *data;
@@ -876,7 +878,50 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 	}
     }
 
-  /* TODO Allocate a new block and add a dir entry */
+  memset (data, 0, dir->vi_sb->sb_blksize);
+  newent = data;
+  newent->ed_inode = inode->vi_ino;
+  newent->ed_size = dir->vi_sb->sb_blksize;
+  newent->ed_namelenl = size & 0xff;
+  if (esb->esb_reqft & EXT2_FT_REQ_DIRTYPE)
+    {
+      if (S_ISREG (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_FILE;
+      else if (S_ISDIR (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_DIR;
+      else if (S_ISCHR (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_CHRDEV;
+      else if (S_ISBLK (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_BLKDEV;
+      else if (S_ISFIFO (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_FIFO;
+      else if (S_ISSOCK (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_SOCKET;
+      else if (S_ISLNK (inode->vi_mode))
+	newent->ed_namelenh = EXT2_DIRTYPE_LINK;
+      else
+	newent->ed_namelenh = EXT2_DIRTYPE_NONE;
+    }
+  else
+    newent->ed_namelenh = (size >> 8) & 0xff;
+
+  /* Directory inode size should always be multiple of block size */
+  block = dir->vi_size / dir->vi_sb->sb_blksize;
+  inode->vi_size += inode->vi_sb->sb_blksize;
+  inode->vi_sectors += inode->vi_sb->sb_blksize / ATA_SECTSIZE;
+  ret = ext2_extend_inode (dir, block, block + 1);
+  if (ret != 0)
+    {
+      kfree (data);
+      return ret;
+    }
+  realblock = ext2_data_block (dir->vi_private, dir->vi_sb, block);
+  if (realblock < 0)
+    {
+      kfree (data);
+      return realblock;
+    }
+  ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
   kfree (data);
-  return -ENOSPC;
+  return ret;
 }
