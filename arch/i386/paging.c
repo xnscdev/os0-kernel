@@ -21,6 +21,7 @@
 #include <libk/libk.h>
 #include <sys/memory.h>
 #include <vm/paging.h>
+#include <vm/heap.h>
 
 uint32_t page_dir[PAGE_DIR_SIZE];
 uint32_t page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE];
@@ -59,4 +60,62 @@ map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags)
   uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   uint32_t *table = (uint32_t *) ((page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
   table[pti] = paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
+}
+
+uint32_t *
+page_table_clone (uint32_t *orig)
+{
+  int i;
+  uint32_t *table = kvalloc (PAGE_TBL_SIZE << 2);
+  if (unlikely (table == NULL))
+    return NULL;
+  memset (table, 0, PAGE_TBL_SIZE << 2);
+  for (i = 0; i < PAGE_TBL_SIZE; i++)
+    {
+      void *buffer;
+      if (orig[i] == 0)
+	continue;
+      buffer = mem_alloc (PAGE_SIZE, 0);
+      if (unlikely (buffer == NULL))
+	{
+	  kfree (table);
+	  return NULL;
+	}
+      map_page ((uint32_t) buffer, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval ((void *) PAGE_COPY_VADDR);
+#else
+      vm_tlb_reset ();
+#endif
+      memcpy ((void *) PAGE_COPY_VADDR, (const void *) (orig[i] & 0xfffff000),
+	      PAGE_SIZE);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval ((void *) PAGE_COPY_VADDR);
+#else
+      vm_tlb_reset ();
+#endif
+      table[i] = (uint32_t) buffer | (orig[i] & 0xfff);
+    }
+  return table;
+}
+
+uint32_t *
+page_dir_clone (uint32_t *orig)
+{
+  int i;
+  uint32_t *dir = kvalloc (PAGE_DIR_SIZE << 2);
+  if (unlikely (dir == NULL))
+    return NULL;
+  memset (dir, 0, PAGE_DIR_SIZE << 2);
+  for (i = 0; i < PAGE_DIR_SIZE; i++)
+    {
+      if (orig[i] == 0)
+	continue;
+      if (page_dir[i] == orig[i])
+        dir[i] = orig[i];
+      else
+	dir[i] = (uint32_t) page_table_clone ((uint32_t *) orig[i])
+	  | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+    }
+  return dir;
 }

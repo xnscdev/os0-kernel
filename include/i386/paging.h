@@ -24,6 +24,8 @@
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
 
+#define PAGE_COPY_VADDR 0xd8000000
+
 /* Page entry flags */
 
 #define PAGE_FLAG_PRESENT (1 << 0)
