@@ -52,6 +52,8 @@ sys_path_rel_lookup (const char *path, VFSDirEntry *entry)
   return ret;
 }
 
+/* Separates a path into a file and its parent directory */
+
 static int
 sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
 {
@@ -70,6 +72,7 @@ sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
       return ret;
     }
 
+  /* Get the relative filesystem path */
   mp = &mount_table[ret];
   ret = vfs_path_rel (&rvpath, vpath, mp);
   if (ret != 0)
@@ -77,20 +80,23 @@ sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
       vfs_path_free (vpath);
       return ret;
     }
-  temp = rvpath;
   if (rvpath != NULL)
     {
+      /* Point to the parent directory instead of the file */
+      temp = rvpath;
       rvpath = rvpath->vp_prev;
       rvpath->vp_next = NULL;
     }
+  else
+    temp = vpath;
 
   ret = vfs_lookup (entry, &mp->vfs_sb, rvpath);
   if (rvpath != NULL)
     vfs_path_free (rvpath);
-  if (ret == 0)
-    *name = strdup (temp->vp_long == NULL ? temp->vp_short : temp->vp_long);
-  else
+  if (ret != 0)
     *name = NULL;
+  else
+    *name = strdup (temp->vp_long == NULL ? temp->vp_short : temp->vp_long);
   vfs_path_free (vpath);
   return ret;
 }

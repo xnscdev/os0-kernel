@@ -211,7 +211,10 @@ vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp)
 
   /* Check if path is root dir relative to mount */
   if (path == mntpoint)
-    return vfs_namei (result, "/");
+    {
+      *result = NULL;
+      return 0;
+    }
 
   for (temp = vfs_path_last (path); temp != NULL; temp = temp->vp_prev)
     {
@@ -227,5 +230,5 @@ vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp)
     }
 
   *result = NULL;
-  return -1;
+  return 0;
 }

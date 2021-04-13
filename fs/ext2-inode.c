@@ -105,6 +105,12 @@ ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
   VFSDirEntry *dir = sb->sb_root;
   int ret;
 
+  if (path == NULL)
+    {
+      memcpy (entry, dir, sizeof (VFSDirEntry));
+      return 0;
+    }
+
   for (path = vfs_path_first (path); path != NULL; path = path->vp_next)
     {
       VFSDirEntry *entries;
