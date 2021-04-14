@@ -791,26 +791,29 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   ret = ext2_readdir (&entries, dir->vi_sb, dir);
   if (ret != 0)
     return ret;
-  temp = entries->d_next;
-  while (1)
+  if (entries != NULL)
     {
-      if (strcmp (entries->d_name, name) == 0)
-        ret = -EEXIST;
-      vfs_destroy_dir_entry (entries);
-      entries = temp;
-      if (entries == NULL)
-	break;
       temp = entries->d_next;
+      while (1)
+	{
+	  if (strcmp (entries->d_name, name) == 0)
+	    ret = -EEXIST;
+	  vfs_destroy_dir_entry (entries);
+	  entries = temp;
+	  if (entries == NULL)
+	    break;
+	  temp = entries->d_next;
+	}
+      if (ret != 0)
+	return ret;
     }
-  if (ret != 0)
-    return ret;
 
   for (block = 0; (loff_t) block * dir->vi_sb->sb_blksize < dir->vi_size;
        block++)
     {
       int i = 0;
       realblock = ext2_data_block (dir->vi_private, dir->vi_sb, block);
-      if (ret < 0)
+      if (realblock < 0)
 	{
 	  kfree (data);
 	  return realblock;
@@ -836,11 +839,15 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 	    {
 	      size_t skip = testsize + sizeof (Ext2DirEntry);
 	      Ext2DirEntry *new;
+
+	      /* Align to 4 bytes */
 	      if (skip & 3)
 		{
 		  skip &= ~3;
 		  skip += 4;
 		}
+
+	      /* Fill new entry data */
 	      new = (Ext2DirEntry *) (data + i + skip);
 	      new->ed_inode = inode->vi_ino;
 	      new->ed_size = guess->ed_size - skip;
@@ -866,6 +873,8 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 		}
 	      else
 		new->ed_namelenh = size >> 8 & 0xff;
+
+	      /* Write filename and update size */
 	      memcpy ((char *) new + sizeof (Ext2DirEntry), name, size);
 	      guess->ed_size = skip;
 
