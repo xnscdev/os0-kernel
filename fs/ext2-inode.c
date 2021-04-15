@@ -572,8 +572,12 @@ int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
+  Ext2BGD *bgdt = dir->vi_sb->sb_private + sizeof (Ext2Superblock);
   VFSInode *inode;
   Ext2Inode *ei;
+  char *data;
+  Ext2DirEntry *entry;
+  loff_t firstblock;
   ino_t ino;
   time_t newtime = time (NULL);
   int ret;
@@ -598,17 +602,24 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   /* TODO Pre-allocate data blocks */
   ei->ei_mode = EXT2_TYPE_DIR | (mode & 07777);
   ei->ei_uid = 0;
-  ei->ei_sizel = 0;
+  ei->ei_sizel = dir->vi_sb->sb_blksize;
   ei->ei_atime = newtime;
   ei->ei_ctime = newtime;
   ei->ei_mtime = newtime;
   ei->ei_dtime = 0;
   ei->ei_gid = 0;
-  ei->ei_nlink = 1;
-  ei->ei_sectors = 0;
+  ei->ei_nlink = 2;
+  ei->ei_sectors = ei->ei_sizel / ATA_SECTSIZE;
   ei->ei_flags = 0;
   ei->ei_oss1 = 0;
-  memset (ei->ei_bptr0, 0, EXT2_STORED_INODES << 2);
+  firstblock = ext2_alloc_block (dir->vi_sb, dir->vi_ino / esb->esb_ipg);
+  if (firstblock < 0)
+    {
+      vfs_destroy_inode (inode);
+      return firstblock;
+    }
+  ei->ei_bptr0[0] = firstblock;
+  memset (&ei->ei_bptr0[1], 0, (EXT2_STORED_INODES - 1) << 2);
   ei->ei_bptr1 = 0;
   ei->ei_bptr2 = 0;
   ei->ei_bptr3 = 0;
@@ -619,7 +630,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   memset (ei->ei_oss2, 0, 3);
 
   inode->vi_ino = ino;
-  inode->vi_mode = mode | S_IFREG;
+  inode->vi_mode = mode | S_IFDIR;
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
   inode->vi_flags = ei->ei_flags;
@@ -646,15 +657,47 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
       return ret;
     }
 
-  /* Setup default . and .. entries */
-  ret = ext2_add_entry (inode, inode, ".");
-  if (ret != 0)
+  data = kzalloc (inode->vi_sb->sb_blksize);
+  if (data == NULL)
     {
       vfs_destroy_inode (inode);
-      return ret;
+      return -ENOMEM;
     }
-  ret = ext2_add_entry (inode, dir, "..");
+
+  /* Build `.' entry */
+  entry = (Ext2DirEntry *) data;
+  entry->ed_inode = inode->vi_ino;
+  entry->ed_size = 12;
+  entry->ed_namelenl = 1;
+  if (esb->esb_reqft & EXT2_FT_REQ_DIRTYPE)
+    entry->ed_namelenh = EXT2_DIRTYPE_DIR;
+  else
+    entry->ed_namelenh = 0;
+  data[8] = '.';
+
+  /* Build `..' entry */
+  entry = (Ext2DirEntry *) &data[12];
+  entry->ed_inode = dir->vi_ino;
+  entry->ed_size = dir->vi_sb->sb_blksize - 12;
+  entry->ed_namelenl = 2;
+  if (esb->esb_reqft & EXT2_FT_REQ_DIRTYPE)
+    entry->ed_namelenh = EXT2_DIRTYPE_DIR;
+  else
+    entry->ed_namelenh = 0;
+  data[20] = '.';
+  data[21] = '.';
+
+  /* Increase refcount of parent directory */
+  dir->vi_nlink++;
+  ext2_write_inode (dir);
+
+  /* Increase directory count in block group descriptor */
+  bgdt[inode->vi_ino / esb->esb_ipg].eb_dirs++;
+  ext2_update (dir->vi_sb);
+
   vfs_destroy_inode (inode);
+  ret = ext2_write_blocks (data, dir->vi_sb, firstblock, 1);
+  kfree (data);
   return ret;
 }
 

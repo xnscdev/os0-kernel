@@ -62,7 +62,7 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
       bgdt[index].eb_bfree--;
       ext2_update (sb);
 
-      return esb->esb_bpg * byte + i;
+      return esb->esb_bpg * index + i;
     }
   kfree (busage);
   return -ENOSPC;
