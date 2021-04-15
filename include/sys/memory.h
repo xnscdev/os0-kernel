@@ -48,6 +48,9 @@
 #define RELOC_LEN   ((uint32_t) &_kernel_end - RELOC_VADDR)
 #endif
 
+#define STACK_VADDR 0xe0004000
+#define STACK_LEN   0x4000
+
 #ifndef _ASM
 
 __BEGIN_DECLS

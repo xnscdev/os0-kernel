@@ -21,6 +21,7 @@
 #include <i386/paging.h>
 #include <sys/memory.h>
 #include <sys/task.h>
+#include <vm/heap.h>
 #include <vm/paging.h>
 #include <string.h>
 
@@ -33,6 +34,19 @@ static pid_t next_pid;
 void
 scheduler_init (void)
 {
+  __asm__ volatile ("cli");
+  task_relocate_stack ((void *) STACK_VADDR, STACK_LEN);
+
+  task_current = kmalloc (sizeof (ProcessTask));
+  task_current->pid = next_pid++;
+  task_current->esp = 0;
+  task_current->ebp = 0;
+  task_current->eip = 0;
+  task_current->page_dir = curr_page_dir;
+  task_current->next = NULL;
+
+  task_queue = task_current;
+  __asm__ volatile ("sti");
 }
 
 void
@@ -58,7 +72,8 @@ task_relocate_stack (void *addr, uint32_t size)
 
   for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= PAGE_SIZE)
     {
-      map_page (i, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      void *paddr = mem_alloc (PAGE_SIZE, 0);
+      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
       vm_page_inval ((void *) i);
 #endif
@@ -77,9 +92,9 @@ task_relocate_stack (void *addr, uint32_t size)
   for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= 4)
     {
       uint32_t value = *((uint32_t *) i);
-      if (value >= old_esp && value <= task_stack_addr)
+      if (value > old_esp && value < task_stack_addr)
 	{
-	  i += offset;
+	  value += offset;
 	  *((uint32_t *) i) = value;
 	}
     }

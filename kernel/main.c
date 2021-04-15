@@ -130,12 +130,12 @@ kmain (MultibootInfo *info, uint32_t stack)
   splash ();
   cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
 
-  task_stack_addr = stack;
-  scheduler_init ();
-
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
   heap_init ();
+
+  task_stack_addr = stack;
+  scheduler_init ();
 
   ata_init (PATA_BAR0, PATA_BAR1, PATA_BAR2, PATA_BAR3, PATA_BAR4);
   devices_init ();
