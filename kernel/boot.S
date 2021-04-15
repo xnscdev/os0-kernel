@@ -94,6 +94,7 @@ higher_start:
 
 	sti
 
+	push	%esp
 	add	$RELOC_VADDR, %ebx
 	push	%ebx
 	call	kmain

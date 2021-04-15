@@ -24,6 +24,7 @@
 #include <sys/cmdline.h>
 #include <sys/device.h>
 #include <sys/multiboot.h>
+#include <sys/task.h>
 #include <sys/timer.h>
 #include <video/vga.h>
 #include <vm/heap.h>
@@ -122,12 +123,15 @@ mount_rootfs (void)
 }
 
 void
-kmain (MultibootInfo *info)
+kmain (MultibootInfo *info, uint32_t stack)
 {
   timer_set_freq (1000);
   vga_init ();
   splash ();
   cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
+
+  task_stack_addr = stack;
+  scheduler_init ();
 
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   mem_init (info->mi_memhigh);
