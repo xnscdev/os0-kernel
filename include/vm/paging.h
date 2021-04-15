@@ -28,9 +28,11 @@
 
 __BEGIN_DECLS
 
-extern uint32_t page_dir[PAGE_DIR_SIZE] __attribute__ ((aligned (PAGE_SIZE)));
-extern uint32_t page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+extern uint32_t kernel_page_dir[PAGE_DIR_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t kernel_page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t *curr_page_dir;
 
 void paging_loaddir (uint32_t addr);
 void paging_enable (void);
