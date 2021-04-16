@@ -25,6 +25,8 @@
 #include <vm/paging.h>
 #include <string.h>
 
+uint32_t read_ip (void);
+
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
 uint32_t task_stack_addr;
@@ -38,12 +40,12 @@ scheduler_init (void)
   task_relocate_stack ((void *) STACK_VADDR, STACK_LEN);
 
   task_current = kmalloc (sizeof (ProcessTask));
-  task_current->pid = next_pid++;
-  task_current->esp = 0;
-  task_current->ebp = 0;
-  task_current->eip = 0;
-  task_current->page_dir = curr_page_dir;
-  task_current->next = NULL;
+  task_current->t_pid = next_pid++;
+  task_current->t_esp = 0;
+  task_current->t_ebp = 0;
+  task_current->t_eip = 0;
+  task_current->t_pgdir = curr_page_dir;
+  task_current->t_next = NULL;
 
   task_queue = task_current;
   __asm__ volatile ("sti");
@@ -57,7 +59,44 @@ task_tick (void)
 int
 task_fork (void)
 {
-  return -1;
+  volatile ProcessTask *parent;
+  volatile ProcessTask *temp;
+  ProcessTask *task;
+  uint32_t *dir;
+  uint32_t eip;
+
+  __asm__ volatile ("cli");
+  parent = task_current;
+  dir = page_dir_clone (curr_page_dir);
+
+  task = kmalloc (sizeof (ProcessTask));
+  task->t_pid = next_pid++;
+  task->t_esp = 0;
+  task->t_ebp = 0;
+  task->t_eip = 0;
+  task->t_pgdir = dir;
+  task->t_next = NULL;
+
+  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
+    ;
+  temp->t_next = task;
+
+  eip = read_ip ();
+  if (task_current == parent)
+    {
+      uint32_t esp;
+      uint32_t ebp;
+      __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
+      __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
+      task->t_esp = esp;
+      task->t_ebp = ebp;
+      task->t_eip = eip;
+
+      __asm__ volatile ("sti");
+      return task->t_pid;
+    }
+  else
+    return 0;
 }
 
 void

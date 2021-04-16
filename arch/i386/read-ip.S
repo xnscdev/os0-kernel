@@ -1,5 +1,5 @@
 /*************************************************************************
- * task.h -- This file is part of OS/0.                                  *
+ * read-ip.S -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,27 +16,16 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TASK_H
-#define _SYS_TASK_H
+#define _ASM
 
-#include <sys/types.h>
+#include <sys/memory.h>
 
-typedef struct _ProcessTask
-{
-  pid_t t_pid;
-  uint32_t t_esp;
-  uint32_t t_ebp;
-  uint32_t t_eip;
-  uint32_t *t_pgdir;
-  struct _ProcessTask *t_next;
-} ProcessTask;
+	.section .text
+	.align 16
+	.global read_ip
+	.type read_ip, @function
+read_ip:
+	pop	%eax
+	jmp	*%eax
 
-extern uint32_t task_stack_addr;
-
-void scheduler_init (void);
-void task_tick (void);
-int task_fork (void);
-void task_relocate_stack (void *addr, uint32_t size);
-pid_t task_getpid (void);
-
-#endif
+	.size read_ip, . - read_ip

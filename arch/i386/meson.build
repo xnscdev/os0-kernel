@@ -7,6 +7,7 @@ arch_src = [
   'paging.c',
   'paging.S',
   'pic.c',
+  'read-ip.S',
   'rtc.c',
   'task.c',
   'timer.c',
