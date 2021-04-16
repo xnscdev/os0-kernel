@@ -77,15 +77,7 @@ task_tick (void)
 
   esp = task_current->t_esp;
   ebp = task_current->t_ebp;
-  __asm__ volatile ("cli;"
-		    "mov %0, %%ecx;"
-		    "mov %1, %%esp;"
-		    "mov %2, %%ebp;"
-		    "mov %3, %%cr3;"
-		    "xor %%eax, %%eax;"
-		    "sti;"
-		    "jmp *%%ecx" :: "r" (eip), "r" (esp), "r" (ebp),
-		    "r" (curr_page_dir));
+  task_load (eip, esp, ebp, get_paddr (curr_page_dir));
 }
 
 int

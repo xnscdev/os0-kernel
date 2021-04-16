@@ -1,5 +1,5 @@
 /*************************************************************************
- * task.h -- This file is part of OS/0.                                  *
+ * task.S -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,30 +16,26 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TASK_H
-#define _SYS_TASK_H
+#define _ASM
 
-#include <sys/types.h>
+#include <sys/memory.h>
 
-#define TASK_SLICE 50
+	.section .text
+	.align 16
+	.global task_load
+	.type task_load, @function
+task_load:
+	cli
+	mov	4(%esp), %ecx
+	mov	8(%esp), %eax
+	mov	12(%esp), %edx
+	mov	16(%esp), %edi
+	mov	%edi, %cr3
+	mov	%eax, %esp
+	mov	%edx, %ebp
+	xor	%eax, %eax
+	sti
+	jmp	*%ecx
+	ret
 
-typedef struct _ProcessTask
-{
-  pid_t t_pid;
-  uint32_t t_esp;
-  uint32_t t_ebp;
-  uint32_t t_eip;
-  uint32_t *t_pgdir;
-  struct _ProcessTask *t_next;
-} ProcessTask;
-
-extern uint32_t task_stack_addr;
-
-void scheduler_init (void);
-void task_tick (void);
-void task_load (uint32_t eip, uint32_t esp, uint32_t ebp, uint32_t *page_dir);
-int task_fork (void);
-void task_relocate_stack (void *addr, uint32_t size);
-pid_t task_getpid (void);
-
-#endif
+	.size task_load, . - task_load

@@ -10,6 +10,7 @@ arch_src = [
   'read-ip.S',
   'rtc.c',
   'task.c',
+  'task.S',
   'timer.c',
   'tlb-flush.S'
 ]
