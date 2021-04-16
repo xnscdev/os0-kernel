@@ -21,6 +21,8 @@
 
 #include <sys/types.h>
 
+#define TASK_SLICE 50
+
 typedef struct _ProcessTask
 {
   pid_t t_pid;

@@ -54,6 +54,38 @@ scheduler_init (void)
 void
 task_tick (void)
 {
+  uint32_t esp;
+  uint32_t ebp;
+  uint32_t eip;
+
+  if (task_current == NULL)
+    return;
+
+  __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
+  __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
+  eip = read_ip ();
+  if (eip == 0)
+    return;
+
+  task_current->t_eip = eip;
+  task_current->t_esp = esp;
+  task_current->t_ebp = ebp;
+
+  task_current = task_current->t_next;
+  if (task_current == NULL)
+    task_current = task_queue;
+
+  esp = task_current->t_esp;
+  ebp = task_current->t_ebp;
+  __asm__ volatile ("cli;"
+		    "mov %0, %%ecx;"
+		    "mov %1, %%esp;"
+		    "mov %2, %%ebp;"
+		    "mov %3, %%cr3;"
+		    "xor %%eax, %%eax;"
+		    "sti;"
+		    "jmp *%%ecx" :: "r" (eip), "r" (esp), "r" (ebp),
+		    "r" (curr_page_dir));
 }
 
 int
