@@ -19,11 +19,11 @@
 #include <kconfig.h>
 
 #include <i386/paging.h>
+#include <libk/libk.h>
 #include <sys/memory.h>
 #include <sys/task.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
-#include <string.h>
 
 uint32_t read_ip (void);
 
@@ -32,15 +32,19 @@ volatile ProcessTask *task_queue;
 uint32_t task_stack_addr;
 
 static pid_t next_pid;
+static uint32_t next_sp;
 
 void
 scheduler_init (void)
 {
   __asm__ volatile ("cli");
   task_relocate_stack ((void *) STACK_VADDR, STACK_LEN);
+  task_stack_addr = STACK_VADDR;
+  next_sp = STACK_VADDR + TASK_STACK_SIZE;
 
   task_current = kmalloc (sizeof (ProcessTask));
   task_current->t_pid = next_pid++;
+  task_current->t_stack = STACK_VADDR;
   task_current->t_esp = 0;
   task_current->t_ebp = 0;
   task_current->t_eip = 0;
@@ -54,6 +58,7 @@ scheduler_init (void)
 void
 task_tick (void)
 {
+  uint32_t *paddr;
   uint32_t esp;
   uint32_t ebp;
   uint32_t eip;
@@ -75,9 +80,14 @@ task_tick (void)
   if (task_current == NULL)
     task_current = task_queue;
 
+  eip = task_current->t_eip;
   esp = task_current->t_esp;
   ebp = task_current->t_ebp;
-  task_load (eip, esp, ebp, get_paddr (curr_page_dir));
+  task_stack_addr = task_current->t_stack;
+  paddr = get_paddr (curr_page_dir);
+  if (paddr == NULL)
+    panic ("Failed to determine address of page directory");
+  task_load (eip, esp, ebp, paddr);
 }
 
 int
@@ -86,20 +96,53 @@ task_fork (void)
   volatile ProcessTask *parent;
   volatile ProcessTask *temp;
   ProcessTask *task;
+  uint32_t offset;
   uint32_t *dir;
   uint32_t eip;
+  uint32_t esp;
+  uint32_t ebp;
+  uint32_t i;
 
   __asm__ volatile ("cli");
   parent = task_current;
-  dir = page_dir_clone (curr_page_dir);
+  dir = page_dir_clone (parent->t_pgdir);
+
+  /* Clone the stack */
+  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)
+    {
+      void *paddr = mem_alloc (PAGE_SIZE, 0);
+      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval ((void *) i);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+  memcpy ((void *) (next_sp - TASK_STACK_SIZE),
+	  (void *) (task_stack_addr - TASK_STACK_SIZE), TASK_STACK_SIZE);
+  offset = next_sp - task_stack_addr;
+  __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
+  __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
+  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= 4)
+    {
+      uint32_t value = *((uint32_t *) i);
+      if (value > esp && value < task_stack_addr)
+	{
+	  value += offset;
+	  *((uint32_t *) i) = value;
+	}
+    }
 
   task = kmalloc (sizeof (ProcessTask));
   task->t_pid = next_pid++;
-  task->t_esp = 0;
-  task->t_ebp = 0;
+  task->t_stack = next_sp;
+  task->t_esp = esp + offset;
+  task->t_ebp = ebp + offset;
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;
+  next_sp += TASK_STACK_SIZE;
 
   for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
     ;
@@ -108,14 +151,7 @@ task_fork (void)
   eip = read_ip ();
   if (task_current == parent)
     {
-      uint32_t esp;
-      uint32_t ebp;
-      __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
-      __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
-      task->t_esp = esp;
-      task->t_ebp = ebp;
       task->t_eip = eip;
-
       __asm__ volatile ("sti");
       return task->t_pid;
     }
@@ -168,5 +204,5 @@ task_relocate_stack (void *addr, uint32_t size)
 pid_t
 task_getpid (void)
 {
-  return 0;
+  return task_current->t_pid;
 }

@@ -22,10 +22,12 @@
 #include <sys/types.h>
 
 #define TASK_SLICE 50
+#define TASK_STACK_SIZE 16384
 
 typedef struct _ProcessTask
 {
   pid_t t_pid;
+  uint32_t t_stack;
   uint32_t t_esp;
   uint32_t t_ebp;
   uint32_t t_eip;

@@ -18,8 +18,6 @@
 
 #define _ASM
 
-#include <sys/memory.h>
-
 	.section .text
 	.align 16
 	.global task_load
