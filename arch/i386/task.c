@@ -22,7 +22,7 @@
 #include <i386/tss.h>
 #include <libk/libk.h>
 #include <sys/memory.h>
-#include <sys/task.h>
+#include <sys/process.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 
@@ -53,6 +53,7 @@ scheduler_init (void)
   task_current->t_next = NULL;
 
   task_queue = task_current;
+  process_table[0].p_task = task_current;
   __asm__ volatile ("sti");
 }
 

@@ -3,6 +3,7 @@ kernel_src = [
   'heap.c',
   'main.c',
   'memory.c',
+  'process.c',
   'syscall.c'
 ]
 
