@@ -19,6 +19,7 @@
 #ifndef _SYS_SYSCALL_H
 #define _SYS_SYSCALL_H
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -42,7 +43,7 @@
 #define SYS_lseek         19
 #define SYS_getpid        20
 #define SYS_mount         21
-#define SYS_umount        22
+#define SYS_unmount       22
 #define SYS_setuid        23
 #define SYS_getuid        24
 #define SYS_access        33
@@ -110,6 +111,8 @@
 #define SYS_listxattr     232
 #define SYS_removexattr   235
 
+__BEGIN_DECLS
+
 int sys_creat (const char *path, mode_t mode);
 int sys_link (const char *old, const char *new);
 int sys_unlink (const char *path);
@@ -132,5 +135,9 @@ int sys_setxattr (const char *path, const char *name, const void *value,
 int sys_getxattr (const char *path, const char *name, void *value, size_t len);
 int sys_listxattr (const char *path, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
+
+void syscall_init (void);
+
+__END_DECLS
 
 #endif

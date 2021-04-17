@@ -22,6 +22,8 @@
 #include <errno.h>
 #include <string.h>
 
+void *syscall_table[256];
+
 static int
 sys_path_rel_lookup (const char *path, VFSDirEntry *entry)
 {
@@ -206,7 +208,7 @@ sys_mount (const char *src, const char *dir, const char *type, int flags,
 }
 
 int
-sys_umount (const char *dir)
+sys_unmount (const char *dir)
 {
   return -ENOSYS;
 }
@@ -399,4 +401,29 @@ sys_removexattr (const char *path, const char *name)
   vfs_destroy_inode (entry.d_inode);
   kfree (entry.d_name);
   return ret;
+}
+
+void
+syscall_init (void)
+{
+  syscall_table[SYS_creat] = sys_creat;
+  syscall_table[SYS_link] = sys_link;
+  syscall_table[SYS_unlink] = sys_unlink;
+  syscall_table[SYS_mknod] = sys_mknod;
+  syscall_table[SYS_chmod] = sys_chmod;
+  syscall_table[SYS_chown] = sys_chown;
+  syscall_table[SYS_mount] = sys_mount;
+  syscall_table[SYS_unmount] = sys_unmount;
+  syscall_table[SYS_rename] = sys_rename;
+  syscall_table[SYS_mkdir] = sys_mkdir;
+  syscall_table[SYS_rmdir] = sys_rmdir;
+  syscall_table[SYS_symlink] = sys_symlink;
+  syscall_table[SYS_readlink] = sys_readlink;
+  syscall_table[SYS_truncate] = sys_truncate;
+  syscall_table[SYS_statvfs] = sys_statvfs;
+  syscall_table[SYS_stat] = sys_stat;
+  syscall_table[SYS_setxattr] = sys_setxattr;
+  syscall_table[SYS_getxattr] = sys_getxattr;
+  syscall_table[SYS_listxattr] = sys_listxattr;
+  syscall_table[SYS_removexattr] = sys_removexattr;
 }

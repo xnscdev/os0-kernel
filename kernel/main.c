@@ -24,6 +24,7 @@
 #include <sys/cmdline.h>
 #include <sys/device.h>
 #include <sys/multiboot.h>
+#include <sys/syscall.h>
 #include <sys/task.h>
 #include <sys/timer.h>
 #include <video/vga.h>
@@ -140,5 +141,6 @@ kmain (MultibootInfo *info, uint32_t stack)
   ata_init (PATA_BAR0, PATA_BAR1, PATA_BAR2, PATA_BAR3, PATA_BAR4);
   devices_init ();
   vfs_init ();
+  syscall_init ();
   mount_rootfs ();
 }

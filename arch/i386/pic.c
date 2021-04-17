@@ -29,6 +29,8 @@ static DTPtr idt;
 #undef EXC
 #undef IRQ
 
+void syscall (void);
+
 void
 idt_init (void)
 {
@@ -37,6 +39,7 @@ idt_init (void)
 #include "irq.inc"
 #undef EXC
 #undef IRQ
+  uint32_t syscall_addr;
 
   /* Remap PIC */
   outb (0x11, PIC_MASTER_COMMAND);
@@ -68,6 +71,13 @@ idt_init (void)
 #include "irq.inc"
 #undef EXC
 #undef IRQ
+
+  syscall_addr = (uint32_t) syscall;
+  idt_entries[128].ie_basel = syscall_addr & 0xffff;
+  idt_entries[128].ie_sel = 0x08;
+  idt_entries[128].ie_reserved = 0;
+  idt_entries[128].ie_flags = 0x8e;
+  idt_entries[128].ie_baseh = (syscall_addr & 0xffff0000) >> 16;
 
   idt_load ((uint32_t) &idt);
 }
