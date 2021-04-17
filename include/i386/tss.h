@@ -1,5 +1,5 @@
 /*************************************************************************
- * gdt.h -- This file is part of OS/0.                                   *
+ * tss.h -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,36 +16,48 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_GDT_H
-#define _I386_GDT_H
+#ifndef _I386_TSS_H
+#define _I386_TSS_H
 
 #include <sys/cdefs.h>
 #include <stdint.h>
 
-#define GDT_SIZE 6
-
 typedef struct
 {
-  uint16_t ge_liml;
-  uint16_t ge_basel;
-  unsigned char ge_basem;
-  unsigned char ge_access;
-  unsigned char ge_gran;
-  unsigned char ge_baseh;
-} __attribute__ ((packed)) GDTEntry;
-
-typedef struct
-{
-  uint16_t dp_limit;
-  uint32_t dp_base;
-} __attribute__ ((packed)) DTPtr;
+  uint32_t tss_prev;
+  uint32_t tss_esp0;
+  uint32_t tss_ss0;
+  uint32_t tss_esp1;
+  uint32_t tss_ss1;
+  uint32_t tss_esp2;
+  uint32_t tss_ss2;
+  uint32_t tss_cr3;
+  uint32_t tss_eip;
+  uint32_t tss_eflags;
+  uint32_t tss_eax;
+  uint32_t tss_ecx;
+  uint32_t tss_edx;
+  uint32_t tss_ebx;
+  uint32_t tss_esp;
+  uint32_t tss_ebp;
+  uint32_t tss_esi;
+  uint32_t tss_edi;
+  uint32_t tss_es;
+  uint32_t tss_cs;
+  uint32_t tss_ss;
+  uint32_t tss_ds;
+  uint32_t tss_fs;
+  uint32_t tss_gs;
+  uint32_t tss_ldt;
+  uint16_t tss_trap;
+  uint16_t tss_iomap_base;
+} TaskState;
 
 __BEGIN_DECLS
 
-void gdt_load (uint32_t addr);
-
-void gdt_set_gate (uint32_t n, uint32_t base, uint32_t limit,
-		   unsigned char access, unsigned char granularity);
+void tss_update_stack (uint32_t stack);
+void tss_write (uint32_t n, uint16_t ss0, uint32_t esp0);
+void tss_load (void);
 
 __END_DECLS
 

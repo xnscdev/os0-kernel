@@ -1,5 +1,5 @@
 /*************************************************************************
- * gdt.h -- This file is part of OS/0.                                   *
+ * tss.S -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,37 +16,17 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_GDT_H
-#define _I386_GDT_H
+#define _ASM
 
-#include <sys/cdefs.h>
-#include <stdint.h>
+#include <sys/memory.h>
 
-#define GDT_SIZE 6
+	.section .text
+	.align 16
+	.global tss_load
+	.type tss_load, @function
+tss_load:
+	mov	$0x2b, %ax
+	ltr	%ax
+	ret
 
-typedef struct
-{
-  uint16_t ge_liml;
-  uint16_t ge_basel;
-  unsigned char ge_basem;
-  unsigned char ge_access;
-  unsigned char ge_gran;
-  unsigned char ge_baseh;
-} __attribute__ ((packed)) GDTEntry;
-
-typedef struct
-{
-  uint16_t dp_limit;
-  uint32_t dp_base;
-} __attribute__ ((packed)) DTPtr;
-
-__BEGIN_DECLS
-
-void gdt_load (uint32_t addr);
-
-void gdt_set_gate (uint32_t n, uint32_t base, uint32_t limit,
-		   unsigned char access, unsigned char granularity);
-
-__END_DECLS
-
-#endif
+	.size tss_load, . - tss_load

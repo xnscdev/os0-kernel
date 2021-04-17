@@ -13,6 +13,7 @@ arch_src = [
   'task.S',
   'timer.c',
   'tlb-flush.S',
+  'tss.S',
   'user.S'
 ]
 

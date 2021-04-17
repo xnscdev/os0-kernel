@@ -19,6 +19,7 @@
 #include <kconfig.h>
 
 #include <i386/paging.h>
+#include <i386/tss.h>
 #include <libk/libk.h>
 #include <sys/memory.h>
 #include <sys/task.h>
@@ -84,6 +85,7 @@ task_tick (void)
   esp = task_current->t_esp;
   ebp = task_current->t_ebp;
   task_stack_addr = task_current->t_stack;
+  tss_update_stack (esp);
   paddr = get_paddr (curr_page_dir);
   if (paddr == NULL)
     panic ("Failed to determine address of page directory");
