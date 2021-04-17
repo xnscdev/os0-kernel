@@ -39,7 +39,7 @@ paging_init (void)
   /* Fill page directory */
   for (i = 0; i < PAGE_DIR_SIZE; i++)
     kernel_page_dir[i] = ((uint32_t) kernel_page_table[i] - RELOC_VADDR)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT | PAGE_FLAG_USER;
 
   /* Map low memory + kernel to RELOC_VADDR */
   for (i = 0, addr = 0; addr < RELOC_LEN; i++, addr += PAGE_SIZE)
@@ -121,7 +121,7 @@ page_dir_clone (uint32_t *orig)
         dir[i] = orig[i];
       else
 	dir[i] = (uint32_t) page_table_clone ((uint32_t *) orig[i])
-	  | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+	  | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
     }
   return dir;
 }
