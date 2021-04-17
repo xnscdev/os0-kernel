@@ -12,7 +12,8 @@ arch_src = [
   'task.c',
   'task.S',
   'timer.c',
-  'tlb-flush.S'
+  'tlb-flush.S',
+  'user.S'
 ]
 
 arch = static_library('arch', arch_src, include_directories: includedir)
