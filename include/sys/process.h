@@ -19,6 +19,7 @@
 #ifndef _SYS_PROCESS_H
 #define _SYS_PROCESS_H
 
+#include <fs/vfs.h>
 #include <sys/cdefs.h>
 #include <sys/task.h>
 
@@ -27,7 +28,7 @@
 
 typedef struct
 {
-  int pf_fildes;
+  VFSInode *pf_inode;
   int pf_mode;
 } ProcessFile;
 

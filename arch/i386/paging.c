@@ -63,8 +63,18 @@ map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags)
 {
   uint32_t pdi = vaddr >> 22;
   uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-  uint32_t *table =
-    (uint32_t *) ((curr_page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
+  uint32_t *table;
+  if (curr_page_dir[pdi] & PAGE_FLAG_PRESENT)
+    table = (uint32_t *) ((curr_page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
+  else
+    {
+      table = kvalloc (PAGE_TBL_SIZE << 2);
+      if (unlikely (table == NULL))
+        panic ("Failed to allocate page table");
+      memset (table, 0, PAGE_TBL_SIZE << 2);
+      curr_page_dir[pdi] = (uint32_t) get_paddr (table) | PAGE_FLAG_WRITE
+	| PAGE_FLAG_USER | PAGE_FLAG_PRESENT;
+    }
   table[pti] = paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
 }
 
