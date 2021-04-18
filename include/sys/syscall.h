@@ -113,6 +113,10 @@
 
 __BEGIN_DECLS
 
+int sys_read (int fd, void *buffer, size_t len);
+int sys_write (int fd, void *buffer, size_t len);
+int sys_open (const char *path, int flags, mode_t mode);
+int sys_close (int fd);
 int sys_creat (const char *path, mode_t mode);
 int sys_link (const char *old, const char *new);
 int sys_unlink (const char *path);

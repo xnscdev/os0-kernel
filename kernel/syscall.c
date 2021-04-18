@@ -17,10 +17,10 @@
  *************************************************************************/
 
 #include <fs/vfs.h>
+#include <libk/libk.h>
+#include <sys/process.h>
 #include <sys/syscall.h>
 #include <vm/heap.h>
-#include <errno.h>
-#include <string.h>
 
 void *syscall_table[256];
 
@@ -101,6 +101,80 @@ sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
     *name = strdup (temp->vp_long == NULL ? temp->vp_short : temp->vp_long);
   vfs_path_free (vpath);
   return ret;
+}
+
+int
+sys_read (int fd, void *buffer, size_t len)
+{
+  ProcessFile *file;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = &process_table[task_getpid ()].p_files[fd];
+  if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
+    return -EBADF;
+  return vfs_read (file->pf_inode, buffer, len, 0);
+}
+
+int
+sys_write (int fd, void *buffer, size_t len)
+{
+  ProcessFile *file;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = &process_table[task_getpid ()].p_files[fd];
+  if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
+    return -EBADF;
+  return vfs_write (file->pf_inode, buffer, len, 0);
+}
+
+int
+sys_open (const char *path, int flags, mode_t mode)
+{
+  ProcessFile *files = process_table[task_getpid ()].p_files;
+  int i;
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      if (files[i].pf_inode == NULL)
+	{
+	  VFSDirEntry entry;
+	  int ret = sys_path_rel_lookup (path, &entry);
+	  if (ret != 0)
+	    return ret; /* TODO Create file if O_CREAT in flags */
+	  kfree (entry.d_name);
+	  files[i].pf_inode = entry.d_inode;
+	  switch (flags & O_ACCMODE)
+	    {
+	    case O_RDONLY:
+	      files[i].pf_mode = O_RDONLY;
+	      break;
+	    case O_WRONLY:
+	      files[i].pf_mode = O_WRONLY;
+	      break;
+	    case O_RDWR:
+	      files[i].pf_mode = O_RDWR;
+	      break;
+	    default:
+	      vfs_destroy_inode (files[i].pf_inode);
+	      return -EINVAL;
+	    }
+	  return 0;
+	}
+    }
+  return -EMFILE; /* No more file descriptors available */
+}
+
+int
+sys_close (int fd)
+{
+  ProcessFile *file;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = &process_table[task_getpid ()].p_files[fd];
+  if (file->pf_inode == NULL)
+    return -EBADF;
+  vfs_destroy_inode (file->pf_inode);
+  file->pf_mode = 0;
+  return 0;
 }
 
 int
@@ -406,6 +480,10 @@ sys_removexattr (const char *path, const char *name)
 void
 syscall_init (void)
 {
+  syscall_table[SYS_read] = sys_read;
+  syscall_table[SYS_write] = sys_write;
+  syscall_table[SYS_open] = sys_open;
+  syscall_table[SYS_close] = sys_close;
   syscall_table[SYS_creat] = sys_creat;
   syscall_table[SYS_link] = sys_link;
   syscall_table[SYS_unlink] = sys_unlink;

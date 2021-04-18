@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * fcntl.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,19 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_LIBK_H
-#define _LIBK_LIBK_H
+#ifndef _FCNTL_H
+#define _FCNTL_H
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/macros.h>
-#include <libk/types.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#define O_RDONLY  0x0000
+#define O_WRONLY  0x0001
+#define O_RDWR    0x0002
+#define O_ACCMODE 0x0003
+#define O_CREAT   0x0200
+#define O_TRUNC   0x0400
+#define O_EXCL    0x0800
 
 #endif
