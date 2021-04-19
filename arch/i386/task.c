@@ -162,6 +162,44 @@ task_fork (void)
     return 0;
 }
 
+ProcessTask *
+task_new (uint32_t eip, uint32_t *page_dir)
+{
+  volatile ProcessTask *temp;
+  ProcessTask *task;
+  uint32_t i;
+
+  /* Clone the stack */
+  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)
+    {
+      void *paddr = mem_alloc (PAGE_SIZE, 0);
+      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval ((void *) i);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+
+  task = kmalloc (sizeof (ProcessTask));
+  task->t_pid = next_pid++;
+  task->t_stack = next_sp;
+  task->t_esp = next_sp;
+  task->t_ebp = next_sp;
+  task->t_eip = eip;
+  task->t_pgdir = page_dir;
+  task->t_next = NULL;
+  next_sp += TASK_STACK_SIZE;
+
+  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
+    ;
+  temp->t_next = task;
+
+  __asm__ volatile ("sti");
+  return task;
+}
+
 void
 task_relocate_stack (void *addr, uint32_t size)
 {

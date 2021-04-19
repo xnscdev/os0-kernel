@@ -44,6 +44,7 @@ void scheduler_init (void);
 void task_tick (void);
 void task_load (uint32_t eip, uint32_t esp, uint32_t ebp, uint32_t *page_dir);
 int task_fork (void);
+ProcessTask *task_new (uint32_t eip, uint32_t *page_dir);
 void task_relocate_stack (void *addr, uint32_t size);
 pid_t task_getpid (void);
 

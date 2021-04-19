@@ -98,6 +98,7 @@ process_load_elf (int fd)
   VFSInode *inode = process_table[0].p_files[fd].pf_inode;
   Elf32_Ehdr *ehdr;
   uint32_t *page_dir;
+  ProcessTask *task;
 
   ehdr = kmalloc (sizeof (Elf32_Ehdr));
   if (unlikely (ehdr == NULL))
@@ -136,6 +137,12 @@ process_load_elf (int fd)
   if (process_load_sections (inode, page_dir, ehdr->e_shoff, ehdr->e_shentsize,
 			     ehdr->e_shnum) != 0)
     goto err;
+
+  /* Create new process */
+  task = task_new (ehdr->e_entry, page_dir);
+  memset (process_table[task->t_pid].p_files, 0,
+	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+  process_table[task->t_pid].p_task = task;
 
   kfree (ehdr);
   return 0;
