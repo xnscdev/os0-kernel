@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <fs/vfs.h>
+#include <fs/ext2.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
@@ -107,24 +107,34 @@ int
 sys_read (int fd, void *buffer, size_t len)
 {
   ProcessFile *file;
+  int ret;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return -EBADF;
   file = &process_table[task_getpid ()].p_files[fd];
   if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
     return -EBADF;
-  return vfs_read (file->pf_inode, buffer, len, 0);
+  ret = vfs_read (file->pf_inode, buffer, len, 0);
+  if (ret != 0)
+    return ret;
+  file->pf_offset += len;
+  return 0;
 }
 
 int
 sys_write (int fd, void *buffer, size_t len)
 {
   ProcessFile *file;
+  int ret;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return -EBADF;
   file = &process_table[task_getpid ()].p_files[fd];
   if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
     return -EBADF;
-  return vfs_write (file->pf_inode, buffer, len, 0);
+  ret = vfs_write (file->pf_inode, buffer, len, 0);
+  if (ret != 0)
+    return ret;
+  file->pf_offset += len;
+  return 0;
 }
 
 int
@@ -148,15 +158,30 @@ sys_open (const char *path, int flags, mode_t mode)
 	      files[i].pf_mode = O_RDONLY;
 	      break;
 	    case O_WRONLY:
+	      if (S_ISDIR (files[i].pf_inode->vi_mode))
+		{
+		  vfs_destroy_inode (files[i].pf_inode);
+		  files[i].pf_inode = NULL;
+		  return -EISDIR;
+		}
 	      files[i].pf_mode = O_WRONLY;
 	      break;
 	    case O_RDWR:
+	      if (S_ISDIR (files[i].pf_inode->vi_mode))
+		{
+		  vfs_destroy_inode (files[i].pf_inode);
+		  files[i].pf_inode = NULL;
+		  return -EISDIR;
+		}
 	      files[i].pf_mode = O_RDWR;
 	      break;
 	    default:
 	      vfs_destroy_inode (files[i].pf_inode);
+	      files[i].pf_inode = NULL;
 	      return -EINVAL;
 	    }
+	  files[i].pf_offset =
+	    flags & O_APPEND ? files[i].pf_inode->vi_size : 0;
 	  return 0;
 	}
     }
@@ -174,6 +199,7 @@ sys_close (int fd)
     return -EBADF;
   vfs_destroy_inode (file->pf_inode);
   file->pf_mode = 0;
+  file->pf_offset = 0;
   return 0;
 }
 

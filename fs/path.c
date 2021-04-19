@@ -216,7 +216,8 @@ vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp)
       return 0;
     }
 
-  for (temp = vfs_path_last (path); temp != NULL; temp = temp->vp_prev)
+  path = vfs_path_last (path);
+  for (temp = path; temp != NULL; temp = temp->vp_prev)
     {
       if (vfs_path_cmp (temp, mntpoint) == 0)
 	{
@@ -224,11 +225,11 @@ vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp)
 	  temp->vp_next->vp_prev = NULL;
 	  temp->vp_next = NULL;
 	  vfs_path_free (temp);
-	  *result = vfs_path_last (path);
+	  *result = path;
 	  return 0;
 	}
     }
 
-  *result = NULL;
+  *result = path;
   return 0;
 }
