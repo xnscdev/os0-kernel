@@ -33,6 +33,7 @@ typedef struct _ProcessTask
   uint32_t t_ebp;
   uint32_t t_eip;
   uint32_t *t_pgdir;
+  struct _ProcessTask *t_prev;
   struct _ProcessTask *t_next;
 } ProcessTask;
 
@@ -45,6 +46,7 @@ void task_tick (void);
 void task_load (uint32_t eip, uint32_t esp, uint32_t ebp, uint32_t *page_dir);
 int task_fork (void);
 ProcessTask *task_new (uint32_t eip, uint32_t *page_dir);
+void task_free (ProcessTask *task);
 void task_relocate_stack (void *addr, uint32_t size);
 pid_t task_getpid (void);
 

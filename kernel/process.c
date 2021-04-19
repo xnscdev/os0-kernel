@@ -132,6 +132,10 @@ process_load_elf (int fd)
   if (unlikely (page_dir == NULL))
     goto err;
   memset (page_dir, 0, PAGE_DIR_SIZE << 2);
+  page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kvalloc (PAGE_TBL_SIZE << 2);
+  if (unlikely (page_dir[PAGE_DIR_SIZE - 1] == 0))
+    goto err;
+  memset ((uint32_t *) page_dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
 
   /* Map ELF sections into address space */
   if (process_load_sections (inode, page_dir, ehdr->e_shoff, ehdr->e_shentsize,

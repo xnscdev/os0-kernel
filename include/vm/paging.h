@@ -30,7 +30,7 @@ __BEGIN_DECLS
 
 extern uint32_t kernel_page_dir[PAGE_DIR_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
-extern uint32_t kernel_page_table[PAGE_TBL_SIZE][PAGE_DIR_SIZE]
+extern uint32_t kernel_page_table[PAGE_DIR_SIZE][PAGE_TBL_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
 extern uint32_t *curr_page_dir;
 
@@ -39,6 +39,7 @@ void paging_enable (void);
 
 void *get_paddr (void *vaddr);
 void map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags);
+void unmap_page (uint32_t vaddr);
 
 __END_DECLS
 

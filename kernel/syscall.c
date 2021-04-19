@@ -103,6 +103,14 @@ sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
   return ret;
 }
 
+void
+sys_exit (int code)
+{
+  pid_t pid = task_getpid ();
+  if (pid == 0)
+    panic ("Attempted to exit from kernel task");
+}
+
 int
 sys_fork (void)
 {

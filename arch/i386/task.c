@@ -50,6 +50,7 @@ scheduler_init (void)
   task_current->t_ebp = 0;
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
+  task_current->t_prev = task_current;
   task_current->t_next = NULL;
 
   task_queue = task_current;
@@ -149,7 +150,9 @@ task_fork (void)
 
   for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
     ;
+  task->t_prev = temp;
   temp->t_next = task;
+  task_queue->t_prev = task;
 
   eip = read_ip ();
   if (task_current == parent)
@@ -194,10 +197,39 @@ task_new (uint32_t eip, uint32_t *page_dir)
 
   for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
     ;
+  task->t_prev = temp;
   temp->t_next = task;
+  task_queue->t_prev = task;
 
   __asm__ volatile ("sti");
   return task;
+}
+
+void
+task_free (ProcessTask *task)
+{
+  uint32_t i;
+  /* Unlink from task queue */
+  task->t_prev->t_next = task->t_next;
+  if (task->t_next != NULL)
+    task->t_next->t_prev = task->t_prev;
+
+  /* Free task stack */
+  for (i = task->t_stack; i >= task->t_stack - TASK_STACK_SIZE; i -= PAGE_SIZE)
+    {
+      void *paddr = get_paddr (i);
+      mem_free (paddr, PAGE_SIZE);
+      unmap_page (i);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval ((void *) i);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+
+  /* TODO Free page directory */
+  kfree (task);
 }
 
 void
