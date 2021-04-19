@@ -99,48 +99,56 @@ process_load_elf (int fd)
   Elf32_Ehdr *ehdr;
   uint32_t *page_dir;
   ProcessTask *task;
+  int ret;
 
   ehdr = kmalloc (sizeof (Elf32_Ehdr));
   if (unlikely (ehdr == NULL))
-    return -1;
-  if (vfs_read (inode, ehdr, sizeof (Elf32_Ehdr), 0) < 0)
-    return -1;
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
+  ret = vfs_read (inode, ehdr, sizeof (Elf32_Ehdr), 0);
+  if (ret < 0)
+    goto end;
 
   /* Check magic number */
   if (ehdr->e_ident[EI_MAG0] != ELFMAG0 || ehdr->e_ident[EI_MAG1] != ELFMAG1
       || ehdr->e_ident[EI_MAG2] != ELFMAG2 || ehdr->e_ident[EI_MAG3] != ELFMAG3)
-    goto err;
+    {
+      ret = -ENOEXEC;
+      goto end;
+    }
 
-  /* Check for 32-bit ELF */
-  if (ehdr->e_ident[EI_CLASS] != ELFCLASS32)
-    goto err;
-
-  /* Check for little-endian */
-  if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB)
-    goto err;
-
-  /* Make sure the file is executable */
-  if (ehdr->e_type != ET_EXEC)
-    goto err;
-
-  /* Make sure the file is for Intel architecture */
-  if (ehdr->e_machine != EM_386)
-    goto err;
+  /* Check for Intel 32-bit little-endian ELF executable */
+  if (ehdr->e_ident[EI_CLASS] != ELFCLASS32
+      || ehdr->e_ident[EI_DATA] != ELFDATA2LSB || ehdr->e_type != ET_EXEC
+      || ehdr->e_machine != EM_386)
+    {
+      ret = -ENOEXEC;
+      goto end;
+    }
 
   /* Create new page directory */
   page_dir = kvalloc (PAGE_DIR_SIZE << 2);
   if (unlikely (page_dir == NULL))
-    goto err;
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
   memset (page_dir, 0, PAGE_DIR_SIZE << 2);
   page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kvalloc (PAGE_TBL_SIZE << 2);
   if (unlikely (page_dir[PAGE_DIR_SIZE - 1] == 0))
-    goto err;
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
   memset ((uint32_t *) page_dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
 
   /* Map ELF sections into address space */
-  if (process_load_sections (inode, page_dir, ehdr->e_shoff, ehdr->e_shentsize,
-			     ehdr->e_shnum) != 0)
-    goto err;
+  ret = process_load_sections (inode, page_dir, ehdr->e_shoff,
+			       ehdr->e_shentsize, ehdr->e_shnum);
+  if (ret != 0)
+    goto end;
 
   /* Create new process */
   task = task_new (ehdr->e_entry, page_dir);
@@ -148,10 +156,7 @@ process_load_elf (int fd)
 	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
   process_table[task->t_pid].p_task = task;
 
+ end:
   kfree (ehdr);
-  return 0;
-
- err:
-  kfree (ehdr);
-  return -1;
+  return ret;
 }
