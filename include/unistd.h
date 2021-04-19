@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * unistd.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,15 +16,11 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/macros.h>
-#include <libk/types.h>
-#include <assert.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
+#ifndef _UNISTD_H
+#define _UNISTD_H
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
+#endif

@@ -113,6 +113,7 @@
 
 __BEGIN_DECLS
 
+int sys_fork (void);
 int sys_read (int fd, void *buffer, size_t len);
 int sys_write (int fd, void *buffer, size_t len);
 int sys_open (const char *path, int flags, mode_t mode);
@@ -123,6 +124,8 @@ int sys_unlink (const char *path);
 int sys_mknod (const char *path, mode_t mode, dev_t dev);
 int sys_chmod (const char *path, mode_t mode);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
+off_t sys_lseek (int fd, off_t offset, int whence);
+pid_t sys_getpid (void);
 int sys_mount (const char *src, const char *dir, const char *type, int flags,
 	       void *data);
 int sys_umount (const char *dir);
