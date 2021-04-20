@@ -88,6 +88,7 @@ task_tick (void)
   ebp = task_current->t_ebp;
   task_stack_addr = task_current->t_stack;
   tss_update_stack (esp);
+  curr_page_dir = task_current->t_pgdir;
   paddr = get_paddr (curr_page_dir);
   if (paddr == NULL)
     panic ("Failed to determine address of page directory");
@@ -165,44 +166,16 @@ task_fork (void)
     return 0;
 }
 
-ProcessTask *
-task_new (uint32_t eip, uint32_t *page_dir)
+int
+task_exec (uint32_t eip, uint32_t *page_dir)
 {
-  volatile ProcessTask *temp;
-  ProcessTask *task;
-  uint32_t i;
-
-  /* Clone the stack */
-  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)
-    {
-      void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) i);
-#endif
-    }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
-
-  task = kmalloc (sizeof (ProcessTask));
-  task->t_pid = next_pid++;
-  task->t_stack = next_sp;
-  task->t_esp = next_sp;
-  task->t_ebp = next_sp;
-  task->t_eip = eip;
-  task->t_pgdir = page_dir;
-  task->t_next = NULL;
-  next_sp += TASK_STACK_SIZE;
-
-  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
-    ;
-  task->t_prev = temp;
-  temp->t_next = task;
-  task_queue->t_prev = task;
-
+  __asm__ volatile ("cli");
+  task_current->t_esp = task_current->t_stack;
+  task_current->t_ebp = task_current->t_stack;
+  task_current->t_eip = eip;
+  task_current->t_pgdir = page_dir;
   __asm__ volatile ("sti");
-  return task;
+  return 0;
 }
 
 void
@@ -217,7 +190,7 @@ task_free (ProcessTask *task)
   /* Free task stack */
   for (i = task->t_stack; i >= task->t_stack - TASK_STACK_SIZE; i -= PAGE_SIZE)
     {
-      void *paddr = get_paddr (i);
+      void *paddr = get_paddr ((void *) i);
       mem_free (paddr, PAGE_SIZE);
       unmap_page (i);
 #ifdef INVLPG_SUPPORT

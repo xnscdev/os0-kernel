@@ -22,9 +22,9 @@
 
 	.section .text
 	.align 16
-	.global switch_user_mode
-	.type switch_user_mode, @function
-switch_user_mode:
+	.global user_mode_exec
+	.type user_mode_exec, @function
+user_mode_exec:
 	cli
 	mov	$0x23, %ax
 	mov	%ax, %ds
@@ -39,9 +39,7 @@ switch_user_mode:
 	or	$0x200, %eax
 	push	%eax
 	pushl	$0x1b
-	push	$1f
+	pushl	4(%esp)
 	iret
-1:
-	ret
 
-	.size switch_user_mode, . - switch_user_mode
+	.size user_mode_exec, . - user_mode_exec

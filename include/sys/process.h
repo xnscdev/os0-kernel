@@ -43,6 +43,8 @@ __BEGIN_DECLS
 
 extern Process process_table[PROCESS_LIMIT];
 
+int process_spawn (VFSInode *inode);
+
 __END_DECLS
 
 #endif

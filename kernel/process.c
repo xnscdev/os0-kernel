@@ -24,9 +24,11 @@
 #include <vm/paging.h>
 #include "elf.h"
 
+void user_mode_exec (uint32_t eip) __attribute__ ((noreturn));
+
 Process process_table[PROCESS_LIMIT];
 
-int
+static int
 process_load_sections (VFSInode *inode, uint32_t *page_dir, Elf32_Off shoff,
 		       Elf32_Half shentsize, Elf32_Half shnum)
 {
@@ -93,12 +95,10 @@ process_load_sections (VFSInode *inode, uint32_t *page_dir, Elf32_Off shoff,
 }
 
 int
-process_load_elf (int fd)
+process_spawn (VFSInode *inode)
 {
-  VFSInode *inode = process_table[0].p_files[fd].pf_inode;
   Elf32_Ehdr *ehdr;
-  uint32_t *page_dir;
-  ProcessTask *task;
+  int pid;
   int ret;
 
   ehdr = kmalloc (sizeof (Elf32_Ehdr));
@@ -128,35 +128,23 @@ process_load_elf (int fd)
       goto end;
     }
 
-  /* Create new page directory */
-  page_dir = kvalloc (PAGE_DIR_SIZE << 2);
-  if (unlikely (page_dir == NULL))
-    {
-      ret = -ENOMEM;
-      goto end;
-    }
-  memset (page_dir, 0, PAGE_DIR_SIZE << 2);
-  page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kvalloc (PAGE_TBL_SIZE << 2);
-  if (unlikely (page_dir[PAGE_DIR_SIZE - 1] == 0))
-    {
-      ret = -ENOMEM;
-      goto end;
-    }
-  memset ((uint32_t *) page_dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
-
-  /* Map ELF sections into address space */
-  ret = process_load_sections (inode, page_dir, ehdr->e_shoff,
-			       ehdr->e_shentsize, ehdr->e_shnum);
-  if (ret != 0)
-    goto end;
-
   /* Create new process */
-  task = task_new (ehdr->e_entry, page_dir);
-  memset (process_table[task->t_pid].p_files, 0,
-	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-  process_table[task->t_pid].p_task = task;
+  pid = task_fork ();
+  if (pid == 0)
+    {
+      /* Map ELF sections into address space */
+      ret = process_load_sections (inode, curr_page_dir, ehdr->e_shoff,
+				   ehdr->e_shentsize, ehdr->e_shnum);
+      if (ret != 0)
+	{
+	  kfree (ehdr);
+	  task_free ((ProcessTask *) process_table[pid].p_task);
+	}
+      user_mode_exec (ehdr->e_entry);
+      task_free ((ProcessTask *) process_table[pid].p_task);
+    }
 
  end:
   kfree (ehdr);
-  return ret;
+  return pid;
 }
