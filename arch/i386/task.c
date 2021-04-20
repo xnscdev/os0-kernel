@@ -111,6 +111,8 @@ task_fork (void)
   __asm__ volatile ("cli");
   parent = task_current;
   dir = page_dir_clone (parent->t_pgdir);
+  if (dir == NULL)
+    return -ENOMEM;
 
   /* Clone the stack */
   for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)

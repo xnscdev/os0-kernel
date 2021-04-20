@@ -24,8 +24,8 @@
 #include <sys/cmdline.h>
 #include <sys/device.h>
 #include <sys/multiboot.h>
+#include <sys/process.h>
 #include <sys/syscall.h>
-#include <sys/task.h>
 #include <sys/timer.h>
 #include <video/vga.h>
 #include <vm/heap.h>

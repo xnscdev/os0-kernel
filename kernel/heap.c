@@ -122,7 +122,8 @@ heap_alloc (MemHeap *heap, uint32_t size, unsigned char aligned)
 	  /* Give up if the page-aligned address is no longer in the block */
 	  if (addr >= (uint32_t) header + sizeof (MemHeader) + header->mh_size)
 	    continue;
-	  new_size = addr - (uint32_t) header - sizeof (MemHeader);
+	  new_size = (uint32_t) header + sizeof (MemHeader) +
+	    header->mh_size - addr;
 	  if (new_size < size)
 	    continue; /* Not enough space for the requested size anymore */
 
