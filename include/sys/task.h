@@ -23,7 +23,10 @@
 #include <sys/types.h>
 
 #define TASK_SLICE 50
-#define TASK_STACK_SIZE 16384
+
+#define TASK_PAGE_DIR_ADDR 0xff400000
+#define TASK_STACK_ADDR    0xff401000
+#define TASK_STACK_SIZE    16384
 
 typedef struct _ProcessTask
 {
@@ -45,6 +48,7 @@ void scheduler_init (void);
 void task_tick (void);
 void task_load (uint32_t eip, uint32_t esp, uint32_t ebp, uint32_t *page_dir);
 int task_fork (void);
+int task_new (void);
 int task_exec (uint32_t eip, uint32_t *page_dir);
 void task_free (ProcessTask *task);
 void task_relocate_stack (void *addr, uint32_t size);

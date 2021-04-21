@@ -37,9 +37,9 @@ extern uint32_t *curr_page_dir;
 void paging_loaddir (uint32_t addr);
 void paging_enable (void);
 
-void *get_paddr (void *vaddr);
-void map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags);
-void unmap_page (uint32_t vaddr);
+uint32_t get_paddr (uint32_t *dir, void *vaddr);
+void map_page (uint32_t *dir, uint32_t paddr, uint32_t vaddr, uint32_t flags);
+void unmap_page (uint32_t *dir, uint32_t vaddr);
 
 __END_DECLS
 

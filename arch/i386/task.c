@@ -88,8 +88,8 @@ task_tick (void)
   ebp = task_current->t_ebp;
   task_stack_addr = task_current->t_stack;
   tss_update_stack (esp);
+  paddr = (uint32_t *) get_paddr (curr_page_dir, task_current->t_pgdir);
   curr_page_dir = task_current->t_pgdir;
-  paddr = get_paddr (curr_page_dir);
   if (paddr == NULL)
     panic ("Failed to determine address of page directory");
   task_load (eip, esp, ebp, paddr);
@@ -118,9 +118,10 @@ task_fork (void)
   for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)
     {
       void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      map_page (curr_page_dir, (uint32_t) paddr, i,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) i);
+      vm_page_inval (i);
 #endif
     }
 #ifndef INVLPG_SUPPORT
@@ -161,11 +162,64 @@ task_fork (void)
   if (task_current == parent)
     {
       task->t_eip = eip;
+      process_table[task->t_pid].p_task = task;
+      memset (process_table[task->t_pid].p_files, 0,
+	      sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
       __asm__ volatile ("sti");
       return task->t_pid;
     }
   else
     return 0;
+}
+
+int
+task_new (void)
+{
+  uint32_t *dir = kvalloc (PAGE_DIR_SIZE << 2);
+  uint32_t i;
+  ProcessTask *task;
+  volatile ProcessTask *temp;
+
+  if (dir == NULL)
+    return -ENOMEM;
+  memset (dir, 0, PAGE_DIR_SIZE << 2);
+  dir[PAGE_DIR_SIZE - 1] = (uint32_t) kvalloc (PAGE_TBL_SIZE << 2);
+  if (dir[PAGE_DIR_SIZE - 1] == 0)
+    {
+      kfree (dir);
+      return -ENOMEM;
+    }
+  memset ((uint32_t *) dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
+  map_page (dir, get_paddr (curr_page_dir, dir), TASK_PAGE_DIR_ADDR,
+	    PAGE_FLAG_WRITE);
+
+  for (i = TASK_STACK_ADDR; i < TASK_STACK_ADDR + TASK_STACK_SIZE;
+       i += PAGE_SIZE)
+    {
+      void *paddr = mem_alloc (PAGE_SIZE, 0);
+      map_page (dir, (uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+    }
+
+  task = kmalloc (sizeof (ProcessTask));
+  task->t_pid = next_pid++;
+  task->t_stack = next_sp;
+  task->t_esp = task->t_stack;
+  task->t_ebp = task->t_stack;
+  task->t_eip = 0;
+  task->t_pgdir = dir;
+  task->t_next = NULL;
+  next_sp += TASK_STACK_SIZE;
+
+  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
+    ;
+  task->t_prev = temp;
+  temp->t_next = task;
+  task_queue->t_prev = task;
+
+  process_table[task->t_pid].p_task = task;
+  memset (process_table[task->t_pid].p_files, 0,
+	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+  return task->t_pid;
 }
 
 int
@@ -192,16 +246,10 @@ task_free (ProcessTask *task)
   /* Free task stack */
   for (i = task->t_stack; i >= task->t_stack - TASK_STACK_SIZE; i -= PAGE_SIZE)
     {
-      void *paddr = get_paddr ((void *) i);
-      mem_free (paddr, PAGE_SIZE);
-      unmap_page (i);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) i);
-#endif
+      uint32_t paddr = get_paddr (task->t_pgdir, (void *) i);
+      if (paddr != 0)
+	mem_free ((void *) paddr, PAGE_SIZE);
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
 
   /* TODO Free page directory */
   kfree (task);
@@ -220,9 +268,10 @@ task_relocate_stack (void *addr, uint32_t size)
   for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= PAGE_SIZE)
     {
       void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page ((uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      map_page (curr_page_dir, (uint32_t) paddr, i,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) i);
+      vm_page_inval (i);
 #endif
     }
 #ifndef INVLPG_SUPPORT

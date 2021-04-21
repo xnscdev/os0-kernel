@@ -25,7 +25,7 @@
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
 
-#define PAGE_COPY_VADDR 0xd8000000
+#define PAGE_COPY_VADDR 0x1000
 
 /* Page entry flags */
 
@@ -40,10 +40,11 @@
 __BEGIN_DECLS
 
 void vm_tlb_reset (void);
-void vm_page_inval (void *vaddr);
+void vm_page_inval (uint32_t vaddr);
 
 uint32_t *page_table_clone (uint32_t *orig);
 uint32_t *page_dir_clone (uint32_t *orig);
+void page_dir_clear (uint32_t *dir);
 
 __END_DECLS
 

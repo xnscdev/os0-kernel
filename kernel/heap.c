@@ -64,8 +64,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
     return -1;
   /* Identity map the index array */
   for (addr = 0; addr < sizeof (void *) * indexsize; addr += PAGE_SIZE)
-    map_page (addr + (uint32_t) indexaddr, addr + (uint32_t) indexaddr,
-	      PAGE_FLAG_WRITE);
+    map_page (curr_page_dir, addr + (uint32_t) indexaddr,
+	      addr + (uint32_t) indexaddr, PAGE_FLAG_WRITE);
   if (sorted_array_place (&heap->mh_index, indexaddr, indexsize, heap_cmp) != 0)
     return -1;
 
@@ -77,7 +77,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
     }
   /* Map heap pages from the desired virtual address */
   for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
-    map_page (addr + (uint32_t) heapaddr, addr + (uint32_t) vaddr, flags);
+    map_page (curr_page_dir, addr + (uint32_t) heapaddr,
+	      addr + (uint32_t) vaddr, flags);
 
   /* Add a single unallocated memory block to the heap */
   header = vaddr;

@@ -61,47 +61,47 @@ paging_init (void)
     kernel_page_table[PAGE_DIR_SIZE - 1][i] = (uint32_t) kernel_page_table[i];
 }
 
-void *
-get_paddr (void *vaddr)
+uint32_t
+get_paddr (uint32_t *dir, void *vaddr)
 {
   uint32_t pdi = (uint32_t) vaddr >> 22;
   uint32_t pti = (uint32_t) vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   uint32_t *table;
-  if (!(curr_page_dir[pdi] & PAGE_FLAG_PRESENT))
-    return NULL;
-  table = (uint32_t *) ((uint32_t *) curr_page_dir[PAGE_DIR_SIZE - 1])[pdi];
-  return (void *) ((table[pti] & 0xfffff000) + ((uint32_t) vaddr & 0xfff));
+  if (!(dir[pdi] & PAGE_FLAG_PRESENT))
+    return 0;
+  table = (uint32_t *) ((uint32_t *) dir[PAGE_DIR_SIZE - 1])[pdi];
+  return (table[pti] & 0xfffff000) + ((uint32_t) vaddr & 0xfff);
 }
 
 void
-map_page (uint32_t paddr, uint32_t vaddr, uint32_t flags)
+map_page (uint32_t *dir, uint32_t paddr, uint32_t vaddr, uint32_t flags)
 {
   uint32_t pdi = vaddr >> 22;
   uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
   uint32_t *table;
-  if (curr_page_dir[pdi] & PAGE_FLAG_PRESENT)
-    table = (uint32_t *) ((uint32_t *) curr_page_dir[PAGE_DIR_SIZE - 1])[pdi];
+  if (dir[pdi] & PAGE_FLAG_PRESENT)
+    table = (uint32_t *) ((uint32_t *) dir[PAGE_DIR_SIZE - 1])[pdi];
   else
     {
       table = kvalloc (PAGE_TBL_SIZE << 2);
       if (unlikely (table == NULL))
         panic ("Failed to allocate page table");
       memset (table, 0, PAGE_TBL_SIZE << 2);
-      curr_page_dir[pdi] = (uint32_t) get_paddr (table) | PAGE_FLAG_WRITE
+      dir[pdi] = get_paddr (curr_page_dir, table) | PAGE_FLAG_WRITE
 	| PAGE_FLAG_USER | PAGE_FLAG_PRESENT;
-      ((uint32_t *) curr_page_dir[PAGE_DIR_SIZE - 1])[pdi] = (uint32_t) table;
+      ((uint32_t *) dir[PAGE_DIR_SIZE - 1])[pdi] = (uint32_t) table;
     }
   table[pti] = paddr | PAGE_FLAG_PRESENT | (flags & 0xfff);
 }
 
 void
-unmap_page (uint32_t vaddr)
+unmap_page (uint32_t *dir, uint32_t vaddr)
 {
   uint32_t pdi = vaddr >> 22;
   uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-  if (curr_page_dir[pdi] & PAGE_FLAG_PRESENT)
+  if (dir[pdi] & PAGE_FLAG_PRESENT)
     {
-      uint32_t *table = (uint32_t *) curr_page_dir[PAGE_DIR_SIZE - 1];
+      uint32_t *table = (uint32_t *) dir[PAGE_DIR_SIZE - 1];
       ((uint32_t *) table[pdi])[pti] = 0;
     }
 }
@@ -123,23 +123,28 @@ page_table_clone (uint32_t *orig)
       if (unlikely (buffer == NULL))
 	{
 	  kfree (table);
-	  return NULL;
+	  table = NULL;
+	  goto end;
 	}
-      map_page ((uint32_t) buffer, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
+      map_page (curr_page_dir, (uint32_t) buffer, PAGE_COPY_VADDR,
+		PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) PAGE_COPY_VADDR);
+      vm_page_inval (PAGE_COPY_VADDR);
 #else
       vm_tlb_reset ();
 #endif
       memcpy ((void *) PAGE_COPY_VADDR, (const void *) (orig[i] & 0xfffff000),
 	      PAGE_SIZE);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval ((void *) PAGE_COPY_VADDR);
-#else
-      vm_tlb_reset ();
-#endif
       table[i] = (uint32_t) buffer | (orig[i] & 0xfff);
     }
+
+ end:
+  unmap_page (curr_page_dir, PAGE_COPY_VADDR);
+#ifdef INVLPG_SUPPORT
+  vm_page_inval (PAGE_COPY_VADDR);
+#else
+  vm_tlb_reset ();
+#endif
   return table;
 }
 
@@ -162,4 +167,20 @@ page_dir_clone (uint32_t *orig)
 	  | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
     }
   return dir;
+}
+
+void
+page_dir_clear (uint32_t *dir)
+{
+  uint32_t *vmap = (uint32_t *) dir[PAGE_DIR_SIZE - 1];
+  int i;
+  for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
+    {
+      /* If page table is on kernel heap, assume it's allocated and free it */
+      if (vmap[i] >= kernel_heap->mh_addr
+	  && vmap[i] < kernel_heap->mh_addr + kernel_heap->mh_size)
+	kfree ((uint32_t *) vmap[i]);
+      dir[i] = 0;
+      vmap[i] = 0;
+    }
 }

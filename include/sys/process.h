@@ -23,8 +23,10 @@
 #include <sys/cdefs.h>
 #include <sys/task.h>
 
-#define PROCESS_LIMIT 256
+#define PROCESS_LIMIT      256
 #define PROCESS_FILE_LIMIT 64
+
+#define USER_START_ADDR 0xff800000
 
 typedef struct
 {
@@ -44,6 +46,7 @@ __BEGIN_DECLS
 extern Process process_table[PROCESS_LIMIT];
 
 int process_spawn (VFSInode *inode);
+void process_free (pid_t pid);
 
 __END_DECLS
 

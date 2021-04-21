@@ -109,6 +109,7 @@ sys_exit (int code)
   pid_t pid = task_getpid ();
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
+  process_free (pid);
 }
 
 int
