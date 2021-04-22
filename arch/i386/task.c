@@ -108,7 +108,6 @@ task_fork (void)
   uint32_t ebp;
   uint32_t i;
 
-  __asm__ volatile ("cli");
   parent = task_current;
   dir = page_dir_clone (parent->t_pgdir);
   if (dir == NULL)
@@ -165,7 +164,6 @@ task_fork (void)
       process_table[task->t_pid].p_task = task;
       memset (process_table[task->t_pid].p_files, 0,
 	      sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-      __asm__ volatile ("sti");
       return task->t_pid;
     }
   else

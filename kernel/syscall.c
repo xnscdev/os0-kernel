@@ -115,7 +115,11 @@ sys_exit (int code)
 int
 sys_fork (void)
 {
-  return task_fork ();
+  int ret;
+  __asm__ volatile ("cli");
+  ret = task_fork ();
+  __asm__ volatile ("sti");
+  return ret;
 }
 
 int
