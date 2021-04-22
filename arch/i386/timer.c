@@ -33,8 +33,6 @@ timer_tick (void)
   tick++;
   if (tick % timer_freq == 0)
     rtc_time++;
-  if (tick * TASK_SLICE % timer_freq == 0)
-    task_tick ();
 }
 
 void

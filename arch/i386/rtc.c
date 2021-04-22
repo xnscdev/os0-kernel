@@ -76,6 +76,7 @@ rtc_init (void)
   unsigned char bstat;
   unsigned char doy;
   unsigned short posix_year; /* Year since 1900 */
+  char prev_data;
   int i;
 
   rtc_wait_update ();
@@ -131,12 +132,23 @@ rtc_init (void)
   rtc_time = second + minute * 60 + hour * 3600 + doy * 86400 +
     (posix_year - 70) * 31536000 + ((posix_year - 69) / 4) * 86000 -
     ((posix_year - 1) / 100) * 86400 + ((posix_year + 299) / 400) * 86400;
+
+  /* Enable RTC interrupts */
+  __asm__ volatile ("cli");
+  outb (CMOS_RTC_ASTAT | 0x80, CMOS_PORT_REGISTER);
+  prev_data = inb (CMOS_PORT_DATA);
+  outb (CMOS_RTC_ASTAT | 0x80, CMOS_PORT_REGISTER);
+  outb ((prev_data & 0xf0) | 11, CMOS_PORT_DATA);
+  outb (CMOS_RTC_BSTAT | 0x80, CMOS_PORT_REGISTER);
+  prev_data = inb (CMOS_PORT_DATA);
+  outb (CMOS_RTC_BSTAT | 0x80, CMOS_PORT_REGISTER);
+  outb (prev_data | 0x40, CMOS_PORT_DATA);
+  __asm__ volatile ("sti");
 }
 
 time_t
 time (time_t *t)
 {
-  /* TODO Update rtc_time using PIT */
   if (t != NULL)
     *t = rtc_time;
   return rtc_time;

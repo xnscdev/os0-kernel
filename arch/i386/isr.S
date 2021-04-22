@@ -32,6 +32,7 @@ exc ## x:				\
 	EXC_POP(p);			\
 	iret;				\
 	.size exc ## x, . - exc ## x
+#define IRQ_SKIP_8
 #define IRQ(x)				\
 	.global irq ## x;		\
 	.type irq ## x, @function;	\
@@ -44,3 +45,14 @@ irq ## x:				\
 #include "irq.inc"
 #undef EXC
 #undef IRQ
+#undef IRQ_SKIP_8
+
+	.global irq8
+	.type irq8, @function
+irq8:
+	pusha
+	call	irq8_handler
+	popa
+	iret
+
+	.size irq8, . - irq8

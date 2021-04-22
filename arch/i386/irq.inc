@@ -34,7 +34,9 @@ IRQ (4)
 IRQ (5)
 IRQ (6)
 IRQ (7)
+#ifndef IRQ_SKIP_8
 IRQ (8)
+#endif
 IRQ (9)
 IRQ (10)
 IRQ (11)

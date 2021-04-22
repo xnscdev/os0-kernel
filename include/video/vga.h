@@ -56,6 +56,8 @@ typedef enum
 
 __BEGIN_DECLS
 
+extern int vga_console;
+
 void vga_init (void);
 unsigned char vga_getcolor (void);
 void vga_setcolor (unsigned char color);

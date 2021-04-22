@@ -32,5 +32,6 @@
 #define CMOS_RTC_CENTURY 0x32
 #define CMOS_RTC_ASTAT   0x0a
 #define CMOS_RTC_BSTAT   0x0b
+#define CMOS_RTC_CSTAT   0x0c
 
 #endif

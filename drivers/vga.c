@@ -23,6 +23,7 @@ static size_t vga_row;
 static size_t vga_column;
 static unsigned char vga_color;
 static uint16_t *vga_buffer;
+int vga_console;
 
 void
 vga_init (void)
@@ -38,6 +39,7 @@ vga_init (void)
       for (x = 0; x < VGA_SCREEN_WIDTH; x++)
 	vga_buffer[vga_getindex (x, y)] = vga_mkentry (' ', vga_color);
     }
+  vga_console = 1;
 }
 
 unsigned char
