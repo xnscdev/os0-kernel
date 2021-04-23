@@ -57,18 +57,14 @@ irq8:
 
 	/* Read RTC C status to allow next interrupt */
 	mov	$CMOS_RTC_CSTAT, %al
-	mov	$CMOS_PORT_REGISTER, %dx
-	outb	%al, %dx
-	mov	$CMOS_PORT_DATA, %dx
-	inb	%dx, %al
+	outb	%al, $CMOS_PORT_REGISTER
+	inb	$CMOS_PORT_DATA, %al
 
 	/* Acknowledge PIC */
 	cli
 	mov	$PIC_EOI, %al
-	mov	$PIC_SLAVE_COMMAND, %dx
-	outb	%al, %dx
-	mov	$PIC_MASTER_COMMAND, %dx
-	outb	%al, %dx
+	outb	%al, $PIC_SLAVE_COMMAND
+	outb	%al, $PIC_MASTER_COMMAND
 
 	popa
 	sti
