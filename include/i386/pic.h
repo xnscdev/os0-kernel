@@ -19,8 +19,10 @@
 #ifndef _I386_PIC_H
 #define _I386_PIC_H
 
+#ifndef _ASM
 #include <sys/cdefs.h>
 #include <stdint.h>
+#endif
 
 #define PIC_MASTER_COMMAND 0x20
 #define PIC_MASTER_DATA    0x21
@@ -30,6 +32,8 @@
 #define PIC_EOI 0x20
 
 #define IDT_SIZE 256
+
+#ifndef _ASM
 
 typedef struct
 {
@@ -45,5 +49,7 @@ __BEGIN_DECLS
 void idt_load (uint32_t addr);
 
 __END_DECLS
+
+#endif
 
 #endif

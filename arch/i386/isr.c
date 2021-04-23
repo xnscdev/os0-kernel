@@ -19,7 +19,6 @@
 #include <i386/pic.h>
 #include <i386/timer.h>
 #include <sys/ata.h>
-#include <sys/cmos.h>
 #include <sys/io.h>
 #include <stdlib.h>
 
@@ -191,15 +190,6 @@ irq6_handler (void)
 void
 irq7_handler (void)
 {
-  outb (PIC_EOI, PIC_MASTER_COMMAND);
-}
-
-void
-irq8_handler (void)
-{
-  outb (CMOS_RTC_CSTAT, CMOS_PORT_REGISTER);
-  inb (CMOS_PORT_DATA);
-  outb (PIC_EOI, PIC_SLAVE_COMMAND);
   outb (PIC_EOI, PIC_MASTER_COMMAND);
 }
 

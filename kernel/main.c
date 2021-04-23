@@ -143,4 +143,10 @@ kmain (MultibootInfo *info, uint32_t stack)
   vfs_init ();
   syscall_init ();
   mount_rootfs ();
+
+  {
+    pid_t fpid = sys_fork ();
+    pid_t gpid = sys_getpid ();
+    printk ("Fork: %u, getpid: %u\n", fpid, gpid);
+  }
 }

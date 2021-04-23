@@ -18,6 +18,9 @@
 
 #define _ASM
 
+#include <i386/pic.h>
+#include <sys/cmos.h>
+
 #define EXC_POP(x) EXC_POP_ ## x
 #define EXC_POP_0
 #define EXC_POP_1 add $4, %esp
@@ -51,8 +54,24 @@ irq ## x:				\
 	.type irq8, @function
 irq8:
 	pusha
-	call	irq8_handler
+
+	/* Read RTC C status to allow next interrupt */
+	mov	$CMOS_RTC_CSTAT, %al
+	mov	$CMOS_PORT_REGISTER, %dx
+	outb	%al, %dx
+	mov	$CMOS_PORT_DATA, %dx
+	inb	%dx, %al
+
+	/* Acknowledge PIC */
+	cli
+	mov	$PIC_EOI, %al
+	mov	$PIC_SLAVE_COMMAND, %dx
+	outb	%al, %dx
+	mov	$PIC_MASTER_COMMAND, %dx
+	outb	%al, %dx
+
 	popa
+	sti
 	iret
 
 	.size irq8, . - irq8
