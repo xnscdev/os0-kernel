@@ -144,20 +144,17 @@ process_spawn (VFSInode *inode)
       goto end;
     }
 
-  /* Create new process */
-  pid = task_new ();
+  /*pid = task_new ();
   if (pid < 0)
     {
       ret = pid;
       goto end;
     }
 
-  /* Map ELF sections into address space */
   ret = process_load_sections (inode, process_table[pid].p_task->t_pgdir,
 			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
     goto task_end;
-  process_table[pid].p_task->t_ebp = ehdr->e_entry;
   process_table[pid].p_task->t_eip = USER_START_ADDR;
   map_page (process_table[pid].p_task->t_pgdir,
 	    get_paddr (curr_page_dir, user_mode_exec), USER_START_ADDR,
@@ -166,7 +163,7 @@ process_spawn (VFSInode *inode)
   goto end;
 
  task_end:
-  process_free (pid);
+   process_free (pid);*/
  end:
   kfree (ehdr);
   __asm__ volatile ("sti");

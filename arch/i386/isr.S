@@ -18,9 +18,6 @@
 
 #define _ASM
 
-#include <i386/pic.h>
-#include <sys/cmos.h>
-
 #define EXC_POP(x) EXC_POP_ ## x
 #define EXC_POP_0
 #define EXC_POP_1 add $4, %esp
@@ -49,25 +46,3 @@ irq ## x:				\
 #undef EXC
 #undef IRQ
 #undef IRQ_SKIP_8
-
-	.global irq8
-	.type irq8, @function
-irq8:
-	pusha
-
-	/* Read RTC C status to allow next interrupt */
-	mov	$CMOS_RTC_CSTAT, %al
-	outb	%al, $CMOS_PORT_REGISTER
-	inb	$CMOS_PORT_DATA, %al
-
-	/* Acknowledge PIC */
-	cli
-	mov	$PIC_EOI, %al
-	outb	%al, $PIC_SLAVE_COMMAND
-	outb	%al, $PIC_MASTER_COMMAND
-
-	popa
-	sti
-	iret
-
-	.size irq8, . - irq8

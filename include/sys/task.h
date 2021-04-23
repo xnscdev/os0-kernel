@@ -25,7 +25,7 @@
 #define TASK_SLICE 50
 
 #define TASK_PAGE_DIR_ADDR 0xff400000
-#define TASK_STACK_ADDR    0xff401000
+#define TASK_STACK_ADDR    0xff405000
 #define TASK_STACK_SIZE    16384
 
 typedef struct _ProcessTask
@@ -33,7 +33,6 @@ typedef struct _ProcessTask
   pid_t t_pid;
   uint32_t t_stack;
   uint32_t t_esp;
-  uint32_t t_ebp;
   uint32_t t_eip;
   uint32_t *t_pgdir;
   volatile struct _ProcessTask *t_prev;

@@ -33,21 +33,17 @@ volatile ProcessTask *task_queue;
 uint32_t task_stack_addr;
 
 static pid_t next_pid;
-static uint32_t next_sp;
 
 void
 scheduler_init (void)
 {
   __asm__ volatile ("cli");
-  task_relocate_stack ((void *) STACK_VADDR, STACK_LEN);
-  task_stack_addr = STACK_VADDR;
-  next_sp = STACK_VADDR + TASK_STACK_SIZE;
+  task_relocate_stack ((void *) TASK_STACK_ADDR, TASK_STACK_SIZE);
 
   task_current = kmalloc (sizeof (ProcessTask));
   task_current->t_pid = next_pid++;
-  task_current->t_stack = STACK_VADDR;
+  task_current->t_stack = TASK_STACK_ADDR;
   task_current->t_esp = 0;
-  task_current->t_ebp = 0;
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
   task_current->t_prev = task_current;
@@ -58,43 +54,13 @@ scheduler_init (void)
   __asm__ volatile ("sti");
 }
 
-void
-task_tick (void)
+int
+task_fork (void)
 {
-  uint32_t *paddr;
-  uint32_t esp;
-  uint32_t ebp;
-  uint32_t eip;
-
-  if (task_current == NULL)
-    return;
-
-  __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
-  __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
-  eip = read_ip ();
-  if (eip == 0)
-    return;
-
-  task_current->t_eip = eip;
-  task_current->t_esp = esp;
-  task_current->t_ebp = ebp;
-
-  task_current = task_current->t_next;
-  if (task_current == NULL)
-    task_current = task_queue;
-
-  eip = task_current->t_eip;
-  esp = task_current->t_esp;
-  ebp = task_current->t_ebp;
-  task_stack_addr = task_current->t_stack;
-  tss_update_stack (esp);
-  paddr = (uint32_t *) get_paddr (curr_page_dir, task_current->t_pgdir);
-  curr_page_dir = task_current->t_pgdir;
-  if (paddr == NULL)
-    panic ("Failed to determine address of page directory");
-  task_load (eip, esp, ebp, paddr);
+  return -ENOTSUP;
 }
 
+/*
 int
 task_fork (void)
 {
@@ -105,7 +71,7 @@ task_fork (void)
   uint32_t *dir;
   uint32_t eip;
   uint32_t esp;
-  uint32_t ebp;
+  uint32_t addr;
   uint32_t i;
 
   parent = task_current;
@@ -113,39 +79,25 @@ task_fork (void)
   if (dir == NULL)
     return -ENOMEM;
 
-  /* Clone the stack */
-  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= PAGE_SIZE)
+  for (addr = TASK_STACK_ADDR + TASK_STACK_SIZE, i = 0; addr >= TASK_STACK_ADDR;
+       addr -= PAGE_SIZE, i += PAGE_SIZE)
     {
-      void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page (curr_page_dir, (uint32_t) paddr, i,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
+      map_page (dir, paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      map_page (curr_page_dir, paddr, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
-      vm_page_inval (i);
+      vm_page_inval (paddr);
+#else
+      vm_tlb_reset ();
 #endif
-    }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
-  memcpy ((void *) (next_sp - TASK_STACK_SIZE),
-	  (void *) (task_stack_addr - TASK_STACK_SIZE), TASK_STACK_SIZE);
-  offset = next_sp - task_stack_addr;
-  __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
-  __asm__ volatile ("mov %%ebp, %0" : "=r" (ebp));
-  for (i = next_sp; i >= next_sp - TASK_STACK_SIZE; i -= 4)
-    {
-      uint32_t value = *((uint32_t *) i);
-      if (value > esp && value < task_stack_addr)
-	{
-	  value += offset;
-	  *((uint32_t *) i) = value;
-	}
+      memcpy ((void *) PAGE_COPY_VADDR, (void *) (task_stack_addr - i),
+	      PAGE_SIZE);
     }
 
   task = kmalloc (sizeof (ProcessTask));
   task->t_pid = next_pid++;
   task->t_stack = next_sp;
   task->t_esp = esp + offset;
-  task->t_ebp = ebp + offset;
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;
@@ -202,7 +154,6 @@ task_new (void)
   task->t_pid = next_pid++;
   task->t_stack = next_sp;
   task->t_esp = task->t_stack;
-  task->t_ebp = task->t_stack;
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;
@@ -219,13 +170,13 @@ task_new (void)
 	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
   return task->t_pid;
 }
+*/
 
 int
 task_exec (uint32_t eip, uint32_t *page_dir)
 {
   __asm__ volatile ("cli");
   task_current->t_esp = task_current->t_stack;
-  task_current->t_ebp = task_current->t_stack;
   task_current->t_eip = eip;
   task_current->t_pgdir = page_dir;
   __asm__ volatile ("sti");
