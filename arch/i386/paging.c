@@ -23,6 +23,11 @@
 #include <vm/paging.h>
 #include <vm/heap.h>
 
+static char page_empty [PAGE_SIZE];
+
+extern uint32_t _kernel_heap_start;
+extern uint32_t _kernel_heap_end;
+
 uint32_t kernel_page_dir[PAGE_DIR_SIZE];
 uint32_t kernel_page_table[PAGE_DIR_SIZE][PAGE_TBL_SIZE];
 uint32_t *curr_page_dir;
@@ -107,18 +112,30 @@ unmap_page (uint32_t *dir, uint32_t vaddr)
 }
 
 uint32_t *
-page_table_clone (uint32_t *orig)
+page_table_clone (uint32_t index, uint32_t *orig)
 {
   int i;
   uint32_t *table = kvalloc (PAGE_TBL_SIZE << 2);
   if (unlikely (table == NULL))
     return NULL;
-  memset (table, 0, PAGE_TBL_SIZE << 2);
   for (i = 0; i < PAGE_TBL_SIZE; i++)
     {
+      uint32_t vaddr = (index << 22) | (i << 12);
       void *buffer;
-      if (orig[i] == 0)
-	continue;
+      if (!(orig[i] & PAGE_FLAG_PRESENT))
+	{
+	  table[i] = 0;
+	  continue;
+	}
+
+      /* If cloning kernel code or heap, link instead of copy */
+      if (vaddr < TASK_LOCAL_BOUND)
+	{
+	  table[i] = orig[i];
+	  continue;
+	}
+
+      /* Allocate and copy page contents */
       buffer = mem_alloc (PAGE_SIZE, 0);
       if (unlikely (buffer == NULL))
 	{
@@ -133,8 +150,7 @@ page_table_clone (uint32_t *orig)
 #else
       vm_tlb_reset ();
 #endif
-      memcpy ((void *) PAGE_COPY_VADDR, (const void *) (orig[i] & 0xfffff000),
-	      PAGE_SIZE);
+      memcpy ((void *) PAGE_COPY_VADDR, (const void *) vaddr, PAGE_SIZE);
       table[i] = (uint32_t) buffer | (orig[i] & 0xfff);
     }
 
@@ -153,24 +169,49 @@ page_dir_clone (uint32_t *orig)
 {
   int i;
   uint32_t *dir = kvalloc (PAGE_DIR_SIZE << 2);
+  uint32_t *vmap;
   if (unlikely (dir == NULL))
     return NULL;
   memset (dir, 0, PAGE_DIR_SIZE << 2);
-  for (i = 0; i < PAGE_DIR_SIZE; i++)
+  vmap = kvalloc (PAGE_TBL_SIZE << 2);
+  if (unlikely (vmap == NULL))
     {
-      if (orig[i] == 0)
-	continue;
-      if (curr_page_dir[i] == orig[i])
-        dir[i] = orig[i];
+      kfree (dir);
+      return NULL;
+    }
+  dir[PAGE_DIR_SIZE - 1] = (uint32_t) vmap;
+  for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
+    {
+      uint32_t *vtable;
+      if (!(orig[i] & PAGE_FLAG_PRESENT))
+	{
+	  vmap[i] = 0;
+	  continue;
+	}
+      vtable = (uint32_t *) orig[PAGE_DIR_SIZE - 1];
+      if (memcmp ((const void *) vtable[i], page_empty, PAGE_SIZE) == 0)
+	{
+	  /* Table has no present entries, no need to copy */
+	  dir[i] = 0;
+	  vmap[i] = 0;
+	}
       else
-	dir[i] = (uint32_t) page_table_clone ((uint32_t *) orig[i])
-	  | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
+	{
+	  vmap[i] = (uint32_t) page_table_clone (i, (uint32_t *) vtable[i]);
+	  if (vmap[i] == 0)
+	    {
+	      page_dir_free (dir);
+	      return NULL;
+	    }
+	  dir[i] = get_paddr (curr_page_dir, (void *) vmap[i])
+	    | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
+	}
     }
   return dir;
 }
 
 void
-page_dir_clear (uint32_t *dir)
+page_dir_free (uint32_t *dir)
 {
   uint32_t *vmap = (uint32_t *) dir[PAGE_DIR_SIZE - 1];
   int i;
@@ -183,4 +224,5 @@ page_dir_clear (uint32_t *dir)
       dir[i] = 0;
       vmap[i] = 0;
     }
+  kfree (dir);
 }

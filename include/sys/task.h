@@ -19,14 +19,17 @@
 #ifndef _SYS_TASK_H
 #define _SYS_TASK_H
 
+#ifndef _ASM
 #include <sys/cdefs.h>
 #include <sys/types.h>
-
-#define TASK_SLICE 50
+#endif
 
 #define TASK_PAGE_DIR_ADDR 0xff400000
 #define TASK_STACK_ADDR    0xff405000
 #define TASK_STACK_SIZE    16384
+#define TASK_STACK_BOTTOM  (TASK_STACK_ADDR - TASK_STACK_SIZE)
+
+#ifndef _ASM
 
 typedef struct _ProcessTask
 {
@@ -54,5 +57,7 @@ void task_relocate_stack (void *addr, uint32_t size);
 pid_t task_getpid (void);
 
 __END_DECLS
+
+#endif
 
 #endif

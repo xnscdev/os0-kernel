@@ -18,9 +18,13 @@
 
 #define _ASM
 
+#define EXC_PUSH(x) EXC_PUSH_ ## x
+#define EXC_PUSH_0 pushl (%esp)
+#define EXC_PUSH_1 pushl 4(%esp)
+
 #define EXC_POP(x) EXC_POP_ ## x
-#define EXC_POP_0
-#define EXC_POP_1 add $4, %esp
+#define EXC_POP_0 add $4, %esp
+#define EXC_POP_1 add $8, %esp
 
 	.section .text
 	.align 16
@@ -28,6 +32,7 @@
 	.global exc ## x;		\
 	.type exc ## x, @function;	\
 exc ## x:				\
+	EXC_PUSH(p);			\
 	call	exc ## x ## _handler;	\
 	EXC_POP(p);			\
 	iret;				\

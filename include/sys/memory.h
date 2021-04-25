@@ -48,6 +48,8 @@
 #define RELOC_LEN   ((uint32_t) &_kernel_end - RELOC_VADDR)
 #endif
 
+#define TASK_LOCAL_BOUND 0xe0000000
+
 #ifndef _ASM
 
 __BEGIN_DECLS

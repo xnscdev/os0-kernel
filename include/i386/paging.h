@@ -19,8 +19,10 @@
 #ifndef _I386_PAGING_H
 #define _I386_PAGING_H
 
+#ifndef _ASM
 #include <sys/cdefs.h>
 #include <stdint.h>
+#endif
 
 #define PAGE_DIR_SIZE 1024
 #define PAGE_TBL_SIZE 1024
@@ -37,15 +39,19 @@
 #define PAGE_FLAG_ACCESS  (1 << 5)
 #define PAGE_FLAG_4M      (1 << 6)
 
+#ifndef _ASM
+
 __BEGIN_DECLS
 
 void vm_tlb_reset (void);
 void vm_page_inval (uint32_t vaddr);
 
-uint32_t *page_table_clone (uint32_t *orig);
+uint32_t *page_table_clone (uint32_t index, uint32_t *orig);
 uint32_t *page_dir_clone (uint32_t *orig);
-void page_dir_clear (uint32_t *dir);
+void page_dir_free (uint32_t *dir);
 
 __END_DECLS
+
+#endif
 
 #endif

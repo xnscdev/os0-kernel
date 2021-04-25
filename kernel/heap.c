@@ -38,8 +38,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
 {
   MemHeader *header;
   MemFooter *footer;
-  void *indexaddr;
   void *heapaddr;
+  void *indexaddr;
   uint32_t addr;
   uint32_t flags = 0;
   if (!supervisor)
@@ -65,7 +65,7 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
   /* Identity map the index array */
   for (addr = 0; addr < sizeof (void *) * indexsize; addr += PAGE_SIZE)
     map_page (curr_page_dir, addr + (uint32_t) indexaddr,
-	      addr + (uint32_t) indexaddr, PAGE_FLAG_WRITE);
+              addr + (uint32_t) indexaddr, flags | PAGE_FLAG_WRITE);
   if (sorted_array_place (&heap->mh_index, indexaddr, indexsize, heap_cmp) != 0)
     return -1;
 
@@ -75,6 +75,7 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
       mem_free (indexaddr, sizeof (void *) * indexsize);
       return -1;
     }
+
   /* Map heap pages from the desired virtual address */
   for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
     map_page (curr_page_dir, addr + (uint32_t) heapaddr,
@@ -426,7 +427,7 @@ void
 heap_init (void)
 {
   kernel_heap = &_kernel_heap;
-  if (heap_new (kernel_heap, (void *) KERNEL_HEAP_ADDR, KERNEL_HEAP_INDEX,
-		KERNEL_HEAP_SIZE, 1, 0) != 0)
+  if (heap_new (kernel_heap, (void *) KERNEL_HEAP_DATA_ADDR,
+		KERNEL_HEAP_INDEX_SIZE, KERNEL_HEAP_DATA_SIZE, 1, 0) != 0)
     panic ("Failed to create kernel heap");
 }

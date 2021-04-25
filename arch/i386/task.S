@@ -18,8 +18,12 @@
 
 #define _ASM
 
+#include <i386/paging.h>
 #include <i386/pic.h>
 #include <sys/cmos.h>
+#include <sys/memory.h>
+#include <sys/task.h>
+#include <errno.h>
 
 	.section .text
 	.align 16
@@ -80,16 +84,92 @@ irq8:
 	mov	%eax, %cr3
 
 2:
-	/* Switch stack */
+	/* Switch stack and jump to new task EIP */
 	mov	%ebx, %esp
-	/* XXX EDI might be an invalid address in the new page table */
+	mov	task_current, %edi
 	mov	12(%edi), %ecx
 	xor	%eax, %eax /* Zero EAX to exit on new task switch */
 	jmp	*%ecx
 
 3:
-	sti
 	popa
 	iret
 
 	.size irq8, . - irq8
+
+	.global task_fork
+	.type task_fork, @function
+task_fork:
+	push	%ebp
+	mov	%esp, %ebp
+	sub	$16, %esp
+
+	/* -4(%ebp): parent task
+	   -8(%ebp): child task
+	   -12(%ebp): child EIP
+	   -16(%ebp): saved EFLAGS */
+
+	mov	task_current, %eax
+	mov	%eax, -4(%ebp)
+
+	/* Create new task */
+	call	_task_fork
+	test	%eax, %eax
+	jnz	2f
+
+	mov	$-ENOMEM, %eax
+1:
+	add	$16, %esp
+	pop	%ebp
+	ret
+
+2:
+	mov	%eax, -8(%ebp)
+
+	/* Store EFLAGS */
+	pushf
+	pop	%eax
+	mov	%eax, -16(%ebp)
+
+	/* Store EIP */
+	call	read_ip
+
+	/* Since the child task will start here, check if the currently
+	   running task is the child, and return 0 if so */
+	mov	task_current, %edx
+	mov	-4(%ebp), %ecx
+	cmp	%edx, %ecx
+	jne	3f
+
+	/* Move stack pointer to new task stack */
+	mov	%eax, -12(%ebp)
+	mov	%esp, %ecx
+	sub	$(TASK_STACK_BOTTOM - PAGE_COPY_VADDR), %esp
+
+	/* Setup fake interrupt stack frame */
+	pushl	-16(%ebp)
+	mov	%cs, %ax
+	push	%eax /* XXX Will upper EAX be zeroed? */
+	pushl	-12(%ebp)
+	pusha
+
+	/* Set stack and instruction pointer of new task */
+	mov	%ecx, %esp
+	sub	$44, %ecx
+	mov	-8(%ebp), %eax
+	mov	%ecx, 8(%eax)
+	mov	-12(%ebp), %eax
+	mov	%eax, 12(%eax)
+
+	/* Return PID of new task as parent */
+	mov	(%eax), %eax
+	add	$16, %esp
+	pop	%ebp
+	ret
+
+3:
+	/* Child task returns 0 from fork */
+	xor	%eax, %eax
+	jmp	1b
+
+	.size task_fork, . - task_fork
