@@ -38,7 +38,6 @@ irq8:
 	inb	$CMOS_PORT_DATA, %al
 
 	/* Acknowledge PIC */
-	cli
 	mov	$PIC_EOI, %al
 	outb	%al, $PIC_SLAVE_COMMAND
 	outb	%al, $PIC_MASTER_COMMAND
@@ -47,13 +46,14 @@ irq8:
 
 	/* Exit if scheduler is uninitialized */
 	test	%edi, %edi
-	jz	3f
+	jz	.finish
 
 	/* Save task ESP and EIP */
 	mov	%esp, 8(%edi)
 	call	read_ip
+.entry:
 	test	%eax, %eax
-	jz	3f /* If EAX is zero we have just switched tasks */
+	jz	.finish /* If EAX is zero we have just switched tasks */
 	mov	%eax, 12(%edi)
 
 	/* Switch to next task */
@@ -91,7 +91,7 @@ irq8:
 	xor	%eax, %eax /* Zero EAX to exit on new task switch */
 	jmp	*%ecx
 
-3:
+.finish:
 	popa
 	iret
 
@@ -131,26 +131,16 @@ task_fork:
 	pop	%eax
 	mov	%eax, -16(%ebp)
 
-	/* Store EIP */
-	call	read_ip
-
-	/* Since the child task will start here, check if the currently
-	   running task is the child, and return 0 if so */
-	mov	task_current, %edx
-	mov	-4(%ebp), %ecx
-	cmp	%edx, %ecx
-	jne	3f
-
 	/* Move stack pointer to new task stack */
-	mov	%eax, -12(%ebp)
 	mov	%esp, %ecx
 	sub	$(TASK_STACK_BOTTOM - PAGE_COPY_VADDR), %esp
 
 	/* Setup fake interrupt stack frame */
 	pushl	-16(%ebp)
 	mov	%cs, %ax
-	push	%eax /* XXX Will upper EAX be zeroed? */
-	pushl	-12(%ebp)
+	cwtl
+	push	%eax
+	pushl	$.child
 	pusha
 
 	/* Set stack and instruction pointer of new task */
@@ -158,16 +148,15 @@ task_fork:
 	sub	$44, %ecx
 	mov	-8(%ebp), %eax
 	mov	%ecx, 8(%eax)
-	mov	-12(%ebp), %eax
-	mov	%eax, 12(%eax)
+	mov	$.entry, %ecx
+	mov	%ecx, 12(%eax)
 
 	/* Return PID of new task as parent */
 	mov	(%eax), %eax
-	add	$16, %esp
-	pop	%ebp
-	ret
+	and	$0xffff, %eax
+	jmp	1b
 
-3:
+.child:
 	/* Child task returns 0 from fork */
 	xor	%eax, %eax
 	jmp	1b
