@@ -1,6 +1,8 @@
-project('os0-kernel', 'c', version: '0.0.1', default_options: 'c_std=gnu99',
+project('os0-kernel', 'c', version: '0.0.1',
+	default_options: ['c_std=gnu99', 'b_staticpic=false'],
 	license: 'GPL-3.0-or-later', meson_version: '>= 0.55.0')
-add_project_arguments('-ffreestanding', language: 'c', native: false)
+add_project_arguments('-ffreestanding', '-fno-common', language: 'c',
+		      native: false)
 
 grub_file = find_program('grub-file', required: false)
 

@@ -63,6 +63,7 @@ vga_putentry (char c, size_t x, size_t y)
 void
 vga_putchar (char c)
 {
+  __asm__ volatile ("cli");
   if (c == '\n')
     goto wrap;
   vga_putentry (c, vga_column, vga_row);
@@ -82,6 +83,7 @@ vga_putchar (char c)
 	}
     }
   vga_setcurs (vga_column, vga_row);
+  __asm__ volatile ("sti");
 }
 
 void
