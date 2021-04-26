@@ -102,12 +102,11 @@ irq8:
 task_fork:
 	push	%ebp
 	mov	%esp, %ebp
-	sub	$16, %esp
+	sub	$12, %esp
 
 	/* -4(%ebp): parent task
 	   -8(%ebp): child task
-	   -12(%ebp): child EIP
-	   -16(%ebp): saved EFLAGS */
+	   -12(%ebp): saved EFLAGS */
 
 	mov	task_current, %eax
 	mov	%eax, -4(%ebp)
@@ -119,7 +118,7 @@ task_fork:
 
 	mov	$-ENOMEM, %eax
 1:
-	add	$16, %esp
+	add	$12, %esp
 	pop	%ebp
 	ret
 
@@ -129,14 +128,14 @@ task_fork:
 	/* Store EFLAGS */
 	pushf
 	pop	%eax
-	mov	%eax, -16(%ebp)
+	mov	%eax, -12(%ebp)
 
 	/* Move stack pointer to new task stack */
 	mov	%esp, %ecx
 	sub	$(TASK_STACK_BOTTOM - PAGE_COPY_VADDR), %esp
 
 	/* Setup fake interrupt stack frame */
-	pushl	-16(%ebp)
+	pushl	-12(%ebp)
 	mov	%cs, %ax
 	cwtl
 	push	%eax
