@@ -22,6 +22,8 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
+void halt (void) __attribute__ ((noreturn));
+
 void *syscall_table[256];
 
 static int
@@ -109,7 +111,8 @@ sys_exit (int code)
   pid_t pid = task_getpid ();
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
-  process_free (pid);
+  /* TODO Add process to exit queue */
+  halt ();
 }
 
 int
@@ -561,6 +564,7 @@ sys_removexattr (const char *path, const char *name)
 void
 syscall_init (void)
 {
+  syscall_table[SYS_exit] = sys_exit;
   syscall_table[SYS_fork] = sys_fork;
   syscall_table[SYS_read] = sys_read;
   syscall_table[SYS_write] = sys_write;

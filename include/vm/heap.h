@@ -49,6 +49,8 @@ typedef struct
   uint32_t mh_size;
   uint16_t mh_supvsr;
   uint16_t mh_rdonly;
+  uint32_t mh_pdata;
+  uint32_t mh_pindex;
 } MemHeap;
 
 __BEGIN_DECLS

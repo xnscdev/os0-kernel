@@ -25,7 +25,6 @@
 	.global syscall
 	.type syscall, @function
 syscall:
-	pushf
 	push	%ebp
 	push	%edi
 	push	%esi
@@ -42,7 +41,6 @@ syscall:
 	pop	%esi
 	pop	%edi
 	pop	%ebp
-	popf
 	iret
 
 	.size syscall, . - syscall

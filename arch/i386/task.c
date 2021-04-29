@@ -26,7 +26,7 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
-uint32_t read_ip (void);
+void _task_stack_setup (ProcessTask *task, uint32_t eip);
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
@@ -53,15 +53,16 @@ scheduler_init (void)
   __asm__ volatile ("sti");
 }
 
-/*
 int
-task_new (void)
+task_new (uint32_t eip)
 {
-  uint32_t *dir = kvalloc (PAGE_DIR_SIZE << 2);
-  uint32_t i;
-  ProcessTask *task;
   volatile ProcessTask *temp;
+  ProcessTask *task;
+  uint32_t *dir;
+  uint32_t paddr;
+  uint32_t i;
 
+  dir = kvalloc (PAGE_DIR_SIZE << 2);
   if (dir == NULL)
     return -ENOMEM;
   memset (dir, 0, PAGE_DIR_SIZE << 2);
@@ -72,24 +73,45 @@ task_new (void)
       return -ENOMEM;
     }
   memset ((uint32_t *) dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
-  map_page (dir, get_paddr (curr_page_dir, dir), TASK_PAGE_DIR_ADDR,
-	    PAGE_FLAG_WRITE);
 
-  for (i = TASK_STACK_ADDR; i < TASK_STACK_ADDR + TASK_STACK_SIZE;
-       i += PAGE_SIZE)
+  paddr = (uint32_t) mem_alloc (TASK_STACK_SIZE, 0);
+  if (paddr == 0)
     {
-      void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page (dir, (uint32_t) paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      page_dir_free (dir);
+      return -ENOMEM;
     }
+  for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
+    {
+      map_page (dir, paddr + i, TASK_STACK_BOTTOM + i,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      map_page (curr_page_dir, paddr + i, PAGE_COPY_VADDR + i,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (paddr + i);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+
+  for (i = 0; i < KERNEL_LEN; i += PAGE_SIZE)
+    map_page (dir, KERNEL_PADDR + i, KERNEL_VADDR + i, 0);
+  for (i = 0; i < KERNEL_HEAP_DATA_SIZE; i += PAGE_SIZE)
+    map_page (dir, kernel_heap->mh_pdata + i, KERNEL_HEAP_DATA_ADDR + i, 0);
 
   task = kmalloc (sizeof (ProcessTask));
+  if (task == NULL)
+    {
+      mem_free ((void *) paddr, TASK_STACK_SIZE);
+      page_dir_free (dir);
+      return -ENOMEM;
+    }
   task->t_pid = next_pid++;
-  task->t_stack = next_sp;
-  task->t_esp = task->t_stack;
-  task->t_eip = 0;
+  task->t_stack = TASK_STACK_ADDR;
+  task->t_esp = TASK_STACK_ADDR;
   task->t_pgdir = dir;
   task->t_next = NULL;
-  next_sp += TASK_STACK_SIZE;
+  _task_stack_setup (task, eip);
 
   for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
     ;
@@ -102,7 +124,6 @@ task_new (void)
 	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
   return task->t_pid;
 }
-*/
 
 int
 task_exec (uint32_t eip, uint32_t *page_dir)

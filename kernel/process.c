@@ -24,8 +24,7 @@
 #include <vm/paging.h>
 #include "elf.h"
 
-void user_mode_exec (uint32_t eip)
-  __attribute__ ((noreturn, aligned (PAGE_SIZE)));
+void user_mode_exec (uint32_t eip) __attribute__ ((noreturn));
 
 Process process_table[PROCESS_LIMIT];
 
@@ -45,6 +44,7 @@ process_alloc_section (VFSInode *inode, uint32_t *page_dir, Elf32_Shdr *shdr)
     {
       uint32_t paddr = get_paddr (page_dir, (void *) addr) & 0xfffff000;
       uint32_t start;
+      uint32_t len;
       if (paddr == 0)
 	{
 	  paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
@@ -60,16 +60,19 @@ process_alloc_section (VFSInode *inode, uint32_t *page_dir, Elf32_Shdr *shdr)
 #endif
 
       start = addr < shdr->sh_addr ? shdr->sh_addr & (PAGE_SIZE - 1) : 0;
+      len = PAGE_SIZE - start;
+      if (shdr->sh_size + shdr->sh_offset - offset < PAGE_SIZE)
+	len = shdr->sh_size + shdr->sh_offset - offset;
       if (shdr->sh_type == SHT_PROGBITS)
 	{
-	  int ret = vfs_read (inode, (char *) (PAGE_COPY_VADDR + start),
-			      PAGE_SIZE - start, offset);
+	  int ret = vfs_read (inode, (char *) (PAGE_COPY_VADDR + start), len,
+			      offset);
 	  if (ret < 0)
 	    return ret;
 	}
       else
 	memset ((char *) (PAGE_COPY_VADDR + start), 0, PAGE_SIZE - start);
-      offset += PAGE_SIZE - start;
+      offset += len;
     }
   return 0;
 }
@@ -144,26 +147,21 @@ process_spawn (VFSInode *inode)
       goto end;
     }
 
-  /*pid = task_new ();
+  pid = task_new (ehdr->e_entry);
   if (pid < 0)
     {
       ret = pid;
       goto end;
     }
-
   ret = process_load_sections (inode, process_table[pid].p_task->t_pgdir,
 			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
     goto task_end;
-  process_table[pid].p_task->t_eip = USER_START_ADDR;
-  map_page (process_table[pid].p_task->t_pgdir,
-	    get_paddr (curr_page_dir, user_mode_exec), USER_START_ADDR,
-	    PAGE_FLAG_USER);
   ret = pid;
   goto end;
 
  task_end:
-   process_free (pid);*/
+   process_free (pid);
  end:
   kfree (ehdr);
   __asm__ volatile ("sti");

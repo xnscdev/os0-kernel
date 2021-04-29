@@ -92,6 +92,7 @@ irq8:
 	jmp	*%ecx
 
 .finish:
+	/* TODO Free all processes in exit queue */
 	popa
 	iret
 
@@ -161,3 +162,31 @@ task_fork:
 	jmp	1b
 
 	.size task_fork, . - task_fork
+
+	.global _task_stack_setup
+	.type _task_stack_setup, @function
+_task_stack_setup:
+	/* Move stack pointer to new task stack */
+	push	%ebp
+	mov	%esp, %ebp
+	mov	$(PAGE_COPY_VADDR + TASK_STACK_SIZE), %esp
+
+	/* Setup fake interrupt stack frame */
+	pushf
+	mov	%cs, %ax
+	cwtl
+	push	%eax
+	pushl	12(%ebp)
+
+	/* Update stack pointer */
+	mov	8(%ebp), %edx
+	mov	8(%edx), %eax
+	sub	$44, %eax
+	mov	%eax, 8(%edx)
+	mov	$.entry, %eax
+	mov	%eax, 12(%edx)
+
+	leave
+	ret
+
+	.size _task_stack_setup, . - _task_stack_setup

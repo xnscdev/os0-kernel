@@ -21,11 +21,12 @@
 #include <sys/memory.h>
 
 	.section .text
-	.align PAGE_SIZE
+	.align 16
 	.global user_mode_exec
 	.type user_mode_exec, @function
 user_mode_exec:
 	cli
+	mov	4(%esp), %ecx
 	mov	$0x23, %ax
 	mov	%ax, %ds
 	mov	%ax, %es
@@ -39,8 +40,7 @@ user_mode_exec:
 	or	$0x200, %eax
 	push	%eax
 	pushl	$0x1b
-	push	%ebp
-	mov	%esp, %ebp
+	push	%ecx
 	iret
 
 	.size user_mode_exec, . - user_mode_exec

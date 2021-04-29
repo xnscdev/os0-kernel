@@ -38,8 +38,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
 {
   MemHeader *header;
   MemFooter *footer;
-  void *heapaddr;
-  void *indexaddr;
+  uint32_t heapaddr;
+  uint32_t indexaddr;
   uint32_t addr;
   uint32_t flags = 0;
   if (!supervisor)
@@ -59,27 +59,27 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
       heapsize += PAGE_SIZE;
     }
 
-  indexaddr = mem_alloc (sizeof (void *) * indexsize, 0);
-  if (indexaddr == NULL)
+  indexaddr = (uint32_t) mem_alloc (sizeof (void *) * indexsize, 0);
+  if (indexaddr == 0)
     return -1;
   /* Identity map the index array */
   for (addr = 0; addr < sizeof (void *) * indexsize; addr += PAGE_SIZE)
-    map_page (curr_page_dir, addr + (uint32_t) indexaddr,
-              addr + (uint32_t) indexaddr, flags | PAGE_FLAG_WRITE);
-  if (sorted_array_place (&heap->mh_index, indexaddr, indexsize, heap_cmp) != 0)
+    map_page (curr_page_dir, addr + indexaddr, addr + indexaddr,
+              flags | PAGE_FLAG_WRITE);
+  if (sorted_array_place (&heap->mh_index, (void *) indexaddr, indexsize,
+			  heap_cmp) != 0)
     return -1;
 
-  heapaddr = mem_alloc (heapsize, 0);
-  if (heapaddr == NULL)
+  heapaddr = (uint32_t) mem_alloc (heapsize, 0);
+  if (heapaddr == 0)
     {
-      mem_free (indexaddr, sizeof (void *) * indexsize);
+      mem_free ((void *) indexaddr, sizeof (void *) * indexsize);
       return -1;
     }
-
   /* Map heap pages from the desired virtual address */
   for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
-    map_page (curr_page_dir, addr + (uint32_t) heapaddr,
-	      addr + (uint32_t) vaddr, flags);
+    map_page (curr_page_dir, addr + heapaddr, addr + (uint32_t) vaddr,
+	      flags);
 
   /* Add a single unallocated memory block to the heap */
   header = vaddr;
@@ -97,6 +97,8 @@ heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
   heap->mh_size = heapsize;
   heap->mh_supvsr = supervisor;
   heap->mh_rdonly = readonly;
+  heap->mh_pdata = heapaddr;
+  heap->mh_pindex = indexaddr;
   return 0;
 }
 
