@@ -110,8 +110,6 @@ sys_exit (int code)
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
   /* TODO Add process to exit queue */
-  while (1)
-    ;
 }
 
 int

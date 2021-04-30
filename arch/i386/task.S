@@ -173,6 +173,9 @@ _task_stack_setup:
 
 	/* Setup fake interrupt stack frame */
 	pushf
+	pop	%eax
+	or	$0x200, %eax
+	push	%eax
 	mov	%cs, %ax
 	cwtl
 	push	%eax

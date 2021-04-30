@@ -32,9 +32,17 @@ syscall:
 	push	%ecx
 	push	%ebx
 
-	mov	syscall_table(,%eax,4), %eax
-	call	*%eax
+	mov	%eax, %ebx
+	mov	syscall_table(,%ebx,4), %ecx
+	call	*%ecx
 
+	cmp	$1, %ebx
+	jne	1f
+
+	/* exit(2) should idle after running */
+	movl	$sys_exit_halt, 24(%esp)
+
+1:
 	pop	%ebx
 	pop	%ecx
 	pop	%edx
@@ -44,3 +52,7 @@ syscall:
 	iret
 
 	.size syscall, . - syscall
+
+sys_exit_halt:
+1:
+	jmp	1b

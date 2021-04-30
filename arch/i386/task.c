@@ -95,9 +95,10 @@ task_new (uint32_t eip)
 #endif
 
   for (i = 0; i < KERNEL_LEN; i += PAGE_SIZE)
-    map_page (dir, KERNEL_PADDR + i, KERNEL_VADDR + i, 0);
+    map_page (dir, KERNEL_PADDR + i, KERNEL_VADDR + i, PAGE_FLAG_WRITE);
   for (i = 0; i < KERNEL_HEAP_DATA_SIZE; i += PAGE_SIZE)
-    map_page (dir, kernel_heap->mh_pdata + i, KERNEL_HEAP_DATA_ADDR + i, 0);
+    map_page (dir, kernel_heap->mh_pdata + i, KERNEL_HEAP_DATA_ADDR + i,
+	      PAGE_FLAG_WRITE);
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
