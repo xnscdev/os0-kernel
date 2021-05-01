@@ -38,7 +38,7 @@ idt_set_gate (uint32_t n, uint32_t addr, uint32_t sel, uint8_t dpl,
   idt_entries[n].ie_basel = addr & 0xffff;
   idt_entries[n].ie_sel = sel;
   idt_entries[n].ie_reserved = 0;
-  idt_entries[n].ie_flags = 0x80 | ((dpl & 3) << 4) | type;
+  idt_entries[n].ie_flags = 0x80 | ((dpl & 3) << 5) | type;
   idt_entries[n].ie_baseh = (addr & 0xffff0000) >> 16;
 }
 
@@ -60,13 +60,13 @@ idt_init (void)
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
   idt.dp_base = (uint32_t) &idt_entries;
 
-#define EXC(x, p) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 0, IDT_GATE_INT);
-#define IRQ(x) idt_set_gate (x + 32, (uint32_t) irq ## x, 0x08, 0, \
+#define EXC(x, p) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 3, IDT_GATE_INT);
+#define IRQ(x) idt_set_gate (x + 32, (uint32_t) irq ## x, 0x08, 3, \
 			     IDT_GATE_INT);
 #include "irq.inc"
 #undef EXC
 #undef IRQ
-  idt_set_gate (0x80, (uint32_t) syscall, 0x08, 0, IDT_GATE_INT);
+  idt_set_gate (0x80, (uint32_t) syscall, 0x08, 3, IDT_GATE_INT);
 
   idt_load ((uint32_t) &idt);
 }
