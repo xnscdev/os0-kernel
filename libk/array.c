@@ -26,10 +26,45 @@ default_cmp (const void *a, const void *b)
   return (uint32_t) a < (uint32_t) b;
 }
 
-int
-noop_cmp (const void *a, const void *b)
+Array *
+array_new (uint32_t max)
 {
+  Array *array = kmalloc (sizeof (Array));
+  if (array == NULL)
+    return NULL;
+  array->a_elems = kmalloc (sizeof (void *) * max);
+  if (array->a_elems == NULL)
+    {
+      kfree (array);
+      return NULL;
+    }
+  array->a_size = 0;
+  array->a_max = max;
+  return array;
+}
+
+int
+array_append (Array *array, void *elem)
+{
+  if (array == NULL || array->a_size == array->a_max)
+    return -1;
+  array->a_elems[array->a_size++] = elem;
   return 0;
+}
+
+void
+array_destroy (Array *array, ArrayElementFreeFunc func, void *data)
+{
+  if (array == NULL)
+    return;
+  if (func != NULL)
+    {
+      uint32_t i;
+      for (i = 0; i < array->a_size; i++)
+	func (array->a_elems[i], data);
+    }
+  kfree (array->a_elems);
+  kfree (array);
 }
 
 int

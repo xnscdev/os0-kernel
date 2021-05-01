@@ -143,7 +143,9 @@ task_free (ProcessTask *task)
   uint32_t i;
   /* Unlink from task queue */
   task->t_prev->t_next = task->t_next;
-  if (task->t_next != NULL)
+  if (task->t_next == NULL)
+    task_queue->t_prev = task->t_prev;
+  else
     task->t_next->t_prev = task->t_prev;
 
   /* Free task stack */

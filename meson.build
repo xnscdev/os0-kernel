@@ -4,6 +4,14 @@ project('os0-kernel', 'c', version: '0.0.1',
 add_project_arguments('-ffreestanding', '-fno-common', language: 'c',
 		      native: false)
 
+cc = meson.get_compiler('c')
+if cc.has_argument('-Wpointer-sign')
+  add_project_arguments('-Wno-pointer-sign', language: 'c')
+endif
+if cc.has_argument('-Wrestrict')
+  add_project_arguments('-Wno-restrict', language: 'c')
+endif
+
 grub_file = find_program('grub-file', required: false)
 
 includedir = include_directories('.', 'include')

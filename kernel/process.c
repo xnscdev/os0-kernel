@@ -29,7 +29,8 @@ void user_mode_exec (uint32_t eip) __attribute__ ((noreturn));
 Process process_table[PROCESS_LIMIT];
 
 static int
-process_alloc_section (VFSInode *inode, uint32_t *page_dir, Elf32_Shdr *shdr)
+process_alloc_section (VFSInode *inode, Array *sections, uint32_t *page_dir,
+		       Elf32_Shdr *shdr)
 {
   uint32_t flags;
   uint32_t addr;
@@ -74,12 +75,23 @@ process_alloc_section (VFSInode *inode, uint32_t *page_dir, Elf32_Shdr *shdr)
 	memset ((char *) (PAGE_COPY_VADDR + start), 0, PAGE_SIZE - start);
       offset += len;
     }
+
+  /* Add section to process section list */
+  if (!(shdr->sh_addr & (PAGE_SIZE - 1)))
+    {
+      ProcessSection *section = kmalloc (sizeof (ProcessSection));
+      if (section == NULL)
+	return -ENOMEM;
+      section->ps_addr = shdr->sh_addr & 0xfffff000;
+      section->ps_size = shdr->sh_size;
+      array_append (sections, section);
+    }
   return 0;
 }
 
 static int
-process_load_sections (VFSInode *inode, uint32_t *page_dir, Elf32_Off shoff,
-		       Elf32_Half shentsize, Elf32_Half shnum)
+process_load_sections (VFSInode *inode, Array *sections, uint32_t *page_dir,
+		       Elf32_Off shoff, Elf32_Half shentsize, Elf32_Half shnum)
 {
   Elf32_Shdr *shdr;
   Elf32_Half i;
@@ -99,7 +111,7 @@ process_load_sections (VFSInode *inode, uint32_t *page_dir, Elf32_Off shoff,
 	}
       if (shdr->sh_flags & SHF_ALLOC)
 	{
-	  ret = process_alloc_section (inode, page_dir, shdr);
+	  ret = process_alloc_section (inode, sections, page_dir, shdr);
 	  if (ret < 0)
 	    {
 	      kfree (shdr);
@@ -112,14 +124,38 @@ process_load_sections (VFSInode *inode, uint32_t *page_dir, Elf32_Off shoff,
   return 0;
 }
 
+static void
+process_section_free (void *elem, void *data)
+{
+  ProcessSection *section = elem;
+  uint32_t addr;
+  for (addr = section->ps_addr; addr < section->ps_addr + section->ps_size;
+       addr += PAGE_SIZE)
+    {
+      void *paddr = (void *) get_paddr (data, (void *) addr);
+      assert (paddr != NULL);
+      mem_free (paddr, PAGE_SIZE);
+    }
+  kfree (section);
+}
+
 int
 process_spawn (VFSInode *inode)
 {
   Elf32_Ehdr *ehdr;
+  Array *sections;
   int pid;
   int ret;
-
   __asm__ volatile ("cli");
+
+  sections = array_new (PROCESS_SECTION_LIMIT);
+  if (unlikely (sections == NULL))
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
+
+  /* Read ELF header */
   ehdr = kmalloc (sizeof (Elf32_Ehdr));
   if (unlikely (ehdr == NULL))
     {
@@ -153,7 +189,8 @@ process_spawn (VFSInode *inode)
       ret = pid;
       goto end;
     }
-  ret = process_load_sections (inode, process_table[pid].p_task->t_pgdir,
+  ret = process_load_sections (inode, sections,
+			       process_table[pid].p_task->t_pgdir,
 			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
     goto task_end;
@@ -161,8 +198,9 @@ process_spawn (VFSInode *inode)
   goto end;
 
  task_end:
-   process_free (pid);
+  process_free (pid);
  end:
+  array_destroy (sections, NULL, NULL);
   kfree (ehdr);
   __asm__ volatile ("sti");
   return ret;
@@ -171,18 +209,18 @@ process_spawn (VFSInode *inode)
 void
 process_free (pid_t pid)
 {
+  Process *proc;
   int i;
   if (pid >= PROCESS_FILE_LIMIT || process_table[pid].p_task == NULL)
     return;
-  task_free ((ProcessTask *) process_table[pid].p_task);
+  proc = &process_table[pid];
+  array_destroy (proc->p_sections, process_section_free, proc->p_task->t_pgdir);
+  task_free ((ProcessTask *) proc->p_task);
+  proc->p_task = NULL;
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
-      if (process_table[pid].p_files[i].pf_inode != NULL)
-	{
-	  vfs_destroy_inode (process_table[pid].p_files[i].pf_inode);
-	  memset (&process_table[pid].p_files[i], 0, sizeof (ProcessFile));
-	}
+      if (proc->p_files[i].pf_inode != NULL)
+        vfs_destroy_inode (proc->p_files[i].pf_inode);
     }
-  /* TODO Free memory allocated for sections */
-  process_table[pid].p_task = NULL;
+  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 }

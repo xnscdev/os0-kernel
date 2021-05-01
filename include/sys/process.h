@@ -20,11 +20,13 @@
 #define _SYS_PROCESS_H
 
 #include <fs/vfs.h>
+#include <libk/array.h>
 #include <sys/cdefs.h>
 #include <sys/task.h>
 
-#define PROCESS_LIMIT      256
-#define PROCESS_FILE_LIMIT 64
+#define PROCESS_LIMIT         256
+#define PROCESS_FILE_LIMIT    64
+#define PROCESS_SECTION_LIMIT 64
 
 #define USER_START_ADDR 0xff800000
 
@@ -37,8 +39,15 @@ typedef struct
 
 typedef struct
 {
+  uint32_t ps_addr;
+  uint32_t ps_size;
+} ProcessSection;
+
+typedef struct
+{
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   volatile ProcessTask *p_task;
+  Array *p_sections;
 } Process;
 
 __BEGIN_DECLS
