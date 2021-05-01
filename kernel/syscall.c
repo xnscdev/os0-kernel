@@ -24,6 +24,8 @@
 
 void *syscall_table[256];
 
+extern uint32_t exit_task;
+
 static int
 sys_path_rel_lookup (const char *path, VFSDirEntry *entry)
 {
@@ -109,7 +111,7 @@ sys_exit (int code)
   pid_t pid = task_getpid ();
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
-  /* TODO Add process to exit queue */
+  exit_task = pid;
 }
 
 int

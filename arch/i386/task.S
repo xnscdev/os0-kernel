@@ -25,6 +25,12 @@
 #include <sys/task.h>
 #include <errno.h>
 
+	.section .bss
+	.global exit_task
+	.type exit_task, @object
+exit_task:
+	.skip 4
+
 	.section .text
 	.align 16
 	.global irq8
@@ -92,7 +98,16 @@ irq8:
 	jmp	*%ecx
 
 .finish:
-	/* TODO Free all processes in exit queue */
+	/* Free exited process, if any */
+	mov	exit_task, %eax
+	test	%eax, %eax
+	jz	3f
+
+	push	%eax
+	call	process_free
+	add	$4, %esp
+
+3:
 	popa
 	iret
 

@@ -183,5 +183,6 @@ process_free (pid_t pid)
 	  memset (&process_table[pid].p_files[i], 0, sizeof (ProcessFile));
 	}
     }
+  /* TODO Free memory allocated for sections */
   process_table[pid].p_task = NULL;
 }
