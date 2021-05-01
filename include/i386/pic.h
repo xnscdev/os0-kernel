@@ -31,6 +31,10 @@
 
 #define PIC_EOI 0x20
 
+#define IDT_GATE_TASK 0x5
+#define IDT_GATE_INT  0xe
+#define IDT_GATE_TRAP 0xf
+
 #define IDT_SIZE 256
 
 #ifndef _ASM

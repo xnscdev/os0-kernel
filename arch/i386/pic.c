@@ -31,16 +31,20 @@ static DTPtr idt;
 
 void syscall (void);
 
+static void
+idt_set_gate (uint32_t n, uint32_t addr, uint32_t sel, uint8_t dpl,
+	      uint32_t type)
+{
+  idt_entries[n].ie_basel = addr & 0xffff;
+  idt_entries[n].ie_sel = sel;
+  idt_entries[n].ie_reserved = 0;
+  idt_entries[n].ie_flags = 0x80 | ((dpl & 3) << 4) | type;
+  idt_entries[n].ie_baseh = (addr & 0xffff0000) >> 16;
+}
+
 void
 idt_init (void)
 {
-#define EXC(x, p) uint32_t exc ## x ## _addr;
-#define IRQ(x) uint32_t irq ## x ## _addr;
-#include "irq.inc"
-#undef EXC
-#undef IRQ
-  uint32_t syscall_addr;
-
   /* Remap PIC */
   outb (0x11, PIC_MASTER_COMMAND);
   outb (0x11, PIC_SLAVE_COMMAND);
@@ -56,28 +60,13 @@ idt_init (void)
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
   idt.dp_base = (uint32_t) &idt_entries;
 
-#define EXC(x, p) exc ## x ## _addr = (uint32_t) exc ## x;     		\
-  idt_entries[x].ie_basel = exc ## x ## _addr & 0xffff;			\
-  idt_entries[x].ie_sel = 0x08;						\
-  idt_entries[x].ie_reserved = 0;					\
-  idt_entries[x].ie_flags = 0x8e;					\
-  idt_entries[x].ie_baseh = (exc ## x ## _addr & 0xffff0000) >> 16;
-#define IRQ(x) irq ## x ## _addr = (uint32_t) irq ## x;			\
-  idt_entries[x + 32].ie_basel = irq ## x ## _addr & 0xffff;		\
-  idt_entries[x + 32].ie_sel = 0x08;					\
-  idt_entries[x + 32].ie_reserved = 0;					\
-  idt_entries[x + 32].ie_flags = 0x8e;					\
-  idt_entries[x + 32].ie_baseh = (irq ## x ## _addr & 0xffff0000) >> 16;
+#define EXC(x, p) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 0, IDT_GATE_INT);
+#define IRQ(x) idt_set_gate (x + 32, (uint32_t) irq ## x, 0x08, 0, \
+			     IDT_GATE_INT);
 #include "irq.inc"
 #undef EXC
 #undef IRQ
-
-  syscall_addr = (uint32_t) syscall;
-  idt_entries[128].ie_basel = syscall_addr & 0xffff;
-  idt_entries[128].ie_sel = 0x08;
-  idt_entries[128].ie_reserved = 0;
-  idt_entries[128].ie_flags = 0x8e;
-  idt_entries[128].ie_baseh = (syscall_addr & 0xffff0000) >> 16;
+  idt_set_gate (0x80, (uint32_t) syscall, 0x08, 0, IDT_GATE_INT);
 
   idt_load ((uint32_t) &idt);
 }
