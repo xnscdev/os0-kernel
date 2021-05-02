@@ -54,7 +54,7 @@ __BEGIN_DECLS
 
 extern Process process_table[PROCESS_LIMIT];
 
-int process_spawn (VFSInode *inode);
+int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 
 __END_DECLS

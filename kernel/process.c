@@ -140,11 +140,10 @@ process_section_free (void *elem, void *data)
 }
 
 int
-process_spawn (VFSInode *inode)
+process_exec (VFSInode *inode, uint32_t *entry)
 {
   Elf32_Ehdr *ehdr;
   Array *sections;
-  int pid;
   int ret;
   __asm__ volatile ("cli");
 
@@ -183,22 +182,16 @@ process_spawn (VFSInode *inode)
       goto end;
     }
 
-  pid = task_new (ehdr->e_entry);
-  if (pid < 0)
-    {
-      ret = pid;
-      goto end;
-    }
-  ret = process_load_sections (inode, sections,
-			       process_table[pid].p_task->t_pgdir,
+  ret = process_load_sections (inode, sections, curr_page_dir,
 			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
-    goto task_end;
-  ret = pid;
-  goto end;
+    goto end;
+  if (entry != NULL)
+    *entry = ehdr->e_entry;
+  kfree (ehdr);
+  __asm__ volatile ("sti");
+  return 0;
 
- task_end:
-  process_free (pid);
  end:
   array_destroy (sections, NULL, NULL);
   kfree (ehdr);

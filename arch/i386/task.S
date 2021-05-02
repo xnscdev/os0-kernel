@@ -193,21 +193,13 @@ task_yield:
 	.type task_exec, @function
 task_exec:
 	mov	4(%esp), %ecx
-	mov	8(%esp), %edx
-
-	mov	task_current, %eax
-	movl	$.entry, 12(%eax)
-	mov	%edx, 16(%eax)
-
 	pushf
+	cli
 	mov	%cs, %ax
 	cwtl
 	push	%eax
 	push	%ecx
 	jmp	irq8
-	ret
-
-	.size task_exec, . - task_exec
 
 	.global _task_stack_setup
 	.type _task_stack_setup, @function

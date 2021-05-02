@@ -281,6 +281,22 @@ sys_unlink (const char *path)
 }
 
 int
+sys_execve (const char *path, char *const *argv, char *const *envp)
+{
+  VFSDirEntry entry;
+  uint32_t eip;
+  int ret = sys_path_rel_lookup (path, &entry);
+  if (ret != 0)
+    return ret;
+  kfree (entry.d_name);
+  ret = process_exec (entry.d_inode, &eip);
+  vfs_destroy_inode (entry.d_inode);
+  if (ret != 0)
+    return ret;
+  task_exec (eip);
+}
+
+int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
   VFSDirEntry entry;
@@ -572,6 +588,7 @@ syscall_init (void)
   syscall_table[SYS_creat] = sys_creat;
   syscall_table[SYS_link] = sys_link;
   syscall_table[SYS_unlink] = sys_unlink;
+  syscall_table[SYS_execve] = sys_execve;
   syscall_table[SYS_mknod] = sys_mknod;
   syscall_table[SYS_chmod] = sys_chmod;
   syscall_table[SYS_chown] = sys_chown;

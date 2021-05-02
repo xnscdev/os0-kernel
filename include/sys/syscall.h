@@ -113,6 +113,7 @@
 
 __BEGIN_DECLS
 
+void sys_exit (int code);
 int sys_fork (void);
 int sys_read (int fd, void *buffer, size_t len);
 int sys_write (int fd, void *buffer, size_t len);
@@ -121,6 +122,7 @@ int sys_close (int fd);
 int sys_creat (const char *path, mode_t mode);
 int sys_link (const char *old, const char *new);
 int sys_unlink (const char *path);
+int sys_execve (const char *path, char *const *argv, char *const *envp);
 int sys_mknod (const char *path, mode_t mode, dev_t dev);
 int sys_chmod (const char *path, mode_t mode);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
