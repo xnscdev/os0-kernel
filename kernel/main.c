@@ -143,10 +143,4 @@ kmain (MultibootInfo *info, uint32_t stack)
   vfs_init ();
   syscall_init ();
   mount_rootfs ();
-
-  {
-    int fd = sys_open ("/dir/exec/test", O_RDONLY, 0);
-    printk ("Process spawn PID: %d\n",
-	    process_spawn (process_table[0].p_files[fd].pf_inode));
-  }
 }

@@ -163,8 +163,7 @@ task_fork:
 	sub	$44, %ecx
 	mov	-8(%ebp), %eax
 	mov	%ecx, 8(%eax)
-	mov	$.entry, %ecx
-	mov	%ecx, 12(%eax)
+	movl	$.entry, 12(%eax)
 
 	/* Return PID of new task as parent */
 	mov	(%eax), %eax
@@ -177,6 +176,38 @@ task_fork:
 	jmp	1b
 
 	.size task_fork, . - task_fork
+
+	.global task_yield
+	.type task_yield, @function
+task_yield:
+	pushf
+	mov	%cs, %ax
+	cwtl
+	push	%eax
+	call	irq8
+	ret
+
+	.size task_yield, . - task_yield
+
+	.global task_exec
+	.type task_exec, @function
+task_exec:
+	mov	4(%esp), %ecx
+	mov	8(%esp), %edx
+
+	mov	task_current, %eax
+	movl	$.entry, 12(%eax)
+	mov	%edx, 16(%eax)
+
+	pushf
+	mov	%cs, %ax
+	cwtl
+	push	%eax
+	push	%ecx
+	jmp	irq8
+	ret
+
+	.size task_exec, . - task_exec
 
 	.global _task_stack_setup
 	.type _task_stack_setup, @function

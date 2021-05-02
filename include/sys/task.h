@@ -49,6 +49,7 @@ extern uint32_t task_stack_addr;
 void scheduler_init (void);
 void task_tick (void);
 int task_fork (void);
+void task_yield (void);
 int task_new (uint32_t eip);
 int task_exec (uint32_t eip, uint32_t *page_dir);
 void task_free (ProcessTask *task);

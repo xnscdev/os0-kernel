@@ -126,17 +126,6 @@ task_new (uint32_t eip)
   return task->t_pid;
 }
 
-int
-task_exec (uint32_t eip, uint32_t *page_dir)
-{
-  __asm__ volatile ("cli");
-  task_current->t_esp = task_current->t_stack;
-  task_current->t_eip = eip;
-  task_current->t_pgdir = page_dir;
-  __asm__ volatile ("sti");
-  return 0;
-}
-
 void
 task_free (ProcessTask *task)
 {
