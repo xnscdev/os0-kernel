@@ -20,6 +20,7 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 #include "elf.h"
@@ -145,6 +146,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
   Elf32_Ehdr *ehdr;
   Array *sections;
   int ret;
+  int i;
   __asm__ volatile ("cli");
 
   sections = array_new (PROCESS_SECTION_LIMIT);
@@ -186,6 +188,17 @@ process_exec (VFSInode *inode, uint32_t *entry)
 			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
     goto end;
+
+  /* Clear all open file descriptors and open std streams */
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      VFSInode *fdi = process_table[task_getpid ()].p_files[i].pf_inode;
+      if (fdi != NULL)
+	vfs_destroy_inode (fdi);
+    }
+  if (process_setup_std_streams (task_getpid ()) != 0)
+    goto end;
+
   if (entry != NULL)
     *entry = ehdr->e_entry;
   kfree (ehdr);
@@ -203,8 +216,8 @@ void
 process_free (pid_t pid)
 {
   Process *proc;
-  int i;
-  if (pid >= PROCESS_FILE_LIMIT || process_table[pid].p_task == NULL)
+   int i;
+  if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
     return;
   proc = &process_table[pid];
   array_destroy (proc->p_sections, process_section_free, proc->p_task->t_pgdir);
@@ -216,4 +229,34 @@ process_free (pid_t pid)
         vfs_destroy_inode (proc->p_files[i].pf_inode);
     }
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+}
+
+int
+process_setup_std_streams (pid_t pid)
+{
+  Process *proc;
+  if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
+    return -EINVAL;
+  proc = &process_table[pid];
+  if (proc->p_files[STDIN_FILENO].pf_inode != NULL
+      || proc->p_files[STDOUT_FILENO].pf_inode != NULL
+      || proc->p_files[STDERR_FILENO].pf_inode != NULL)
+    return -EINVAL; /* File descriptors for std streams are used */
+
+  /* Create stdin */
+  proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
+  proc->p_files[STDIN_FILENO].pf_mode = 0;
+  proc->p_files[STDIN_FILENO].pf_offset = 0;
+
+  /* Create stdout */
+  proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
+  proc->p_files[STDOUT_FILENO].pf_mode = 0;
+  proc->p_files[STDOUT_FILENO].pf_offset = 0;
+
+  /* Create stderr */
+  proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_stderr_sb);
+  proc->p_files[STDERR_FILENO].pf_mode = 0;
+  proc->p_files[STDERR_FILENO].pf_offset = 0;
+
+  return 0;
 }

@@ -3,7 +3,8 @@ drivers_src = [
   'ata-bio.c',
   'atapi.c',
   'device.c',
-  'vga.c'
+  'vga.c',
+  'vga-dev.c'
 ]
 
 drivers = static_library('drivers', drivers_src,

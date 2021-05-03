@@ -143,4 +143,5 @@ kmain (MultibootInfo *info, uint32_t stack)
   vfs_init ();
   syscall_init ();
   mount_rootfs ();
+  process_setup_std_streams (0);
 }

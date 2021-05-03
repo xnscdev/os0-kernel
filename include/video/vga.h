@@ -19,9 +19,7 @@
 #ifndef _VIDEO_VGA_H
 #define _VIDEO_VGA_H
 
-#include <sys/cdefs.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <fs/vfs.h>
 
 #define VGA_SCREEN_WIDTH 80
 #define VGA_SCREEN_HEIGHT 25
@@ -57,6 +55,8 @@ typedef enum
 __BEGIN_DECLS
 
 extern int vga_console;
+extern VFSSuperblock vga_stdout_sb;
+extern VFSSuperblock vga_stderr_sb;
 
 void vga_init (void);
 unsigned char vga_getcolor (void);
