@@ -22,7 +22,244 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
-void *syscall_table[256];
+void *syscall_table[NR_syscalls] = {
+  NULL,
+  sys_exit,
+  sys_fork,
+  sys_read,
+  sys_write,
+  sys_open,
+  sys_close,
+  NULL,
+  sys_creat,
+  sys_link,
+  sys_unlink,
+  sys_execve,
+  NULL,
+  NULL,
+  sys_mknod,
+  sys_chmod,
+  sys_chown,
+  NULL,
+  NULL,
+  sys_lseek,
+  sys_getpid,
+  sys_mount,
+  sys_umount,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_rename,
+  sys_mkdir,
+  sys_rmdir,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_symlink,
+  sys_readlink,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_truncate,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_statvfs,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_stat,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_setxattr,
+  NULL,
+  NULL,
+  sys_getxattr,
+  NULL,
+  NULL,
+  sys_listxattr,
+  NULL,
+  NULL,
+  sys_removexattr
+};
 
 extern uint32_t exit_task;
 
@@ -381,7 +618,7 @@ sys_mount (const char *src, const char *dir, const char *type, int flags,
 }
 
 int
-sys_unmount (const char *dir)
+sys_umount (const char *dir)
 {
   return -ENOSYS;
 }
@@ -574,38 +811,4 @@ sys_removexattr (const char *path, const char *name)
   vfs_destroy_inode (entry.d_inode);
   kfree (entry.d_name);
   return ret;
-}
-
-void
-syscall_init (void)
-{
-  syscall_table[SYS_exit] = sys_exit;
-  syscall_table[SYS_fork] = sys_fork;
-  syscall_table[SYS_read] = sys_read;
-  syscall_table[SYS_write] = sys_write;
-  syscall_table[SYS_open] = sys_open;
-  syscall_table[SYS_close] = sys_close;
-  syscall_table[SYS_creat] = sys_creat;
-  syscall_table[SYS_link] = sys_link;
-  syscall_table[SYS_unlink] = sys_unlink;
-  syscall_table[SYS_execve] = sys_execve;
-  syscall_table[SYS_mknod] = sys_mknod;
-  syscall_table[SYS_chmod] = sys_chmod;
-  syscall_table[SYS_chown] = sys_chown;
-  syscall_table[SYS_lseek] = sys_lseek;
-  syscall_table[SYS_getpid] = sys_getpid;
-  syscall_table[SYS_mount] = sys_mount;
-  syscall_table[SYS_unmount] = sys_unmount;
-  syscall_table[SYS_rename] = sys_rename;
-  syscall_table[SYS_mkdir] = sys_mkdir;
-  syscall_table[SYS_rmdir] = sys_rmdir;
-  syscall_table[SYS_symlink] = sys_symlink;
-  syscall_table[SYS_readlink] = sys_readlink;
-  syscall_table[SYS_truncate] = sys_truncate;
-  syscall_table[SYS_statvfs] = sys_statvfs;
-  syscall_table[SYS_stat] = sys_stat;
-  syscall_table[SYS_setxattr] = sys_setxattr;
-  syscall_table[SYS_getxattr] = sys_getxattr;
-  syscall_table[SYS_listxattr] = sys_listxattr;
-  syscall_table[SYS_removexattr] = sys_removexattr;
 }
