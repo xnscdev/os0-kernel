@@ -245,17 +245,17 @@ process_setup_std_streams (pid_t pid)
 
   /* Create stdin */
   proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
-  proc->p_files[STDIN_FILENO].pf_mode = 0;
+  proc->p_files[STDIN_FILENO].pf_mode = O_RDONLY;
   proc->p_files[STDIN_FILENO].pf_offset = 0;
 
   /* Create stdout */
   proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
-  proc->p_files[STDOUT_FILENO].pf_mode = 0;
+  proc->p_files[STDOUT_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDOUT_FILENO].pf_offset = 0;
 
   /* Create stderr */
   proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_stderr_sb);
-  proc->p_files[STDERR_FILENO].pf_mode = 0;
+  proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDERR_FILENO].pf_offset = 0;
 
   return 0;
