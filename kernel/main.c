@@ -123,6 +123,19 @@ mount_rootfs (void)
     panic ("Failed to mount root filesystem");
 }
 
+static void
+init (void)
+{
+  int pid = sys_fork ();
+  if (pid < 0)
+    panic ("Failed to fork kernel process");
+  else if (pid == 0)
+    {
+      int ret = sys_execve ("/sbin/init", NULL, NULL);
+      panic ("Failed to execute /sbin/init: %s", strerror (ret));
+    }
+}
+
 void
 kmain (MultibootInfo *info, uint32_t stack)
 {
@@ -144,4 +157,6 @@ kmain (MultibootInfo *info, uint32_t stack)
   syscall_init ();
   mount_rootfs ();
   process_setup_std_streams (0);
+
+  init ();
 }
