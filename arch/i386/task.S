@@ -193,13 +193,30 @@ task_yield:
 	.type task_exec, @function
 task_exec:
 	mov	4(%esp), %ecx
-	pushf
 	cli
+	pushf
 	mov	%cs, %ax
 	cwtl
 	push	%eax
-	push	%ecx
+	push	$1f
 	jmp	irq8
+
+1:
+	mov	$0x23, %ax
+	mov	%ax, %ds
+	mov	%ax, %es
+	mov	%ax, %fs
+	mov	%ax, %gs
+	mov	%esp, %eax
+	pushl	$0x23
+	push	%eax
+	pushf
+	pop	%eax
+	or	$0x200, %eax
+	push	%eax
+	pushl	$0x1b
+	push	%ecx
+	iret
 
 	.global _task_stack_setup
 	.type _task_stack_setup, @function
