@@ -26,7 +26,7 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
-void _task_stack_setup (ProcessTask *task, uint32_t eip);
+void sys_exit_halt (void) __attribute__ ((noreturn));
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
@@ -51,79 +51,6 @@ scheduler_init (void)
   task_queue = task_current;
   process_table[0].p_task = task_current;
   __asm__ volatile ("sti");
-}
-
-int
-task_new (uint32_t eip)
-{
-  volatile ProcessTask *temp;
-  ProcessTask *task;
-  uint32_t *dir;
-  uint32_t paddr;
-  uint32_t i;
-
-  dir = kvalloc (PAGE_DIR_SIZE << 2);
-  if (dir == NULL)
-    return -ENOMEM;
-  memset (dir, 0, PAGE_DIR_SIZE << 2);
-  dir[PAGE_DIR_SIZE - 1] = (uint32_t) kvalloc (PAGE_TBL_SIZE << 2);
-  if (dir[PAGE_DIR_SIZE - 1] == 0)
-    {
-      kfree (dir);
-      return -ENOMEM;
-    }
-  memset ((uint32_t *) dir[PAGE_DIR_SIZE - 1], 0, PAGE_TBL_SIZE << 2);
-
-  paddr = (uint32_t) mem_alloc (TASK_STACK_SIZE, 0);
-  if (paddr == 0)
-    {
-      page_dir_free (dir);
-      return -ENOMEM;
-    }
-  for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
-    {
-      map_page (dir, paddr + i, TASK_STACK_BOTTOM + i,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-      map_page (curr_page_dir, paddr + i, PAGE_COPY_VADDR + i,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval (paddr + i);
-#endif
-    }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
-
-  for (i = 0; i < KERNEL_LEN; i += PAGE_SIZE)
-    map_page (dir, KERNEL_PADDR + i, KERNEL_VADDR + i, PAGE_FLAG_WRITE);
-  for (i = 0; i < KERNEL_HEAP_DATA_SIZE; i += PAGE_SIZE)
-    map_page (dir, kernel_heap->mh_pdata + i, KERNEL_HEAP_DATA_ADDR + i,
-	      PAGE_FLAG_WRITE);
-
-  task = kmalloc (sizeof (ProcessTask));
-  if (task == NULL)
-    {
-      mem_free ((void *) paddr, TASK_STACK_SIZE);
-      page_dir_free (dir);
-      return -ENOMEM;
-    }
-  task->t_pid = next_pid++;
-  task->t_stack = TASK_STACK_ADDR;
-  task->t_esp = TASK_STACK_ADDR;
-  task->t_pgdir = dir;
-  task->t_next = NULL;
-  _task_stack_setup (task, eip);
-
-  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
-    ;
-  task->t_prev = temp;
-  temp->t_next = task;
-  task_queue->t_prev = task;
-
-  process_table[task->t_pid].p_task = task;
-  memset (process_table[task->t_pid].p_files, 0,
-	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-  return task->t_pid;
 }
 
 void
@@ -211,6 +138,7 @@ _task_fork (void)
   if (dir == NULL)
     return NULL;
 
+  /* Allocate and copy the stack */
   paddr = (uint32_t) mem_alloc (TASK_STACK_SIZE, 0);
   if (paddr == 0)
     {
@@ -232,6 +160,11 @@ _task_fork (void)
 #endif
   memcpy ((void *) PAGE_COPY_VADDR, (void *) TASK_STACK_BOTTOM,
 	  TASK_STACK_SIZE);
+
+  /* This is done so user mode processes don't page fault when calling 
+     sys_exit() because it is mapped to a supervisor page */
+  map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
+	    PAGE_FLAG_USER);
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)

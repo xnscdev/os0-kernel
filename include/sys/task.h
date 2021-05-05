@@ -24,10 +24,10 @@
 #include <sys/types.h>
 #endif
 
-#define TASK_PAGE_DIR_ADDR 0xff400000
-#define TASK_STACK_ADDR    0xff405000
+#define TASK_STACK_ADDR    0xff404000
 #define TASK_STACK_SIZE    16384
 #define TASK_STACK_BOTTOM  (TASK_STACK_ADDR - TASK_STACK_SIZE)
+#define TASK_EXIT_PAGE     0xff406000
 
 #ifndef _ASM
 

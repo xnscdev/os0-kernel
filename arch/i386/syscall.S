@@ -19,6 +19,7 @@
 #define _ASM
 
 #include <sys/memory.h>
+#include <sys/task.h>
 
 	.section .text
 	.align 16
@@ -40,7 +41,7 @@ syscall:
 	jne	1f
 
 	/* exit(2) should idle after running */
-	movl	$sys_exit_halt, 24(%esp)
+	movl	$TASK_EXIT_PAGE, 24(%esp)
 
 1:
 	pop	%ebx
@@ -53,6 +54,10 @@ syscall:
 
 	.size syscall, . - syscall
 
+	.align PAGE_SIZE
+	.global sys_exit_halt
+	.type sys_exit_halt, @function
 sys_exit_halt:
-1:
-	jmp	1b
+	jmp	sys_exit_halt
+
+	.size sys_exit_halt, . - sys_exit_halt

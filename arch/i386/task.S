@@ -217,34 +217,3 @@ task_exec:
 	pushl	$0x1b
 	push	%ecx
 	iret
-
-	.global _task_stack_setup
-	.type _task_stack_setup, @function
-_task_stack_setup:
-	/* Move stack pointer to new task stack */
-	push	%ebp
-	mov	%esp, %ebp
-	mov	$(PAGE_COPY_VADDR + TASK_STACK_SIZE), %esp
-
-	/* Setup fake interrupt stack frame */
-	pushf
-	pop	%eax
-	or	$0x200, %eax
-	push	%eax
-	mov	%cs, %ax
-	cwtl
-	push	%eax
-	pushl	12(%ebp)
-
-	/* Update stack pointer */
-	mov	8(%ebp), %edx
-	mov	8(%edx), %eax
-	sub	$44, %eax
-	mov	%eax, 8(%edx)
-	mov	$.entry, %eax
-	mov	%eax, 12(%edx)
-
-	leave
-	ret
-
-	.size _task_stack_setup, . - _task_stack_setup
