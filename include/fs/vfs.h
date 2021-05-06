@@ -123,6 +123,7 @@ struct _VFSInode
   blkcnt_t vi_blocks;
   const VFSInodeOps *vi_ops;
   VFSSuperblock *vi_sb;
+  unsigned long vi_refcnt;
   void *vi_private;
 };
 
@@ -167,7 +168,8 @@ int vfs_guess_type (SpecDevice *dev);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
 
 VFSInode *vfs_alloc_inode (VFSSuperblock *sb);
-void vfs_destroy_inode (VFSInode *inode);
+void vfs_ref_inode (VFSInode *inode);
+void vfs_unref_inode (VFSInode *inode);
 void vfs_fill_inode (VFSInode *inode);
 void vfs_write_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);

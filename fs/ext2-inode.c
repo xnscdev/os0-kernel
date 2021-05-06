@@ -95,7 +95,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
 
   ext2_write_inode (inode);
   ret = ext2_add_entry (dir, inode, name);
-  vfs_destroy_inode (inode);
+  vfs_unref_inode (inode);
   return ret;
 }
 
@@ -615,7 +615,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   firstblock = ext2_alloc_block (dir->vi_sb, dir->vi_ino / esb->esb_ipg);
   if (firstblock < 0)
     {
-      vfs_destroy_inode (inode);
+      vfs_unref_inode (inode);
       return firstblock;
     }
   ei->ei_bptr0[0] = firstblock;
@@ -653,14 +653,14 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   ret = ext2_add_entry (dir, inode, name);
   if (ret != 0)
     {
-      vfs_destroy_inode (inode);
+      vfs_unref_inode (inode);
       return ret;
     }
 
   data = kzalloc (inode->vi_sb->sb_blksize);
   if (data == NULL)
     {
-      vfs_destroy_inode (inode);
+      vfs_unref_inode (inode);
       return -ENOMEM;
     }
 
@@ -695,7 +695,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   bgdt[inode->vi_ino / esb->esb_ipg].eb_dirs++;
   ext2_update (dir->vi_sb);
 
-  vfs_destroy_inode (inode);
+  vfs_unref_inode (inode);
   ret = ext2_write_blocks (data, dir->vi_sb, firstblock, 1);
   kfree (data);
   return ret;

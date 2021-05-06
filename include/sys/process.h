@@ -34,6 +34,7 @@ typedef struct
 {
   VFSInode *pf_inode;
   int pf_mode;
+  int pf_flags;
   off_t pf_offset;
 } ProcessFile;
 

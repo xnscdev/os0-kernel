@@ -52,7 +52,7 @@ vfs_destroy_dir_entry (VFSDirEntry *entry)
 {
   if (entry == NULL)
     return;
-  vfs_destroy_inode (entry->d_inode);
+  vfs_unref_inode (entry->d_inode);
   kfree (entry->d_name);
   kfree (entry);
 }
@@ -121,15 +121,27 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 VFSInode *
 vfs_alloc_inode (VFSSuperblock *sb)
 {
-  return sb->sb_ops->sb_alloc_inode (sb);
+  VFSInode *inode = sb->sb_ops->sb_alloc_inode (sb);
+  if (inode == NULL)
+    return NULL;
+  inode->vi_refcnt = 1;
+  return inode;
 }
 
 void
-vfs_destroy_inode (VFSInode *inode)
+vfs_ref_inode (VFSInode *inode)
+{
+  if (inode != NULL)
+    inode->vi_refcnt++;
+}
+
+void
+vfs_unref_inode (VFSInode *inode)
 {
   if (inode == NULL)
     return;
-  inode->vi_sb->sb_ops->sb_destroy_inode (inode);
+  if (--inode->vi_refcnt == 0)
+    inode->vi_sb->sb_ops->sb_destroy_inode (inode);
 }
 
 void

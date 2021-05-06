@@ -194,7 +194,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
     {
       VFSInode *fdi = process_table[task_getpid ()].p_files[i].pf_inode;
       if (fdi != NULL)
-	vfs_destroy_inode (fdi);
+	vfs_unref_inode (fdi);
     }
   if (process_setup_std_streams (task_getpid ()) != 0)
     goto end;
@@ -226,7 +226,7 @@ process_free (pid_t pid)
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
       if (proc->p_files[i].pf_inode != NULL)
-        vfs_destroy_inode (proc->p_files[i].pf_inode);
+        vfs_unref_inode (proc->p_files[i].pf_inode);
     }
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 }
@@ -246,16 +246,19 @@ process_setup_std_streams (pid_t pid)
   /* Create stdin */
   proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
   proc->p_files[STDIN_FILENO].pf_mode = O_RDONLY;
+  proc->p_files[STDIN_FILENO].pf_flags = 0;
   proc->p_files[STDIN_FILENO].pf_offset = 0;
 
   /* Create stdout */
   proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
   proc->p_files[STDOUT_FILENO].pf_mode = O_WRONLY | O_APPEND;
+  proc->p_files[STDOUT_FILENO].pf_flags = 0;
   proc->p_files[STDOUT_FILENO].pf_offset = 0;
 
   /* Create stderr */
   proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_stderr_sb);
   proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
+  proc->p_files[STDERR_FILENO].pf_flags = 0;
   proc->p_files[STDERR_FILENO].pf_offset = 0;
 
   return 0;

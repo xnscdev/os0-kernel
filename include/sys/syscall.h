@@ -136,6 +136,7 @@ int sys_umount (const char *dir);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
+int sys_fcntl (int fd, int cmd, int arg);
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
 int sys_truncate (const char *path, off_t len);

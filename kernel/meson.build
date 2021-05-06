@@ -1,5 +1,6 @@
 kernel_src = [
-  'boot.S',
+  'boot.S', # First so multiboot is in first 8K of file */
+  'fcntl.c',
   'heap.c',
   'main.c',
   'memory.c',
