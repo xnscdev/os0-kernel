@@ -47,6 +47,7 @@ int strncmp (const char *a, const char *b, size_t len);
 char *strchr (const char *s, int c);
 char *strrchr (const char *s, int c);
 char *strtok (char *__restrict s, const char *__restrict delims);
+
 const char *strerror (int errno);
 
 __END_DECLS

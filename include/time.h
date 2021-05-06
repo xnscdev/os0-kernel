@@ -19,6 +19,7 @@
 #ifndef _TIME_H
 #define _TIME_H
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 
 struct tm
@@ -46,6 +47,10 @@ struct itimerspec
   struct timespec it_value;
 };
 
+__BEGIN_DECLS
+
 time_t time (time_t *t);
+
+__END_DECLS
 
 #endif
