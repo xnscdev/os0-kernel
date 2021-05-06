@@ -11,6 +11,9 @@ endif
 if cc.has_argument('-Wrestrict')
   add_project_arguments('-Wno-restrict', language: 'c')
 endif
+if cc.has_argument('-Wformat')
+  add_project_arguments('-Wno-format', language: 'c')
+endif
 
 grub_file = find_program('grub-file', required: false)
 
