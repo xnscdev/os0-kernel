@@ -28,127 +28,104 @@
 Process process_table[PROCESS_LIMIT];
 
 static int
-process_alloc_section (VFSInode *inode, Array *sections, uint32_t *page_dir,
-		       Elf32_Shdr *shdr)
+process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 {
-  uint32_t flags;
   uint32_t addr;
-  uint32_t offset;
+  ProcessSegment *segment;
 
-  flags = PAGE_FLAG_USER;
-  if (shdr->sh_flags & SHF_WRITE)
-    flags |= PAGE_FLAG_WRITE;
-
-  for (addr = shdr->sh_addr & 0xfffff000, offset = shdr->sh_offset;
-       addr < shdr->sh_addr + shdr->sh_size; addr += PAGE_SIZE)
+  for (addr = phdr->p_vaddr & 0xfffff000; addr < phdr->p_vaddr + phdr->p_memsz;
+       addr += PAGE_SIZE)
     {
-      uint32_t paddr = get_paddr (page_dir, (void *) addr) & 0xfffff000;
-      uint32_t start;
-      uint32_t len;
-      if (paddr == 0)
-	{
-	  paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
-	  if (unlikely (paddr == 0))
-	    return -ENOMEM;
-	  map_page (page_dir, paddr, addr, flags);
-	}
-      map_page (curr_page_dir, paddr, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
+      uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
+      if (unlikely (paddr == 0))
+	return -ENOMEM;
+      map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
 #else
       vm_tlb_reset ();
 #endif
-
-      start = addr < shdr->sh_addr ? shdr->sh_addr & (PAGE_SIZE - 1) : 0;
-      len = PAGE_SIZE - start;
-      if (shdr->sh_size + shdr->sh_offset - offset < PAGE_SIZE)
-	len = shdr->sh_size + shdr->sh_offset - offset;
-      if (shdr->sh_type == SHT_PROGBITS)
-	{
-	  int ret = vfs_read (inode, (char *) (PAGE_COPY_VADDR + start), len,
-			      offset);
-	  if (ret < 0)
-	    return ret;
-	}
-      else
-	memset ((char *) (PAGE_COPY_VADDR + start), 0, PAGE_SIZE - start);
-      offset += len;
     }
 
-  /* Add section to process section list */
-  if (!(shdr->sh_addr & (PAGE_SIZE - 1)))
+  segment = kmalloc (sizeof (ProcessSegment));
+  if (segment == NULL)
+    return -ENOMEM;
+  segment->ps_addr = phdr->p_vaddr & 0xfffff000;
+  segment->ps_size = phdr->p_memsz;
+  array_append (segments, segment);
+
+  if (phdr->p_filesz > 0)
     {
-      ProcessSection *section = kmalloc (sizeof (ProcessSection));
-      if (section == NULL)
-	return -ENOMEM;
-      section->ps_addr = shdr->sh_addr & 0xfffff000;
-      section->ps_size = shdr->sh_size;
-      array_append (sections, section);
+      if (vfs_read (inode, (void *) phdr->p_vaddr, phdr->p_filesz,
+		    phdr->p_offset) < 0)
+	return -EIO;
     }
+  memset ((void *) (phdr->p_vaddr + phdr->p_filesz), 0,
+	  phdr->p_memsz - phdr->p_filesz);
   return 0;
 }
 
 static int
-process_load_sections (VFSInode *inode, Array *sections, uint32_t *page_dir,
-		       Elf32_Off shoff, Elf32_Half shentsize, Elf32_Half shnum)
+process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
+		    Elf32_Half phentsize, Elf32_Half phnum)
 {
-  Elf32_Shdr *shdr;
+  Elf32_Phdr *phdr;
   Elf32_Half i;
   int ret;
 
-  shdr = kmalloc (sizeof (Elf32_Shdr));
-  if (unlikely (shdr == NULL))
+  phdr = kmalloc (sizeof (Elf32_Phdr));
+  if (unlikely (phdr == NULL))
     return -1;
 
-  for (i = 0; i < shnum; i++)
+  for (i = 0; i < phnum; i++)
     {
-      if (vfs_read (inode, shdr, sizeof (Elf32_Shdr),
-		    shoff + shentsize * i) < 0)
+      if (vfs_read (inode, phdr, sizeof (Elf32_Phdr),
+		    phoff + phentsize * i) < 0)
 	{
-	  kfree (shdr);
+	  kfree (phdr);
 	  return -1;
 	}
-      if (shdr->sh_flags & SHF_ALLOC)
+      if (phdr->p_type == PT_LOAD)
 	{
-	  ret = process_alloc_section (inode, sections, page_dir, shdr);
+	  ret = process_load_segment (inode, segments, phdr);
 	  if (ret < 0)
 	    {
-	      kfree (shdr);
+	      kfree (phdr);
 	      return ret;
 	    }
 	}
     }
 
-  kfree (shdr);
+  kfree (phdr);
   return 0;
 }
 
 static void
-process_section_free (void *elem, void *data)
+process_segment_free (void *elem, void *data)
 {
-  ProcessSection *section = elem;
+  ProcessSegment *segment = elem;
   uint32_t addr;
-  for (addr = section->ps_addr; addr < section->ps_addr + section->ps_size;
+  for (addr = segment->ps_addr; addr < segment->ps_addr + segment->ps_size;
        addr += PAGE_SIZE)
     {
       void *paddr = (void *) get_paddr (data, (void *) addr);
       assert (paddr != NULL);
       mem_free (paddr, PAGE_SIZE);
     }
-  kfree (section);
+  kfree (segment);
 }
 
 int
 process_exec (VFSInode *inode, uint32_t *entry)
 {
   Elf32_Ehdr *ehdr;
-  Array *sections;
+  Array *segments;
   int ret;
   int i;
   __asm__ volatile ("cli");
 
-  sections = array_new (PROCESS_SECTION_LIMIT);
-  if (unlikely (sections == NULL))
+  segments = array_new (PROCESS_SEGMENT_LIMIT);
+  if (unlikely (segments == NULL))
     {
       ret = -ENOMEM;
       goto end;
@@ -182,8 +159,8 @@ process_exec (VFSInode *inode, uint32_t *entry)
       goto end;
     }
 
-  ret = process_load_sections (inode, sections, curr_page_dir, ehdr->e_shoff,
-			       ehdr->e_shentsize, ehdr->e_shnum);
+  ret = process_load_phdrs (inode, segments, ehdr->e_phoff, ehdr->e_phentsize,
+			    ehdr->e_phnum);
   if (ret != 0)
     goto end;
 
@@ -204,7 +181,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
   return 0;
 
  end:
-  array_destroy (sections, NULL, NULL);
+  array_destroy (segments, NULL, NULL);
   kfree (ehdr);
   __asm__ volatile ("sti");
   return ret;
@@ -218,7 +195,7 @@ process_free (pid_t pid)
   if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
     return;
   proc = &process_table[pid];
-  array_destroy (proc->p_sections, process_section_free, proc->p_task->t_pgdir);
+  array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
   proc->p_break = 0;

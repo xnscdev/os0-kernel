@@ -26,7 +26,7 @@
 
 #define PROCESS_LIMIT         256
 #define PROCESS_FILE_LIMIT    64
-#define PROCESS_SECTION_LIMIT 64
+#define PROCESS_SEGMENT_LIMIT 32
 #define PROCESS_BREAK_LIMIT   0xb0000000
 
 typedef struct
@@ -41,13 +41,13 @@ typedef struct
 {
   uint32_t ps_addr;
   uint32_t ps_size;
-} ProcessSection;
+} ProcessSegment;
 
 typedef struct
 {
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   volatile ProcessTask *p_task;
-  Array *p_sections;
+  Array *p_segments;
   uint32_t p_break;
 } Process;
 
