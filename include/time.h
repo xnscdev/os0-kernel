@@ -47,6 +47,12 @@ struct itimerspec
   struct timespec it_value;
 };
 
+struct utimbuf
+{
+  time_t actime;
+  time_t modtime;
+};
+
 __BEGIN_DECLS
 
 time_t time (time_t *t);

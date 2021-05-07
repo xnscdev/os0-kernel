@@ -25,8 +25,6 @@
 #include <vm/paging.h>
 #include "elf.h"
 
-void user_mode_exec (uint32_t eip) __attribute__ ((noreturn));
-
 Process process_table[PROCESS_LIMIT];
 
 static int
@@ -184,8 +182,8 @@ process_exec (VFSInode *inode, uint32_t *entry)
       goto end;
     }
 
-  ret = process_load_sections (inode, sections, curr_page_dir,
-			       ehdr->e_shoff, ehdr->e_shentsize, ehdr->e_shnum);
+  ret = process_load_sections (inode, sections, curr_page_dir, ehdr->e_shoff,
+			       ehdr->e_shentsize, ehdr->e_shnum);
   if (ret != 0)
     goto end;
 
@@ -223,6 +221,7 @@ process_free (pid_t pid)
   array_destroy (proc->p_sections, process_section_free, proc->p_task->t_pgdir);
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
+  proc->p_break = 0;
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
       if (proc->p_files[i].pf_inode != NULL)
@@ -262,4 +261,10 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDERR_FILENO].pf_offset = 0;
 
   return 0;
+}
+
+int
+process_set_break (uint32_t addr)
+{
+  return -ENOMEM;
 }

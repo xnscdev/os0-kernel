@@ -68,7 +68,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_brk,
   NULL,
   NULL,
   NULL,
@@ -679,6 +679,14 @@ sys_rmdir (const char *path)
   kfree (entry.d_name);
   kfree (name);
   return ret;
+}
+
+int
+sys_brk (void *ptr)
+{
+  if (sys_getpid () == 0)
+    return -EINVAL;
+  return process_set_break ((uint32_t) ptr);
 }
 
 int

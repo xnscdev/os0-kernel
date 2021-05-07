@@ -43,10 +43,15 @@
 #define SYS_lseek         19
 #define SYS_getpid        20
 #define SYS_mount         21
-#define SYS_umount       22
+#define SYS_umount        22
 #define SYS_setuid        23
 #define SYS_getuid        24
+#define SYS_ptrace        26
+#define SYS_alarm         27
+#define SYS_pause         29
+#define SYS_utime         30
 #define SYS_access        33
+#define SYS_nice          34
 #define SYS_sync          36
 #define SYS_kill          37
 #define SYS_rename        38
@@ -136,6 +141,7 @@ int sys_umount (const char *dir);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
+int sys_brk (void *ptr);
 int sys_fcntl (int fd, int cmd, int arg);
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);

@@ -27,8 +27,7 @@
 #define PROCESS_LIMIT         256
 #define PROCESS_FILE_LIMIT    64
 #define PROCESS_SECTION_LIMIT 64
-
-#define USER_START_ADDR 0xff800000
+#define PROCESS_BREAK_LIMIT   0xb0000000
 
 typedef struct
 {
@@ -49,6 +48,7 @@ typedef struct
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   volatile ProcessTask *p_task;
   Array *p_sections;
+  uint32_t p_break;
 } Process;
 
 __BEGIN_DECLS
@@ -58,6 +58,7 @@ extern Process process_table[PROCESS_LIMIT];
 int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
+int process_set_break (uint32_t addr);
 
 __END_DECLS
 
