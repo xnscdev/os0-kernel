@@ -62,7 +62,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
     }
   memset ((void *) (phdr->p_vaddr + phdr->p_filesz), 0,
 	  phdr->p_memsz - phdr->p_filesz);
-  return 0;
+  return phdr->p_vaddr + phdr->p_memsz; /* Potential program break address */
 }
 
 static int
@@ -71,6 +71,7 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
 {
   Elf32_Phdr *phdr;
   Elf32_Half i;
+  uint32_t pbreak;
   int ret;
 
   phdr = kmalloc (sizeof (Elf32_Phdr));
@@ -87,17 +88,24 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
 	}
       if (phdr->p_type == PT_LOAD)
 	{
+	  /* Load the segment into memory */
 	  ret = process_load_segment (inode, segments, phdr);
 	  if (ret < 0)
 	    {
 	      kfree (phdr);
 	      return ret;
 	    }
+
+	  /* Load headers are required to be in ascending order based on
+	     virtual address, so the program break should be set to the
+	     address of the last segment. This does not account for
+	     overlapping segments */
+	  pbreak = ret;
 	}
     }
 
   kfree (phdr);
-  return 0;
+  return pbreak;
 }
 
 static void
@@ -120,6 +128,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
 {
   Elf32_Ehdr *ehdr;
   Array *segments;
+  Process *proc;
   int ret;
   int i;
   __asm__ volatile ("cli");
@@ -161,13 +170,20 @@ process_exec (VFSInode *inode, uint32_t *entry)
 
   ret = process_load_phdrs (inode, segments, ehdr->e_phoff, ehdr->e_phentsize,
 			    ehdr->e_phnum);
-  if (ret != 0)
+  if (ret < 0)
     goto end;
+  proc = &process_table[task_getpid ()];
+  proc->p_break = ret;
+  if (proc->p_break & (PAGE_SIZE - 1))
+    {
+      proc->p_break &= 0xfffff000;
+      proc->p_break += PAGE_SIZE;
+    }
 
   /* Clear all open file descriptors and open std streams */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
-      VFSInode *fdi = process_table[task_getpid ()].p_files[i].pf_inode;
+      VFSInode *fdi = proc->p_files[i].pf_inode;
       if (fdi != NULL)
 	vfs_unref_inode (fdi);
     }
@@ -181,7 +197,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
   return 0;
 
  end:
-  array_destroy (segments, NULL, NULL);
+  array_destroy (segments, process_segment_free, curr_page_dir);
   kfree (ehdr);
   __asm__ volatile ("sti");
   return ret;
@@ -240,8 +256,40 @@ process_setup_std_streams (pid_t pid)
   return 0;
 }
 
-int
+uint32_t
 process_set_break (uint32_t addr)
 {
-  return -ENOMEM;
+  Process *proc = &process_table[task_getpid ()];
+  uint32_t i;
+
+  /* Fail if address is behind current break or is too high */
+  if (addr < proc->p_break || addr >= PROCESS_BREAK_LIMIT)
+    return proc->p_break;
+
+  /* Page align starting address */
+  i = proc->p_break;
+  if (i & (PAGE_SIZE - 1))
+    {
+      i &= 0xfffff000;
+      i += PAGE_SIZE;
+    }
+
+  /* Map pages until the new program break is reached */
+  for (; i < addr; i += PAGE_SIZE)
+    {
+      uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
+      if (paddr == 0)
+	return -ENOMEM;
+      map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (paddr);
+#endif
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
+
+  memset ((void *) proc->p_break, 0, addr - proc->p_break);
+  proc->p_break = addr;
+  return proc->p_break;
 }

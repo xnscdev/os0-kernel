@@ -58,7 +58,7 @@ extern Process process_table[PROCESS_LIMIT];
 int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
-int process_set_break (uint32_t addr);
+uint32_t process_set_break (uint32_t addr);
 
 __END_DECLS
 
