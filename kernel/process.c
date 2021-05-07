@@ -279,7 +279,7 @@ process_set_break (uint32_t addr)
     {
       uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
       if (paddr == 0)
-	return -ENOMEM;
+	return proc->p_break;
       map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
