@@ -16,10 +16,10 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <fs/ext2.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <video/vga.h>
 #include <vm/heap.h>
 
 void *syscall_table[NR_syscalls] = {
@@ -67,7 +67,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_isatty,
   sys_brk,
   NULL,
   NULL,
@@ -639,6 +639,12 @@ sys_rmdir (const char *path)
   vfs_unref_inode (dir);
   kfree (name);
   return ret;
+}
+
+int
+sys_isatty (int fd)
+{
+  return is_vga_tty (fd);
 }
 
 int
