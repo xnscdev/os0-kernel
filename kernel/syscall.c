@@ -35,7 +35,7 @@ void *syscall_table[NR_syscalls] = {
   sys_link,
   sys_unlink,
   sys_execve,
-  NULL,
+  sys_chdir,
   NULL,
   sys_mknod,
   sys_chmod,
@@ -156,7 +156,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_fchdir,
   NULL,
   NULL,
   NULL,
@@ -490,6 +490,18 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
 }
 
 int
+sys_chdir (const char *path)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  vfs_unref_inode (proc->p_cwd);
+  proc->p_cwd = inode;
+  return 0;
+}
+
+int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
   VFSInode *dir;
@@ -704,6 +716,16 @@ sys_stat (const char *path, struct stat *st)
   ret = vfs_getattr (inode, st);
   vfs_unref_inode (inode);
   return ret;
+}
+
+int
+sys_fchdir (int fd)
+{
+  Process *proc = &process_table[task_getpid ()];
+  vfs_unref_inode (proc->p_cwd);
+  proc->p_cwd = proc->p_files[fd].pf_inode;
+  vfs_ref_inode (proc->p_cwd);
+  return 0;
 }
 
 int

@@ -190,6 +190,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
   if (process_setup_std_streams (task_getpid ()) != 0)
     goto end;
 
+  vfs_ref_inode (proc->p_cwd);
   if (entry != NULL)
     *entry = ehdr->e_entry;
   kfree (ehdr);
