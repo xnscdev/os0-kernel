@@ -20,6 +20,7 @@
 #define _I386_TSS_H
 
 #include <sys/cdefs.h>
+#include <sys/memory.h>
 #include <stdint.h>
 
 typedef struct
@@ -55,7 +56,10 @@ typedef struct
 
 __BEGIN_DECLS
 
-void tss_update_stack (uint32_t stack);
+extern char user_interrupt_stack[PAGE_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
+
+void tss_update_stack (void);
 void tss_write (uint32_t n, uint16_t ss0, uint32_t esp0);
 void tss_load (void);
 

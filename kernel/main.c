@@ -35,8 +35,9 @@
 
 BootOptions boot_options;
 
-static char *init_argv[] = {NULL};
-static char *init_envp[] = {NULL};
+static char *init_argv[] __attribute__ ((aligned (PAGE_SIZE))) =
+  {"/sbin/init", NULL};
+static char *init_envp[] __attribute__ ((aligned (PAGE_SIZE))) = {NULL};
 
 static struct
 {
@@ -148,7 +149,20 @@ init (void)
     panic ("Failed to fork kernel process");
   else if (pid == 0)
     {
-      int ret = sys_execve ("/sbin/init", init_argv, init_envp);
+      int ret;
+      uint32_t argv = get_paddr (curr_page_dir, init_argv);
+      uint32_t envp = get_paddr (curr_page_dir, init_envp);
+      map_page (curr_page_dir, argv, (uint32_t) init_argv,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      map_page (curr_page_dir, envp, (uint32_t) init_envp,
+		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (argv);
+      vm_page_inval (envp);
+#else
+      vm_tlb_reset ();
+#endif
+      ret = sys_execve ("/sbin/init", init_argv, init_envp);
       panic ("Failed to execute /sbin/init: %s", strerror (ret));
     }
 }

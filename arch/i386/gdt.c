@@ -21,6 +21,8 @@
 #include <sys/io.h>
 #include <string.h>
 
+char user_interrupt_stack[PAGE_SIZE];
+
 static GDTEntry gdt_entries[GDT_SIZE];
 static DTPtr gdt;
 static TaskState tss;
@@ -43,9 +45,9 @@ tss_write (uint32_t n, uint16_t ss0, uint32_t esp0)
 }
 
 void
-tss_update_stack (uint32_t stack)
+tss_update_stack (void)
 {
-  tss.tss_esp0 = stack;
+  tss.tss_esp0 = (uint32_t) user_interrupt_stack + PAGE_SIZE;
 }
 
 void

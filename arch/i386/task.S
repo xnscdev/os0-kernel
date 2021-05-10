@@ -74,9 +74,7 @@ irq8:
 	mov	16(%edi), %esi
 
 	/* Update TSS stack */
-	push	%ebx
 	call	tss_update_stack
-	add	$4, %esp
 
 	/* Switch page directory */
 	push	%esi

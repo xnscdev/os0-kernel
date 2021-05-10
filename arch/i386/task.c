@@ -18,10 +18,9 @@
 
 #include <kconfig.h>
 
-#include <i386/paging.h>
+#include <fs/vfs.h>
 #include <i386/tss.h>
 #include <libk/libk.h>
-#include <sys/memory.h>
 #include <sys/process.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
@@ -47,6 +46,11 @@ scheduler_init (void)
   task_current->t_pgdir = curr_page_dir;
   task_current->t_prev = task_current;
   task_current->t_next = NULL;
+
+  /* Setup user mode interrupt stack for TSS */
+  map_page (curr_page_dir,
+	    get_paddr (curr_page_dir, user_interrupt_stack) & 0xfffff000,
+	    (uint32_t) user_interrupt_stack, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
@@ -186,6 +190,8 @@ _task_fork (void)
   task_queue->t_prev = task;
 
   process_table[task->t_pid].p_task = task;
+  process_table[task->t_pid].p_cwd = process_table[task_getpid ()].p_cwd;
+  vfs_ref_inode (process_table[task->t_pid].p_cwd);
   memset (process_table[task->t_pid].p_files, 0,
 	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
   return task;
