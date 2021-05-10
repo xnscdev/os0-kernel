@@ -51,7 +51,8 @@ void task_tick (void);
 int task_fork (void);
 void task_yield (void);
 int task_new (uint32_t eip);
-void task_exec (uint32_t eip) __attribute__ ((noreturn));
+void task_exec (uint32_t eip, char *const *argv, char *const *envp)
+  __attribute__ ((noreturn));
 void task_free (ProcessTask *task);
 void task_relocate_stack (void *addr, uint32_t size);
 pid_t task_getpid (void);

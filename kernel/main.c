@@ -35,6 +35,9 @@
 
 BootOptions boot_options;
 
+static char *init_argv[] = {NULL};
+static char *init_envp[] = {NULL};
+
 static struct
 {
   const char *b_name;
@@ -145,7 +148,7 @@ init (void)
     panic ("Failed to fork kernel process");
   else if (pid == 0)
     {
-      int ret = sys_execve ("/sbin/init", NULL, NULL);
+      int ret = sys_execve ("/sbin/init", init_argv, init_envp);
       panic ("Failed to execute /sbin/init: %s", strerror (ret));
     }
 }

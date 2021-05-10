@@ -486,7 +486,7 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
   vfs_unref_inode (inode);
   if (ret != 0)
     return ret;
-  task_exec (eip);
+  task_exec (eip, argv, envp);
 }
 
 int

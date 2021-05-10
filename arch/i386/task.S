@@ -193,6 +193,8 @@ task_yield:
 	.type task_exec, @function
 task_exec:
 	mov	4(%esp), %ecx
+	mov	8(%esp), %esi
+	mov	12(%esp), %edi
 	cli
 	pushf
 	mov	%cs, %ax
