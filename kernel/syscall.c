@@ -263,83 +263,48 @@ void *syscall_table[NR_syscalls] = {
 
 extern uint32_t exit_task;
 
-static int
-sys_path_rel_lookup (const char *path, VFSDirEntry *entry)
-{
-  VFSPath *vpath;
-  VFSPath *rvpath;
-  VFSMount *mp;
-  int ret = vfs_namei (&vpath, path);
-  if (ret != 0)
-    return ret;
-
-  ret = vfs_path_find_mount (vpath);
-  if (ret < 0)
-    {
-      vfs_path_free (vpath);
-      return ret;
-    }
-
-  mp = &mount_table[ret];
-  ret = vfs_path_rel (&rvpath, vpath, mp);
-  if (ret != 0)
-    {
-      vfs_path_free (vpath);
-      return ret;
-    }
-
-  ret = vfs_lookup (entry, &mp->vfs_sb, rvpath);
-  vfs_path_free (vpath);
-  return ret;
-}
-
 /* Separates a path into a file and its parent directory */
 
 static int
-sys_path_sep (const char *path, VFSDirEntry *entry, char **name)
+sys_path_sep (const char *path, VFSInode **dir, char **name)
 {
-  VFSPath *vpath;
-  VFSPath *rvpath;
-  VFSPath *temp;
-  VFSMount *mp;
-  int ret = vfs_namei (&vpath, path);
-  if (ret != 0)
-    return ret;
+  char *buffer = strdup (path);
+  char *sep;
+  if (unlikely (buffer == NULL))
+    return -ENOMEM;
+  sep = strrchr (buffer, '/');
 
-  ret = vfs_path_find_mount (vpath);
-  if (ret < 0)
+  if (sep != NULL)
     {
-      vfs_path_free (vpath);
-      return ret;
+      if (sep[1] == '\0')
+	*name = NULL;
+      else
+	*name = strdup (sep + 1);
     }
 
-  /* Get the relative filesystem path */
-  mp = &mount_table[ret];
-  ret = vfs_path_rel (&rvpath, vpath, mp);
-  if (ret != 0)
+  if (buffer == sep)
     {
-      vfs_path_free (vpath);
-      return ret;
+      /* Direct child of root directory */
+      *dir = vfs_root_inode;
+      vfs_ref_inode (*dir);
     }
-  if (rvpath != NULL)
+  else if (sep == NULL)
     {
-      /* Point to the parent directory instead of the file */
-      temp = rvpath;
-      rvpath = rvpath->vp_prev;
-      rvpath->vp_next = NULL;
+      /* File in current directory */
+      *dir = process_table[task_getpid ()].p_cwd;
+      vfs_ref_inode (*dir);
     }
   else
-    temp = vpath;
-
-  ret = vfs_lookup (entry, &mp->vfs_sb, rvpath);
-  if (rvpath != NULL)
-    vfs_path_free (rvpath);
-  if (ret != 0)
-    *name = NULL;
-  else
-    *name = strdup (temp->vp_long == NULL ? temp->vp_short : temp->vp_long);
-  vfs_path_free (vpath);
-  return ret;
+    {
+      *sep = '\0';
+      *dir = vfs_open_file (buffer);
+      if (*dir == NULL)
+	{
+	  kfree (buffer);
+	  return -ENOENT;
+	}
+    }
+  return 0;
 }
 
 void
@@ -404,12 +369,10 @@ sys_open (const char *path, int flags, mode_t mode)
     {
       if (files[i].pf_inode == NULL)
 	{
-	  VFSDirEntry entry;
-	  int ret = sys_path_rel_lookup (path, &entry);
-	  if (ret != 0)
-	    return ret; /* TODO Create file if O_CREAT in flags */
-	  kfree (entry.d_name);
-	  files[i].pf_inode = entry.d_inode;
+	  VFSInode *inode = vfs_open_file (path);
+	  if (inode == NULL)
+	    return -ENOENT;
+	  files[i].pf_inode = inode;
 	  switch (flags & O_ACCMODE)
 	    {
 	    case O_RDONLY:
@@ -464,14 +427,13 @@ sys_close (int fd)
 int
 sys_creat (const char *path, mode_t mode)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (path, &entry, &name);
+  int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_create (entry.d_inode, name, mode);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_create (dir, name, mode);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -479,25 +441,21 @@ sys_creat (const char *path, mode_t mode)
 int
 sys_link (const char *old, const char *new)
 {
-  VFSDirEntry old_entry;
-  VFSDirEntry new_entry;
+  VFSInode *old_inode;
+  VFSInode *new_inode;
   char *name;
-  int ret = sys_path_sep (new, &new_entry, &name);
+  int ret = sys_path_sep (new, &new_inode, &name);
   if (ret != 0)
     return ret;
-  ret = sys_path_rel_lookup (old, &old_entry);
-  if (ret != 0)
+  old_inode = vfs_open_file (old);
+  if (old_inode == NULL)
     {
-      vfs_unref_inode (new_entry.d_inode);
-      kfree (new_entry.d_name);
-      kfree (name);
-      return ret;
+      vfs_unref_inode (new_inode);
+      return -ENOENT;
     }
-  ret = vfs_link (old_entry.d_inode, new_entry.d_inode, name);
-  vfs_unref_inode (old_entry.d_inode);
-  kfree (old_entry.d_name);
-  vfs_unref_inode (new_entry.d_inode);
-  kfree (new_entry.d_name);
+  ret = vfs_link (old_inode, new_inode, name);
+  vfs_unref_inode (old_inode);
+  vfs_unref_inode (new_inode);
   kfree (name);
   return ret;
 }
@@ -505,14 +463,13 @@ sys_link (const char *old, const char *new)
 int
 sys_unlink (const char *path)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (path, &entry, &name);
+  int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_unlink (entry.d_inode, name);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_unlink (dir, name);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -520,14 +477,13 @@ sys_unlink (const char *path)
 int
 sys_execve (const char *path, char *const *argv, char *const *envp)
 {
-  VFSDirEntry entry;
   uint32_t eip;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  kfree (entry.d_name);
-  ret = process_exec (entry.d_inode, &eip);
-  vfs_unref_inode (entry.d_inode);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = process_exec (inode, &eip);
+  vfs_unref_inode (inode);
   if (ret != 0)
     return ret;
   task_exec (eip);
@@ -536,14 +492,13 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
 int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (path, &entry, &name);
+  int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_mknod (entry.d_inode, name, mode, dev);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_mknod (dir, name, mode, dev);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -551,26 +506,24 @@ sys_mknod (const char *path, mode_t mode, dev_t dev)
 int
 sys_chmod (const char *path, mode_t mode)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_chmod (entry.d_inode, mode);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_chmod (inode, mode);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_chown (const char *path, uid_t uid, gid_t gid)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_chown (entry.d_inode, uid, gid);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_chown (inode, uid, gid);
+  vfs_unref_inode (inode);
   return ret;
 }
 
@@ -626,27 +579,24 @@ sys_umount (const char *dir)
 int
 sys_rename (const char *old, const char *new)
 {
-  VFSDirEntry old_entry;
-  VFSDirEntry new_entry;
+  VFSInode *old_inode;
+  VFSInode *new_inode;
   char *old_name;
   char *new_name;
-  int ret = sys_path_sep (old, &old_entry, &old_name);
+  int ret = sys_path_sep (old, &old_inode, &old_name);
   if (ret != 0)
     return ret;
-  ret = sys_path_sep (new, &new_entry, &new_name);
+  ret = sys_path_sep (new, &new_inode, &new_name);
   if (ret != 0)
     {
-      vfs_unref_inode (old_entry.d_inode);
-      kfree (old_entry.d_name);
+      vfs_unref_inode (old_inode);
       kfree (old_name);
       return ret;
     }
-  ret = vfs_rename (old_entry.d_inode, old_name, new_entry.d_inode, new_name);
-  vfs_unref_inode (old_entry.d_inode);
-  kfree (old_entry.d_name);
+  ret = vfs_rename (old_inode, old_name, new_inode, new_name);
+  vfs_unref_inode (old_inode);
   kfree (old_name);
-  vfs_unref_inode (new_entry.d_inode);
-  kfree (new_entry.d_name);
+  vfs_unref_inode (new_inode);
   kfree (new_name);
   return ret;
 }
@@ -654,14 +604,13 @@ sys_rename (const char *old, const char *new)
 int
 sys_mkdir (const char *path, mode_t mode)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (path, &entry, &name);
+  int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_mkdir (entry.d_inode, name, mode);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_mkdir (dir, name, mode);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -669,14 +618,13 @@ sys_mkdir (const char *path, mode_t mode)
 int
 sys_rmdir (const char *path)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (path, &entry, &name);
+  int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_rmdir (entry.d_inode, name);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_rmdir (dir, name);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -698,14 +646,13 @@ sys_fcntl (int fd, int cmd, int arg)
 int
 sys_symlink (const char *old, const char *new)
 {
-  VFSDirEntry entry;
+  VFSInode *dir;
   char *name;
-  int ret = sys_path_sep (new, &entry, &name);
+  int ret = sys_path_sep (new, &dir, &name);
   if (ret != 0)
     return ret;
-  ret = vfs_symlink (entry.d_inode, old, name);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  ret = vfs_symlink (dir, old, name);
+  vfs_unref_inode (dir);
   kfree (name);
   return ret;
 }
@@ -713,64 +660,49 @@ sys_symlink (const char *old, const char *new)
 int
 sys_readlink (const char *path, char *buffer, size_t len)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_readlink (&entry, buffer, len);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_readlink (inode, buffer, len);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_truncate (const char *path, off_t len)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  entry.d_inode->vi_size = len;
-  ret = vfs_truncate (entry.d_inode);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  inode->vi_size = len;
+  ret = vfs_truncate (inode);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_statvfs (const char *path, struct statvfs *st)
 {
-  VFSPath *vpath;
-  int ret = vfs_namei (&vpath, path);
-  if (ret != 0)
-    return ret;
-  ret = vfs_path_find_mount (vpath);
-  vfs_path_free (vpath);
-  if (ret < 0)
-    return ret;
-  return vfs_statvfs (&mount_table[ret].vfs_sb, st);
+  VFSInode *inode = vfs_open_file (path);
+  int ret;
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_statvfs (inode->vi_sb, st);
+  vfs_unref_inode (inode);
+  return ret;
 }
 
 int
 sys_stat (const char *path, struct stat *st)
 {
-  VFSDirEntry entry;
-  VFSPath *vpath;
-  VFSMount *mp;
-  int ret = vfs_namei (&vpath, path);
-  if (ret != 0)
-    return ret;
-  ret = vfs_path_find_mount (vpath);
-  vfs_path_free (vpath);
-  if (ret < 0)
-    return ret;
-  mp = &mount_table[ret];
-  ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_getattr (mp, &entry, st);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  VFSInode *inode = vfs_open_file (path);
+  int ret;
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_getattr (inode, st);
+  vfs_unref_inode (inode);
   return ret;
 }
 
@@ -778,51 +710,47 @@ int
 sys_setxattr (const char *path, const char *name, const void *value, size_t len,
 	      int flags)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_setxattr (&entry, name, value, len, flags);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_setxattr (inode, name, value, len, flags);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_getxattr (const char *path, const char *name, void *value, size_t len)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_getxattr (&entry, name, value, len);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_getxattr (inode, name, value, len);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_listxattr (const char *path, char *buffer, size_t len)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_listxattr (&entry, buffer, len);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_listxattr (inode, buffer, len);
+  vfs_unref_inode (inode);
   return ret;
 }
 
 int
 sys_removexattr (const char *path, const char *name)
 {
-  VFSDirEntry entry;
-  int ret = sys_path_rel_lookup (path, &entry);
-  if (ret != 0)
-    return ret;
-  ret = vfs_removexattr (&entry, name);
-  vfs_unref_inode (entry.d_inode);
-  kfree (entry.d_name);
+  int ret;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  ret = vfs_removexattr (inode, name);
+  vfs_unref_inode (inode);
   return ret;
 }

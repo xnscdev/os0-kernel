@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * ctype.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,32 +16,100 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDLIB_H
-#define _STDLIB_H
+#include <ctype.h>
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
+int
+isalnum (int c)
+{
+  return isalpha (c) || isdigit (c);
+}
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+int
+isalpha (int c)
+{
+  return islower (c) || isupper (c);
+}
 
-__BEGIN_DECLS
+int
+isascii (int c)
+{
+  return c >= 0 && c < 0x80;
+}
 
-int atoi (const char *str);
-long atol (const char *str);
-long long atoll (const char *str);
+int
+isblank (int c)
+{
+  return c == ' ' || c == '\t';
+}
 
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
+int
+iscntrl (int c)
+{
+  return (unsigned char) c < ' ' || c == '\177';
+}
 
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
+int
+isdigit (int c)
+{
+  return c >= '0' && c <= '9';
+}
 
-void panic (const char *__restrict fmt, ...)
-  __attribute__ ((noreturn, cold, format (printf, 1, 2)));
+int
+isgraph (int c)
+{
+  return c > ' ' && c <= '~';
+}
 
-__END_DECLS
+int
+islower (int c)
+{
+  return c >= 'a' && c <= 'z';
+}
 
-#endif
+int
+isprint (int c)
+{
+  return c == ' ' || isgraph (c);
+}
+
+int
+ispunct (int c)
+{
+  return isgraph (c) && !isalnum (c);
+}
+
+int
+isspace (int c)
+{
+  return isblank (c) || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
+
+int
+isupper (int c)
+{
+  return c >= 'A' && c <= 'Z';
+}
+
+int
+isxdigit (int c)
+{
+  return isdigit (c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+int
+toascii (int c)
+{
+  return c & 0x7f;
+}
+
+int
+tolower (int c)
+{
+  return isupper (c) ? c + 0x20 : c;
+}
+
+int
+toupper (int c)
+{
+  return islower (c) ? c - 0x20 : c;
+}

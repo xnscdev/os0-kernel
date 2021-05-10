@@ -37,7 +37,7 @@ typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
 typedef struct _VFSDirEntry VFSDirEntry;
-typedef struct _VFSPath VFSPath;
+typedef struct _VFSDirectory VFSDirectory;
 
 typedef struct
 {
@@ -54,26 +54,26 @@ typedef struct
 typedef struct
 {
   int (*vfs_create) (VFSInode *, const char *, mode_t);
-  int (*vfs_lookup) (VFSDirEntry *, VFSSuperblock *, VFSPath *);
+  VFSInode *(*vfs_lookup) (VFSInode *, VFSSuperblock *, const char *, int);
   int (*vfs_link) (VFSInode *, VFSInode *, const char *);
   int (*vfs_unlink) (VFSInode *, const char *);
   int (*vfs_symlink) (VFSInode *, const char *, const char *);
   int (*vfs_read) (VFSInode *, void *, size_t, off_t);
   int (*vfs_write) (VFSInode *, void *, size_t, off_t);
-  int (*vfs_readdir) (VFSDirEntry **, VFSSuperblock *, VFSInode *);
+  VFSDirEntry *(*vfs_readdir) (VFSDirectory *, VFSSuperblock *);
   int (*vfs_chmod) (VFSInode *, mode_t);
   int (*vfs_chown) (VFSInode *, uid_t, gid_t);
   int (*vfs_mkdir) (VFSInode *, const char *, mode_t);
   int (*vfs_rmdir) (VFSInode *, const char *);
   int (*vfs_mknod) (VFSInode *, const char *, mode_t, dev_t);
   int (*vfs_rename) (VFSInode *, const char *, VFSInode *, const char *);
-  int (*vfs_readlink) (VFSDirEntry *, char *, size_t);
+  int (*vfs_readlink) (VFSInode *, char *, size_t);
   int (*vfs_truncate) (VFSInode *);
-  int (*vfs_getattr) (VFSMount *, VFSDirEntry *, struct stat *);
-  int (*vfs_setxattr) (VFSDirEntry *, const char *, const void *, size_t, int);
-  int (*vfs_getxattr) (VFSDirEntry *, const char *, void *, size_t);
-  int (*vfs_listxattr) (VFSDirEntry *, char *, size_t);
-  int (*vfs_removexattr) (VFSDirEntry *, const char *);
+  int (*vfs_getattr) (VFSInode *, struct stat *);
+  int (*vfs_setxattr) (VFSInode *, const char *, const void *, size_t, int);
+  int (*vfs_getxattr) (VFSInode *, const char *, void *, size_t);
+  int (*vfs_listxattr) (VFSInode *, char *, size_t);
+  int (*vfs_removexattr) (VFSInode *, const char *);
 } VFSInodeOps;
 
 typedef struct
@@ -101,7 +101,7 @@ struct _VFSSuperblock
   const VFSSuperblockOps *sb_ops;
   int sb_flags;
   unsigned long sb_magic;
-  VFSDirEntry *sb_root;
+  VFSInode *sb_root;
   const VFSFilesystem *sb_fstype;
   void *sb_private;
 };
@@ -134,31 +134,30 @@ struct _VFSDirEntry
   int d_mounted;
   char *d_name;
   const VFSDirEntryOps *d_ops;
-  VFSDirEntry *d_prev;
-  VFSDirEntry *d_next;
+};
+
+struct _VFSDirectory
+{
+  VFSInode *vd_inode;
+  uint32_t vd_offset;
+  uint32_t vd_block;
+  char *vd_buffer;
+  size_t vd_count;
 };
 
 struct _VFSMount
 {
   const VFSFilesystem *vfs_fstype;
   VFSSuperblock vfs_sb;
-  const VFSMount *vfs_parent;
-  VFSPath *vfs_mntpoint;
+  VFSInode *vfs_mntpoint;
   void *vfs_private;
-};
-
-struct _VFSPath
-{
-  VFSPath *vp_prev;
-  VFSPath *vp_next;
-  char vp_short[16];
-  char *vp_long;
 };
 
 __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 extern VFSMount mount_table[VFS_MOUNT_TABLE_SIZE];
+extern VFSInode *vfs_root_inode;
 
 void vfs_init (void);
 
@@ -178,13 +177,14 @@ int vfs_statvfs (VFSSuperblock *sb, struct statvfs *st);
 int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int vfs_create (VFSInode *dir, const char *name, mode_t mode);
-int vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
+VFSInode *vfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+		      int follow_symlinks);
 int vfs_link (VFSInode *old, VFSInode *dir, const char *new);
 int vfs_unlink (VFSInode *dir, const char *name);
 int vfs_symlink (VFSInode *dir, const char *old, const char *new);
 int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
-int vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);
+VFSDirEntry *vfs_readdir (VFSDirectory *dir, VFSSuperblock *sb);
 int vfs_chmod (VFSInode *inode, mode_t mode);
 int vfs_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int vfs_mkdir (VFSInode *dir, const char *name, mode_t mode);
@@ -192,28 +192,20 @@ int vfs_rmdir (VFSInode *dir, const char *name);
 int vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev);
 int vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 		const char *newname);
-int vfs_readlink (VFSDirEntry *entry, char *buffer, size_t len);
+int vfs_readlink (VFSInode *inode, char *buffer, size_t len);
 int vfs_truncate (VFSInode *inode);
-int vfs_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
-int vfs_setxattr (VFSDirEntry *entry, const char *name, const void *value,
-		   size_t len, int flags);
-int vfs_getxattr (VFSDirEntry *entry, const char *name, void *buffer,
-		   size_t len);
-int vfs_listxattr (VFSDirEntry *entry, char *buffer, size_t len);
-int vfs_removexattr (VFSDirEntry *entry, const char *name);
+int vfs_getattr (VFSInode *inode, struct stat *st);
+int vfs_setxattr (VFSInode *inode, const char *name, const void *value,
+		  size_t len, int flags);
+int vfs_getxattr (VFSInode *inode, const char *name, void *buffer,
+		  size_t len);
+int vfs_listxattr (VFSInode *inode, char *buffer, size_t len);
+int vfs_removexattr (VFSInode *inode, const char *name);
 
 int vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b);
 void vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode);
 
-int vfs_path_add_component (VFSPath **result, VFSPath *path, const char *name);
-void vfs_path_free (VFSPath *path);
-int vfs_namei (VFSPath **result, const char *path);
-int vfs_path_cmp (const VFSPath *a, const VFSPath *b);
-int vfs_path_subdir (const VFSPath *path, const VFSPath *dir);
-VFSPath *vfs_path_first (const VFSPath *path);
-VFSPath *vfs_path_last (const VFSPath *path);
-int vfs_path_find_mount (const VFSPath *path);
-int vfs_path_rel (VFSPath **result, VFSPath *path, const VFSMount *mp);
+VFSInode *vfs_open_file (const char *path);
 
 __END_DECLS
 

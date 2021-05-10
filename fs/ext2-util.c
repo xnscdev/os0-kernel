@@ -774,13 +774,17 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
   Ext2DirEntry *newent;
-  VFSDirEntry *entries;
-  VFSDirEntry *temp;
+  VFSDirectory *d;
+  VFSDirEntry *entry;
   void *data;
   size_t size;
   off_t block;
   off_t realblock;
   off_t ret;
+
+  if (!S_ISDIR (dir->vi_mode))
+    return -ENOTDIR;
+
   size = strlen (name);
   if (size > EXT2_MAX_NAME_LEN)
     return -ENAMETOOLONG;
@@ -788,24 +792,27 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   if (unlikely (data == NULL))
     return -ENOMEM;
 
-  ret = ext2_readdir (&entries, dir->vi_sb, dir);
-  if (ret != 0)
-    return ret;
-  if (entries != NULL)
+  d = ext2_alloc_dir (dir, dir->vi_sb);
+  if (d == NULL)
     {
-      temp = entries->d_next;
-      while (1)
+      kfree (data);
+      return -ENOMEM;
+    }
+
+  while (1)
+    {
+      entry = ext2_readdir (d, dir->vi_sb);
+      if (entry == NULL)
+	break;
+      if (strcmp (entry->d_name, name) == 0)
 	{
-	  if (strcmp (entries->d_name, name) == 0)
-	    ret = -EEXIST;
-	  vfs_destroy_dir_entry (entries);
-	  entries = temp;
-	  if (entries == NULL)
-	    break;
-	  temp = entries->d_next;
+	  kfree (d->vd_buffer);
+	  kfree (d);
+	  kfree (data);
+	  vfs_destroy_dir_entry (entry);
+	  return -EEXIST;
 	}
-      if (ret != 0)
-	return ret;
+      vfs_destroy_dir_entry (entry);
     }
 
   for (block = 0; (loff_t) block * dir->vi_sb->sb_blksize < dir->vi_size;
@@ -933,4 +940,30 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
   kfree (data);
   return ret;
+}
+
+VFSDirectory *
+ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
+{
+  VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
+  loff_t realblock;
+
+  if (unlikely (d == NULL))
+    return NULL;
+  d->vd_inode = dir;
+  d->vd_buffer = kmalloc (sb->sb_blksize);
+  if (unlikely (d->vd_buffer == NULL))
+    goto err;
+
+  realblock = ext2_data_block (dir->vi_private, sb, 0);
+  if (realblock < 0)
+    goto err;
+  if (ext2_read_blocks (d->vd_buffer, sb, realblock, 1) < 0)
+    goto err;
+  return d;
+
+ err:
+  kfree (d->vd_buffer);
+  kfree (d);
+  return NULL;
 }

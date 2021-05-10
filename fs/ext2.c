@@ -16,9 +16,11 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
+#include <sys/sysmacros.h>
 #include <vm/heap.h>
 #include <errno.h>
 
@@ -63,7 +65,7 @@ const VFSDirEntryOps ext2_dops = {
 };
 
 const VFSFilesystem ext2_vfs = {
-  .vfs_name = "ext2",
+  .vfs_name = EXT2_FS_NAME,
   .vfs_flags = 0,
   .vfs_mount = ext2_mount,
   .vfs_unmount = ext2_unmount,
@@ -96,14 +98,23 @@ ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
 }
 
 static int
-ext2_init_disk (VFSMount *mp, int flags, const char *devname)
+ext2_init_disk (VFSMount *mp, int flags, const char *path)
 {
-  SpecDevice *dev = device_lookup (devname);
+  VFSInode *inode;
+  SpecDevice *dev;
   Ext2Superblock *esb;
   int ret;
 
-  if (dev == NULL)
+  inode = vfs_open_file (path);
+  if (inode == NULL)
     return -ENOENT;
+  /* Make sure we are mounting a valid block device */
+  if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0
+      || !S_ISBLK (inode->vi_mode))
+    return -EINVAL;
+  dev = device_lookup (major (inode->vi_rdev), minor (inode->vi_rdev));
+  assert (dev != NULL);
+
   esb = kmalloc (sizeof (Ext2Superblock));
   if (unlikely (esb == NULL))
     return -ENOMEM;
@@ -156,15 +167,10 @@ int
 ext2_mount (VFSMount *mp, int flags, void *data)
 {
   VFSDirEntry *root;
-  VFSPath *devpath;
-  VFSPath *temp;
   int ret;
 
   if (data == NULL)
     return -EINVAL;
-  ret = vfs_namei (&devpath, (char *) data);
-  if (ret != 0)
-    return ret;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
   mp->vfs_sb.sb_ops = &ext2_sops;
@@ -172,38 +178,29 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   /* Set root dir entry and inode */
   root = kmalloc (sizeof (VFSDirEntry));
   if (unlikely (root == NULL))
-    {
-      vfs_path_free (devpath);
-      return -ENOMEM;
-    }
+    return -ENOMEM;
   root->d_flags = 0;
   root->d_mounted = 1;
   root->d_name = strdup ("/");
   if (unlikely (root->d_name == NULL))
     {
-      vfs_path_free (devpath);
       kfree (root);
       return -ENOMEM;
     }
 
-  temp = vfs_path_first (devpath);
-  if (temp == NULL || strcmp (temp->vp_short, "dev") != 0
-      || temp != devpath->vp_prev || *devpath->vp_short == '\0')
-    return -EINVAL;
-  ret = ext2_init_disk (mp, flags, devpath->vp_short);
+  ret = ext2_init_disk (mp, flags, data);
   if (ret != 0)
     {
-      vfs_path_free (devpath);
       ext2_destroy_inode (root->d_inode);
       kfree (root);
       return ret;
     }
-  vfs_path_free (devpath);
 
-  root->d_inode = ext2_alloc_inode (&mp->vfs_sb);
-  root->d_inode->vi_ino = EXT2_ROOT_INODE;
-  ext2_fill_inode (root->d_inode);
-  mp->vfs_sb.sb_root = root;
+  mp->vfs_sb.sb_root = ext2_alloc_inode (&mp->vfs_sb);
+  if (unlikely (mp->vfs_sb.sb_root == NULL))
+    return -ENOMEM;
+  mp->vfs_sb.sb_root->vi_ino = EXT2_ROOT_INODE;
+  ext2_fill_inode (mp->vfs_sb.sb_root);
   return 0;
 }
 
@@ -320,7 +317,7 @@ ext2_write_inode (VFSInode *inode)
 void
 ext2_free (VFSSuperblock *sb)
 {
-  vfs_destroy_dir_entry (sb->sb_root);
+  vfs_unref_inode (sb->sb_root);
   kfree (sb->sb_private);
 }
 

@@ -99,61 +99,34 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   return ret;
 }
 
-int
-ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
+VFSInode *
+ext2_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+	     int follow_symlinks)
 {
-  VFSDirEntry *dir = sb->sb_root;
-  int ret;
+  VFSDirEntry *entry;
+  VFSDirectory *d = ext2_alloc_dir (dir, sb);
+  if (d == NULL)
+    return NULL;
 
-  if (path == NULL)
+  while (1)
     {
-      memcpy (entry, dir, sizeof (VFSDirEntry));
-      return 0;
+      entry = ext2_readdir (d, sb);
+      if (entry == NULL)
+	return NULL;
+      if (strcmp (entry->d_name, name) == 0)
+	{
+	  /* TODO Follow symbolic links if desired */
+	  VFSInode *inode = entry->d_inode;
+	  kfree (entry->d_name);
+	  kfree (entry);
+	  return inode;
+	}
+      vfs_destroy_dir_entry (entry);
     }
 
-  for (path = vfs_path_first (path); path != NULL; path = path->vp_next)
-    {
-      VFSDirEntry *entries;
-      ret = ext2_readdir (&entries, sb, dir->d_inode);
-      if (ret != 0)
-	return ret;
-      for (; entries != NULL; entries = entries->d_next)
-	{
-	  char *name = path->vp_long == NULL ? path->vp_short : path->vp_long;
-	  vfs_destroy_dir_entry (entries->d_prev);
-	  entries->d_prev = NULL;
-	  if (strcmp (entries->d_name, name) == 0)
-	    goto found;
-	}
-      vfs_destroy_dir_entry (entries);
-      if (dir != sb->sb_root)
-	vfs_destroy_dir_entry (dir);
-      return -ENOENT;
-
-    found:
-      dir = entries;
-
-      /* Clean up all unchecked entries */
-      for (entries = entries->d_next; entries != NULL;
-	   entries = entries->d_next)
-        vfs_destroy_dir_entry (entries);
-      dir->d_next = NULL;
-
-      if (path->vp_next != NULL && !S_ISDIR (dir->d_inode->vi_mode))
-	{
-	  vfs_destroy_dir_entry (dir);
-	  return -ENOTDIR;
-	}
-      if (strlen (dir->d_name) > EXT2_MAX_NAME_LEN)
-	{
-	  vfs_destroy_dir_entry (dir);
-	  return -ENAMETOOLONG;
-	}
-    }
-
-  memcpy (entry, dir, sizeof (VFSDirEntry));
-  kfree (dir);
-  return 0;
+  kfree (d->vd_buffer);
+  kfree (d);
+  return NULL;
 }
 
 int
@@ -471,82 +444,58 @@ ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
   return 0;
 }
 
-int
-ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
+VFSDirEntry *
+ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb)
 {
   Ext2Superblock *esb;
   Ext2Inode *ei;
-  VFSDirEntry *result = NULL;
-  VFSDirEntry *temp;
-  void *buffer;
-  int blocks;
-  int i;
 
-  if (dir->vi_ino == 0)
-    return -EINVAL;
-  ei = ext2_read_inode (sb, dir->vi_ino);
-  if (ei == NULL)
-    return -EINVAL;
-
-  if ((ei->ei_mode & 0xf000) != EXT2_TYPE_DIR)
-    {
-      kfree (ei);
-      return -ENOTDIR;
-    }
-
+  if (dir->vd_inode == NULL)
+    return NULL;
+  ei = dir->vd_inode->vi_private;
   esb = sb->sb_private;
-  blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
-  buffer = kmalloc (sb->sb_blksize);
 
-  for (i = 0; i < blocks; i++)
+  while (1)
     {
-      int bytes = 0;
-      if (ext2_read_blocks (buffer, sb, ext2_data_block (ei, sb, i), 1) != 0)
+      Ext2DirEntry *guess = (Ext2DirEntry *) (dir->vd_buffer + dir->vd_offset);
+      VFSDirEntry *result;
+      uint16_t namelen;
+
+      if (guess->ed_inode == 0 || guess->ed_size == 0)
 	{
-	  kfree (buffer);
-	  kfree (ei);
-	  return -EIO;
-	}
-      while (bytes < sb->sb_blksize)
-	{
-	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
-	  uint16_t namelen;
-	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	  dir->vd_offset += 4;
+	  if (dir->vd_offset >= sb->sb_blksize)
 	    {
-	      bytes += 4;
-	      continue;
+	      if (++dir->vd_block >=
+		  (dir->vd_inode->vi_size + sb->sb_blksize - 1) /
+		  sb->sb_blksize)
+		return NULL; /* Finished reading all directory entries */
+	      if (ext2_read_blocks (dir->vd_buffer, sb,
+				    ext2_data_block (ei, sb, dir->vd_block), 1)
+		  != 0)
+		return NULL;
+	      dir->vd_offset = 0;
 	    }
-
-	  namelen = guess->ed_namelenl;
-	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
-	    namelen |= guess->ed_namelenh << 8;
-
-	  temp = kmalloc (sizeof (VFSDirEntry));
-	  temp->d_flags = 0;
-	  temp->d_inode = ext2_alloc_inode (sb);
-	  temp->d_inode->vi_ino = guess->ed_inode;
-	  ext2_fill_inode (temp->d_inode);
-	  temp->d_mounted = 0;
-	  temp->d_name = kmalloc (namelen + 1);
-	  strncpy (temp->d_name, buffer + bytes + 8, namelen);
-	  temp->d_name[namelen] = '\0';
-	  temp->d_ops = &ext2_dops;
-	  temp->d_prev = result;
-	  if (result != NULL)
-	    result->d_next = temp;
-	  temp->d_next = NULL;
-	  result = temp;
-
-	  bytes += guess->ed_size;
+	  continue;
 	}
-    }
 
-  kfree (buffer);
-  kfree (ei);
-  for (; result->d_prev != NULL; result = result->d_prev)
-    ;
-  *entries = result;
-  return 0;
+      namelen = guess->ed_namelenl;
+      if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
+	namelen |= guess->ed_namelenh << 8;
+
+      result = kmalloc (sizeof (VFSDirEntry));
+      result->d_flags = 0;
+      result->d_inode = ext2_alloc_inode (sb);
+      result->d_inode->vi_ino = guess->ed_inode;
+      ext2_fill_inode (result->d_inode);
+      result->d_mounted = 0;
+      result->d_name = kmalloc (namelen + 1);
+      strncpy (result->d_name, dir->vd_buffer + dir->vd_offset + 8, namelen);
+      result->d_name[namelen] = '\0';
+      result->d_ops = &ext2_dops;
+      dir->vd_offset += guess->ed_size;
+      return result;
+    }
 }
 
 int
@@ -721,32 +670,32 @@ ext2_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 }
 
 int
-ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
+ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 {
   int i;
-  loff_t size = entry->d_inode->vi_size;
-  Ext2Inode *inode = entry->d_inode->vi_private;
+  loff_t size = inode->vi_size;
+  Ext2Inode *ei = inode->vi_private;
 
   if (size <= 60)
     {
       /* Path stored directly in block pointers */
       for (i = 0; i < len && i < size && i < 48; i++)
-	buffer[i] = ((char *) inode->ei_bptr0)[i];
+	buffer[i] = ((char *) ei->ei_bptr0)[i];
       for (; i < len && i < size && i < 52; i++)
-	buffer[i] = ((char *) &inode->ei_bptr1)[i - 48];
+	buffer[i] = ((char *) &ei->ei_bptr1)[i - 48];
       for (; i < len && i < size && i < 56; i++)
-	buffer[i] = ((char *) &inode->ei_bptr2)[i - 52];
+	buffer[i] = ((char *) &ei->ei_bptr2)[i - 52];
       for (; i < len && i < size && i < 60; i++)
-	buffer[i] = ((char *) &inode->ei_bptr3)[i - 56];
+	buffer[i] = ((char *) &ei->ei_bptr3)[i - 56];
     }
   else
     {
       uint32_t block = 0;
-      VFSSuperblock *sb = entry->d_inode->vi_sb;
+      VFSSuperblock *sb = inode->vi_sb;
       uint32_t realblock;
       void *currblock;
 
-      realblock = ext2_data_block (inode, sb, block);
+      realblock = ext2_data_block (ei, sb, block);
       if (realblock < 0)
         return -EIO;
 
@@ -761,9 +710,9 @@ ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
 	      kfree (currblock);
 	      return -EIO;
 	    }
-	  if (i + sb->sb_blksize > entry->d_inode->vi_size)
+	  if (i + sb->sb_blksize > inode->vi_size)
 	    {
-	      memcpy (buffer + i, currblock, entry->d_inode->vi_size - i);
+	      memcpy (buffer + i, currblock, inode->vi_size - i);
 	      kfree (currblock);
 	      return i;
 	    }
@@ -776,7 +725,7 @@ ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len)
 
 	  memcpy (buffer + i, currblock, sb->sb_blksize);
 	  i += sb->sb_blksize;
-	  realblock = ext2_data_block (inode, sb, ++block);
+	  realblock = ext2_data_block (ei, sb, ++block);
 	  if (realblock < 0)
 	    {
 	      kfree (currblock);
@@ -830,11 +779,8 @@ ext2_truncate (VFSInode *inode)
 }
 
 int
-ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
+ext2_getattr (VFSInode *inode, struct stat *st)
 {
-  VFSInode *inode = entry->d_inode;
-  if (inode == NULL)
-    return -EINVAL;
   st->st_dev = makedev (inode->vi_sb->sb_dev->sd_major,
 			inode->vi_sb->sb_dev->sd_minor);
   st->st_ino = inode->vi_ino;
@@ -847,32 +793,32 @@ ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
   st->st_atime = inode->vi_atime.tv_sec;
   st->st_mtime = inode->vi_mtime.tv_sec;
   st->st_ctime = inode->vi_ctime.tv_sec;
-  st->st_blksize = mp->vfs_sb.sb_blksize;
+  st->st_blksize = inode->vi_sb->sb_blksize;
   st->st_blocks = inode->vi_blocks;
   return 0;
 }
 
 int
-ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+ext2_setxattr (VFSInode *inode, const char *name, const void *value,
 	       size_t len, int flags)
 {
   return -ENOSYS;
 }
 
 int
-ext2_getxattr (VFSDirEntry *entry, const char *name, void *buffer, size_t len)
+ext2_getxattr (VFSInode *inode, const char *name, void *buffer, size_t len)
 {
   return -ENOSYS;
 }
 
 int
-ext2_listxattr (VFSDirEntry *entry, char *buffer, size_t len)
+ext2_listxattr (VFSInode *inode, char *buffer, size_t len)
 {
   return -ENOSYS;
 }
 
 int
-ext2_removexattr (VFSDirEntry *entry, const char *name)
+ext2_removexattr (VFSInode *inode, const char *name)
 {
   return -ENOSYS;
 }

@@ -114,27 +114,13 @@ device_register (dev_t major, dev_t minor, unsigned char type, const char *name,
 }
 
 SpecDevice *
-device_lookup (const char *name)
-{
-  int i;
-  if (name == NULL)
-    return NULL;
-  for (i = 0; i < DEVICE_TABLE_SIZE; i++)
-    {
-      if (strcmp (device_table[i].sd_name, name) == 0)
-	return &device_table[i];
-    }
-  return NULL;
-}
-
-SpecDevice *
-device_lookup_devid (dev_t major, dev_t minor)
+device_lookup (dev_t major, dev_t minor)
 {
   int i;
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)
     {
       if (device_table[i].sd_major == major
-	  || device_table[i].sd_minor == minor)
+	  && device_table[i].sd_minor == minor)
 	return &device_table[i];
     }
   return NULL;

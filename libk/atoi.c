@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * atoi.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,32 +16,59 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDLIB_H
-#define _STDLIB_H
+#include <ctype.h>
+#include <stdlib.h>
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
+int
+atoi (const char *str)
+{
+  int neg = 0;
+  int val = 0;
+  while (isspace (*str))
+    str++;
+  if (*str == '-')
+    neg = 1;
+  while (isdigit (*str))
+    {
+      val *= 10;
+      val += *str - '0';
+      str++;
+    }
+  return neg ? -val : val;
+}
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+long
+atol (const char *str)
+{
+  int neg = 0;
+  long val = 0;
+  while (isspace (*str))
+    str++;
+  if (*str == '-')
+    neg = 1;
+  while (isdigit (*str))
+    {
+      val *= 10;
+      val += *str - '0';
+      str++;
+    }
+  return neg ? -val : val;
+}
 
-__BEGIN_DECLS
-
-int atoi (const char *str);
-long atol (const char *str);
-long long atoll (const char *str);
-
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
-
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
-
-void panic (const char *__restrict fmt, ...)
-  __attribute__ ((noreturn, cold, format (printf, 1, 2)));
-
-__END_DECLS
-
-#endif
+long long
+atoll (const char *str)
+{
+  int neg = 0;
+  long long val = 0;
+  while (isspace (*str))
+    str++;
+  if (*str == '-')
+    neg = 1;
+  while (isdigit (*str))
+    {
+      val *= 10;
+      val += *str - '0';
+      str++;
+    }
+  return neg ? -val : val;
+}

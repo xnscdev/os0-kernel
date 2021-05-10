@@ -21,8 +21,9 @@
 #include <libk/macros.h>
 #include <libk/types.h>
 #include <assert.h>
-#include <fcntl.h>
+#include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

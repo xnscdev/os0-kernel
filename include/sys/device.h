@@ -71,8 +71,7 @@ SpecDevice *device_register (dev_t major, dev_t minor, unsigned char type,
 			     int (*read) (SpecDevice *, void *, size_t, off_t),
 			     int (*write) (SpecDevice *, void *, size_t,
 					   off_t));
-SpecDevice *device_lookup (const char *name);
-SpecDevice *device_lookup_devid (dev_t major, dev_t minor);
+SpecDevice *device_lookup (dev_t major, dev_t minor);
 
 __END_DECLS
 

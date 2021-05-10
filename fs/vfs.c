@@ -16,18 +16,86 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
+#include <sys/process.h>
+#include <sys/syscall.h>
 #include <vm/heap.h>
-#include <errno.h>
 
 VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 VFSMount mount_table[VFS_MOUNT_TABLE_SIZE];
+VFSInode *vfs_root_inode;
+
+static VFSInode *vfs_default_lookup (VFSInode *dir, VFSSuperblock *sb,
+				     const char *name, int follow_symlinks);
+static VFSDirEntry *vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb);
+
+static VFSInodeOps vfs_default_iops = {
+  .vfs_lookup = vfs_default_lookup,
+  .vfs_readdir = vfs_default_readdir
+};
+
+static VFSSuperblockOps vfs_default_sops = {
+  .sb_destroy_inode = (void (*) (VFSInode *)) kfree
+};
+
+static VFSSuperblock vfs_default_sb = {
+  .sb_ops = &vfs_default_sops
+};
+
+static VFSInode *
+vfs_default_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+		    int follow_symlinks)
+{
+  /* Must be root directory */
+  if (dir->vi_ino != 0)
+    return NULL;
+  if (strcmp (name, "dev") == 0)
+    {
+      VFSInode *dev = kzalloc (sizeof (VFSInode));
+      if (unlikely (dev == NULL))
+	return NULL;
+      dev->vi_ino = 1;
+      dev->vi_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+      dev->vi_nlink = 2;
+      dev->vi_ops = &vfs_default_iops;
+      dev->vi_sb = sb;
+      dev->vi_refcnt = 1;
+      return dev;
+    }
+  return NULL;
+}
+
+static VFSDirEntry *
+vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb)
+{
+  if (dir->vd_inode->vi_ino == 0)
+    {
+      VFSDirEntry *entry;
+      if (dir->vd_count > 0)
+	return NULL;
+      entry = kzalloc (sizeof (VFSDirEntry));
+      entry->d_inode = vfs_default_lookup (dir->vd_inode, sb, "dev", 0);
+      entry->d_name = strdup ("dev");
+      return entry;
+    }
+  return NULL;
+}
 
 void
 vfs_init (void)
 {
+  vfs_root_inode = kzalloc (sizeof (VFSInode));
+  if (unlikely (vfs_root_inode == NULL))
+    panic ("Failed to initialize VFS");
+  vfs_root_inode->vi_nlink = 3;
+  vfs_root_inode->vi_ops = &vfs_default_iops;
+  vfs_root_inode->vi_sb = &vfs_default_sb;
+  vfs_root_inode->vi_refcnt = 1;
+
+  devfs_init ();
   ext2_init ();
 }
 
@@ -76,21 +144,11 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       mp->vfs_fstype = &fs_table[i];
 
       /* Get mount point as a path and set parent mount */
-      ret = vfs_namei (&mp->vfs_mntpoint, dir);
-      if (ret != 0)
+      mp->vfs_mntpoint = vfs_open_file (dir);
+      if (mp->vfs_mntpoint == NULL)
 	{
 	  kfree (mp);
-	  return ret;
-	}
-      for (j = 0; j < VFS_MOUNT_TABLE_SIZE; j++)
-	{
-	  if (mount_table[j].vfs_mntpoint == NULL)
-	    continue;
-	  if (vfs_path_subdir (mp->vfs_mntpoint, mount_table[j].vfs_mntpoint))
-	    {
-	      mp->vfs_parent = &mount_table[j];
-	      break;
-	    }
+	  return -EPERM;
 	}
 
       /* Find a slot in the mount table */
@@ -101,7 +159,6 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 	}
       if (j == VFS_MOUNT_TABLE_SIZE)
 	{
-	  vfs_path_free (mp->vfs_mntpoint);
 	  kfree (mp);
 	  return -ENOSPC;
 	}
@@ -121,7 +178,10 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 VFSInode *
 vfs_alloc_inode (VFSSuperblock *sb)
 {
-  VFSInode *inode = sb->sb_ops->sb_alloc_inode (sb);
+  VFSInode *inode;
+  if (sb->sb_ops->sb_alloc_inode == NULL)
+    return NULL;
+  inode = sb->sb_ops->sb_alloc_inode (sb);
   if (inode == NULL)
     return NULL;
   inode->vi_refcnt = 1;
@@ -140,183 +200,307 @@ vfs_unref_inode (VFSInode *inode)
 {
   if (inode == NULL)
     return;
-  if (--inode->vi_refcnt == 0)
+  if (--inode->vi_refcnt == 0 && inode->vi_sb->sb_ops->sb_destroy_inode != NULL)
     inode->vi_sb->sb_ops->sb_destroy_inode (inode);
 }
 
 void
 vfs_fill_inode (VFSInode *inode)
 {
-  inode->vi_sb->sb_ops->sb_fill_inode (inode);
+  if (inode->vi_sb->sb_ops->sb_fill_inode != NULL)
+    inode->vi_sb->sb_ops->sb_fill_inode (inode);
 }
 
 void
 vfs_write_inode (VFSInode *inode)
 {
-  inode->vi_sb->sb_ops->sb_write_inode (inode);
+  if (inode->vi_sb->sb_ops->sb_write_inode != NULL)
+    inode->vi_sb->sb_ops->sb_write_inode (inode);
 }
 
 void
 vfs_free_sb (VFSSuperblock *sb)
 {
-  sb->sb_ops->sb_free (sb);
+  if (sb->sb_ops->sb_free != NULL)
+    sb->sb_ops->sb_free (sb);
 }
 
 void
 vfs_update_sb (VFSSuperblock *sb)
 {
-  sb->sb_ops->sb_update (sb);
+  if (sb->sb_ops->sb_update != NULL)
+    sb->sb_ops->sb_update (sb);
 }
 
 int
 vfs_statvfs (VFSSuperblock *sb, struct statvfs *st)
 {
-  return sb->sb_ops->sb_statvfs (sb, st);
+  if (sb->sb_ops->sb_statvfs != NULL)
+    return sb->sb_ops->sb_statvfs (sb, st);
+  return -ENOSYS;
 }
 
 int
 vfs_remount (VFSSuperblock *sb, int *flags, void *data)
 {
-  return sb->sb_ops->sb_remount (sb, flags, data);
+  if (sb->sb_ops->sb_remount != NULL)
+    return sb->sb_ops->sb_remount (sb, flags, data);
+  return -ENOSYS;
 }
 
 int
 vfs_create (VFSInode *dir, const char *name, mode_t mode)
 {
-  return dir->vi_ops->vfs_create (dir, name, mode);
+  if (dir->vi_ops->vfs_create != NULL)
+    return dir->vi_ops->vfs_create (dir, name, mode);
+  return -ENOSYS;
 }
 
-int
-vfs_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path)
+VFSInode *
+vfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+	    int follow_symlinks)
 {
-  return sb->sb_fstype->vfs_iops->vfs_lookup (entry, sb, path);
+  if (dir->vi_ops->vfs_lookup != NULL)
+    return dir->vi_ops->vfs_lookup (dir, sb, name, follow_symlinks);
+  return NULL;
 }
 
 int
 vfs_link (VFSInode *old, VFSInode *dir, const char *new)
 {
-  return dir->vi_ops->vfs_link (old, dir, new);
+  if (dir->vi_ops->vfs_link != NULL)
+    return dir->vi_ops->vfs_link (old, dir, new);
+  return -ENOSYS;
 }
 
 int
 vfs_unlink (VFSInode *dir, const char *name)
 {
-  return dir->vi_ops->vfs_unlink (dir, name);
+  if (dir->vi_ops->vfs_unlink != NULL)
+    return dir->vi_ops->vfs_unlink (dir, name);
+  return -ENOSYS;
 }
 
 int
 vfs_symlink (VFSInode *dir, const char *old, const char *new)
 {
-  return dir->vi_ops->vfs_symlink (dir, old, new);
+  if (dir->vi_ops->vfs_symlink != NULL)
+    return dir->vi_ops->vfs_symlink (dir, old, new);
+  return -ENOSYS;
 }
 
 int
 vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return inode->vi_ops->vfs_read (inode, buffer, len, offset);
+  if (inode->vi_ops->vfs_read != NULL)
+    return inode->vi_ops->vfs_read (inode, buffer, len, offset);
+  return -ENOSYS;
 }
 
 int
 vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return inode->vi_ops->vfs_write (inode, buffer, len, offset);
+  if (inode->vi_ops->vfs_write != NULL)
+    return inode->vi_ops->vfs_write (inode, buffer, len, offset);
+  return -ENOSYS;
 }
 
-int
-vfs_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir)
+VFSDirEntry *
+vfs_readdir (VFSDirectory *dir, VFSSuperblock *sb)
 {
-  return sb->sb_fstype->vfs_iops->vfs_readdir (entries, sb, dir);
+  if (dir->vd_inode->vi_ops->vfs_readdir != NULL)
+    return dir->vd_inode->vi_ops->vfs_readdir (dir, sb);
+  return NULL;
 }
 
 int
 vfs_chmod (VFSInode *inode, mode_t mode)
 {
-  return inode->vi_ops->vfs_chmod (inode, mode);
+  if (inode->vi_ops->vfs_chmod != NULL)
+    return inode->vi_ops->vfs_chmod (inode, mode);
+  return -ENOSYS;
 }
 
 int
 vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 {
-  return inode->vi_ops->vfs_chown (inode, uid, gid);
+  if (inode->vi_ops->vfs_chown != NULL)
+    return inode->vi_ops->vfs_chown (inode, uid, gid);
+  return -ENOSYS;
 }
 
 int
 vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  return dir->vi_ops->vfs_mkdir (dir, name, mode);
+  if (dir->vi_ops->vfs_mkdir != NULL)
+    return dir->vi_ops->vfs_mkdir (dir, name, mode);
+  return -ENOSYS;
 }
 
 int
 vfs_rmdir (VFSInode *dir, const char *name)
 {
-  return dir->vi_ops->vfs_rmdir (dir, name);
+  if (dir->vi_ops->vfs_rmdir != NULL)
+    return dir->vi_ops->vfs_rmdir (dir, name);
+  return -ENOSYS;
 }
 
 int
 vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
-  return dir->vi_ops->vfs_mknod (dir, name, mode, rdev);
+  if (dir->vi_ops->vfs_mknod != NULL)
+    return dir->vi_ops->vfs_mknod (dir, name, mode, rdev);
+  return -ENOSYS;
 }
 
 int
 vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 	    const char *newname)
 {
-  return olddir->vi_ops->vfs_rename (olddir, oldname, newdir, newname);
+  /* TODO Support cross-filesystem renaming */
+  if (olddir->vi_ops->vfs_rename != NULL)
+    return olddir->vi_ops->vfs_rename (olddir, oldname, newdir, newname);
+  return -ENOSYS;
 }
 
 int
-vfs_readlink (VFSDirEntry *entry, char *buffer, size_t len)
+vfs_readlink (VFSInode *inode, char *buffer, size_t len)
 {
-  return entry->d_inode->vi_ops->
-    vfs_readlink (entry, buffer, len);
+  if (inode->vi_ops->vfs_readlink != NULL)
+    return inode->vi_ops->vfs_readlink (inode, buffer, len);
+  return -ENOSYS;
 }
 
 int
 vfs_truncate (VFSInode *inode)
 {
-  return inode->vi_ops->vfs_truncate (inode);
+  if (inode->vi_ops->vfs_truncate != NULL)
+    return inode->vi_ops->vfs_truncate (inode);
+  return -ENOSYS;
 }
 
 int
-vfs_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st)
+vfs_getattr (VFSInode *inode, struct stat *st)
 {
-  return mp->vfs_fstype->vfs_iops->vfs_getattr (mp, entry, st);
+  if (inode->vi_ops->vfs_getattr != NULL)
+    return inode->vi_ops->vfs_getattr (inode, st);
+  return -ENOSYS;
 }
 
 int
-vfs_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 	      size_t len, int flags)
 {
-  return entry->d_inode->vi_ops->vfs_setxattr (entry, name, value, len, flags);
+  if (inode->vi_ops->vfs_setxattr != NULL)
+    return inode->vi_ops->vfs_setxattr (inode, name, value, len, flags);
+  return -ENOSYS;
 }
 
 int
-vfs_getxattr (VFSDirEntry *entry, const char *name, void *buffer, size_t len)
+vfs_getxattr (VFSInode *inode, const char *name, void *buffer, size_t len)
 {
-  return entry->d_inode->vi_ops->vfs_getxattr (entry, name, buffer, len);
+  if (inode->vi_ops->vfs_getxattr != NULL)
+    return inode->vi_ops->vfs_getxattr (inode, name, buffer, len);
+  return -ENOSYS;
 }
 
 int
-vfs_listxattr (VFSDirEntry *entry, char *buffer, size_t len)
+vfs_listxattr (VFSInode *inode, char *buffer, size_t len)
 {
-  return entry->d_inode->vi_ops->vfs_listxattr (entry, buffer, len);
+  if (inode->vi_ops->vfs_listxattr != NULL)
+    return inode->vi_ops->vfs_listxattr (inode, buffer, len);
+  return -ENOSYS;
 }
 
 int
-vfs_removexattr (VFSDirEntry *entry, const char *name)
+vfs_removexattr (VFSInode *inode, const char *name)
 {
-  return entry->d_inode->vi_ops->vfs_removexattr (entry, name);
+  if (inode->vi_ops->vfs_removexattr != NULL)
+    return inode->vi_ops->vfs_removexattr (inode, name);
+  return -ENOSYS;
 }
 
 int
 vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b)
 {
-  return entry->d_ops->d_compare (entry, a, b);
+  if (entry->d_ops->d_compare != NULL)
+    return entry->d_ops->d_compare (entry, a, b);
+  return -ENOSYS;
 }
 
 void
 vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode)
 {
-  entry->d_ops->d_iput (entry, inode);
+  if (entry->d_ops->d_iput != NULL)
+    entry->d_ops->d_iput (entry, inode);
+}
+
+VFSInode *
+vfs_open_file (const char *path)
+{
+  VFSInode *dir;
+  char *buffer = strdup (path);
+  char *ptr;
+  int dont_unref = 0;
+  if (unlikely (buffer == NULL))
+    return NULL;
+
+  if (*path == '/')
+    {
+      dir = vfs_root_inode;
+      ptr = buffer + 1;
+    }
+  else
+    {
+      dir = process_table[task_getpid ()].p_cwd;
+      ptr = buffer;
+    }
+  vfs_ref_inode (dir);
+
+  while (*ptr != '\0')
+    {
+      char *end = strchr (ptr, '/');
+      if (end != NULL)
+        *end = '\0';
+
+      if (*ptr != '\0' && strcmp (ptr, ".") != 0)
+	{
+	  VFSInode *inode = vfs_lookup (dir, dir->vi_sb, ptr, 1);
+	  int i;
+	  if (inode == NULL)
+	    {
+	      vfs_unref_inode (dir);
+	      kfree (buffer);
+	      return NULL;
+	    }
+	  vfs_unref_inode (dir);
+	  dir = inode;
+	  dont_unref = 1;
+
+	  /* Check if the inode the root of a mounted filesystem and replace
+	     it with the root inode of the mount if it is */
+	  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+	    {
+	      VFSInode *mpt = mount_table[i].vfs_mntpoint;
+	      if (mpt == NULL)
+		continue;
+	      if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)
+		{
+		  vfs_unref_inode (dir);
+		  dir = mount_table[i].vfs_sb.sb_root;
+		  vfs_ref_inode (dir);
+		  break;
+		}
+	    }
+	}
+
+      if (end == NULL)
+	break;
+      ptr = end + 1;
+    }
+
+  kfree (buffer);
+  if (!dont_unref)
+    vfs_unref_inode (dir); /* Decrease refcount since dir never was changed */
+  return dir;
 }

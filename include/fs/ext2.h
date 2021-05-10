@@ -178,6 +178,7 @@ loff_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
+VFSDirectory *ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);
@@ -189,14 +190,16 @@ void ext2_free (VFSSuperblock *sb);
 void ext2_update (VFSSuperblock *sb);
 int ext2_statvfs (VFSSuperblock *sb, struct statvfs *st);
 int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
+
 int ext2_create (VFSInode *dir, const char *name, mode_t mode);
-int ext2_lookup (VFSDirEntry *entry, VFSSuperblock *sb, VFSPath *path);
+VFSInode *ext2_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+		       int follow_symlinks);
 int ext2_link (VFSInode *old, VFSInode *dir, const char *new);
 int ext2_unlink (VFSInode *dir, const char *name);
 int ext2_symlink (VFSInode *dir, const char *old, const char *new);
 int ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
-int ext2_readdir (VFSDirEntry **entries, VFSSuperblock *sb, VFSInode *dir);
+VFSDirEntry *ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb);
 int ext2_chmod (VFSInode *inode, mode_t mode);
 int ext2_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int ext2_mkdir (VFSInode *dir, const char *name, mode_t mode);
@@ -204,15 +207,15 @@ int ext2_rmdir (VFSInode *dir, const char *name);
 int ext2_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev);
 int ext2_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 		 const char *newname);
-int ext2_readlink (VFSDirEntry *entry, char *buffer, size_t len);
+int ext2_readlink (VFSInode *inode, char *buffer, size_t len);
 int ext2_truncate (VFSInode *inode);
-int ext2_getattr (VFSMount *mp, VFSDirEntry *entry, struct stat *st);
-int ext2_setxattr (VFSDirEntry *entry, const char *name, const void *value,
+int ext2_getattr (VFSInode *inode, struct stat *st);
+int ext2_setxattr (VFSInode *inode, const char *name, const void *value,
 		   size_t len, int flags);
-int ext2_getxattr (VFSDirEntry *entry, const char *name, void *buffer,
+int ext2_getxattr (VFSInode *inode, const char *name, void *buffer,
 		   size_t len);
-int ext2_listxattr (VFSDirEntry *entry, char *buffer, size_t len);
-int ext2_removexattr (VFSDirEntry *entry, const char *name);
+int ext2_listxattr (VFSInode *inode, char *buffer, size_t len);
+int ext2_removexattr (VFSInode *inode, const char *name);
 int ext2_compare (VFSDirEntry *entry, const char *a, const char *b);
 void ext2_iput (VFSDirEntry *entry, VFSInode *inode);
 

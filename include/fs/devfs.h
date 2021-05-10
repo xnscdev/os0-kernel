@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * devfs.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,31 +16,40 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDLIB_H
-#define _STDLIB_H
+#ifndef _FS_DEVFS_H
+#define _FS_DEVFS_H
 
-#include <libk/types.h>
+#include <fs/vfs.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define DEVFS_FS_NAME    "devfs"
+#define DEVFS_ROOT_INODE 0
+#define DEVFS_FD_INODE   1
 
 __BEGIN_DECLS
 
-int atoi (const char *str);
-long atol (const char *str);
-long long atoll (const char *str);
+extern const VFSSuperblockOps devfs_sops;
+extern const VFSInodeOps devfs_iops;
+extern const VFSDirEntryOps devfs_dops;
+extern const VFSFilesystem devfs_vfs;
 
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
+void devfs_init (void);
 
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
+int devfs_mount (VFSMount *mp, int flags, void *data);
+int devfs_unmount (VFSMount *mp, int flags);
+VFSInode *devfs_alloc_inode (VFSSuperblock *sb);
+void devfs_destroy_inode (VFSInode *inode);
+void devfs_free (VFSSuperblock *sb);
 
-void panic (const char *__restrict fmt, ...)
-  __attribute__ ((noreturn, cold, format (printf, 1, 2)));
+VFSInode *devfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
+		       int follow_symlinks);
+int devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
+VFSDirEntry *devfs_readdir (VFSDirectory *dir, VFSSuperblock *sb);
+int devfs_readlink (VFSInode *inode, char *buffer, size_t len);
+int devfs_getattr (VFSInode *inode, struct stat *st);
+int devfs_compare (VFSDirEntry *entry, const char *a, const char *b);
 
 __END_DECLS
 

@@ -18,6 +18,7 @@
 
 #include <kconfig.h>
 
+#include <fs/devfs.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
@@ -26,6 +27,7 @@
 #include <sys/multiboot.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/timer.h>
 #include <video/vga.h>
 #include <vm/heap.h>
@@ -89,38 +91,50 @@ cmdline_init (char *cmdline)
 static void
 mount_rootfs (void)
 {
+  int fd;
+  /* Setup devfs first so block devices can be resolved properly */
+  if (vfs_mount ("devfs", "/dev", 0, NULL) != 0)
+    panic ("Failed to setup devfs");
+
   if (*boot_options.b_root == '\0')
     panic ("No root filesystem specified in boot options");
 
   if (*boot_options.b_rootfstype == '\0')
     {
-      VFSPath *devpath;
+      VFSInode *inode;
       SpecDevice *dev;
       int type;
-      if (vfs_namei (&devpath, boot_options.b_root) != 0)
-	goto err;
-      if (devpath->vp_prev == NULL || devpath->vp_prev->vp_prev != NULL
-	  || strcmp (devpath->vp_prev->vp_short, "dev") != 0)
-	goto err;
-      dev = device_lookup (devpath->vp_long == NULL ? devpath->vp_short :
-			   devpath->vp_long);
-      if (dev == NULL)
-	goto err;
+
+      inode = vfs_open_file (boot_options.b_root);
+      if (inode == NULL)
+	panic ("Failed to open root filesystem device %s", boot_options.b_root);
+      /* Make sure we are mounting a valid block device */
+      if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0
+	  || !S_ISBLK (inode->vi_mode))
+	panic ("Invalid block device %s", boot_options.b_root);
+      dev = device_lookup (major (inode->vi_rdev), minor (inode->vi_rdev));
+      assert (dev != NULL);
+
       type = vfs_guess_type (dev);
       switch (type)
 	{
 	case FS_TYPE_EXT2:
 	  strcpy (boot_options.b_rootfstype, "ext2");
-	  goto finish;
+	  break;
+	default:
+	  panic ("Root filesystem type not specified");
 	}
-
-    err:
-      panic ("Root filesystem type not specified");
     }
 
- finish:
   if (vfs_mount (boot_options.b_rootfstype, "/", 0, boot_options.b_root) != 0)
     panic ("Failed to mount root filesystem");
+
+  /* Setup kernel task working directory */
+  fd = sys_open ("/", O_RDONLY, 0);
+  if (fd < 0)
+    panic ("Failed to load kernel task working directory");
+  process_table[0].p_cwd = process_table[0].p_files[fd].pf_inode;
+  memset (&process_table[0].p_files[fd], 0, sizeof (ProcessFile));
 }
 
 static void

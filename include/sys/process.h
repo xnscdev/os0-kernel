@@ -48,6 +48,7 @@ typedef struct
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   volatile ProcessTask *p_task;
   Array *p_segments;
+  VFSInode *p_cwd;
   uint32_t p_break;
 } Process;
 

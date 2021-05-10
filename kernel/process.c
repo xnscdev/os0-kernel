@@ -214,6 +214,8 @@ process_free (pid_t pid)
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
+  vfs_unref_inode (proc->p_cwd);
+  proc->p_cwd = NULL;
   proc->p_break = 0;
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
