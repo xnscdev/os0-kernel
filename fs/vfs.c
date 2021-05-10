@@ -442,6 +442,7 @@ vfs_open_file (const char *path)
   char *buffer = strdup (path);
   char *ptr;
   int dont_unref = 0;
+  int i;
   if (unlikely (buffer == NULL))
     return NULL;
 
@@ -455,8 +456,24 @@ vfs_open_file (const char *path)
       dir = process_table[task_getpid ()].p_cwd;
       ptr = buffer;
     }
+
+  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+    {
+      VFSInode *mpt = mount_table[i].vfs_mntpoint;
+      if (mpt == NULL)
+	continue;
+      if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)
+	{
+	  vfs_unref_inode (dir);
+	  dir = mount_table[i].vfs_sb.sb_root;
+	  vfs_ref_inode (dir);
+	  dont_unref = 1;
+	  goto search;
+	}
+    }
   vfs_ref_inode (dir);
 
+ search:
   while (*ptr != '\0')
     {
       char *end = strchr (ptr, '/');
@@ -466,7 +483,6 @@ vfs_open_file (const char *path)
       if (*ptr != '\0' && strcmp (ptr, ".") != 0)
 	{
 	  VFSInode *inode = vfs_lookup (dir, dir->vi_sb, ptr, 1);
-	  int i;
 	  if (inode == NULL)
 	    {
 	      vfs_unref_inode (dir);
@@ -477,7 +493,7 @@ vfs_open_file (const char *path)
 	  dir = inode;
 	  dont_unref = 1;
 
-	  /* Check if the inode the root of a mounted filesystem and replace
+	  /* Check if the inode is the root of a mounted filesystem and replace
 	     it with the root inode of the mount if it is */
 	  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
 	    {
