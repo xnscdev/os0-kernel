@@ -403,7 +403,7 @@ sys_open (const char *path, int flags, mode_t mode)
 	    }
 	  files[i].pf_offset =
 	    flags & O_APPEND ? files[i].pf_inode->vi_size : 0;
-	  return 0;
+	  return i;
 	}
     }
   return -EMFILE; /* No more file descriptors available */
