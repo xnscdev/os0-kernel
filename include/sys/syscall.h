@@ -20,6 +20,7 @@
 #define _SYS_SYSCALL_H
 
 #include <sys/cdefs.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -146,6 +147,8 @@ int sys_rmdir (const char *path);
 int sys_isatty (int fd);
 int sys_brk (void *ptr);
 int sys_fcntl (int fd, int cmd, int arg);
+int sys_gettimeofday (struct timeval *__restrict tv,
+		      struct timezone *__restrict tz);
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
 int sys_truncate (const char *path, off_t len);

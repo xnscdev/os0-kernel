@@ -1,5 +1,5 @@
 /*************************************************************************
- * types.h -- This file is part of OS/0.                                 *
+ * stat.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,46 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
+#ifndef _BITS_STAT_H
+#define _BITS_STAT_H
 
-#include <stdint.h>
+#ifndef _SYS_STAT_H
+#error  "<bits/stat.h> should not be included directly"
+#endif
 
-/* POSIX types */
+#define S_IFMT   0170000
+#define S_IFIFO  0010000
+#define S_IFCHR  0020000
+#define S_IFDIR  0040000
+#define S_IFBLK  0060000
+#define S_IFREG  0100000
+#define S_IFLNK  0120000
+#define S_IFSOCK 0140000
 
-typedef int32_t blkcnt_t;
-typedef int32_t blksize_t;
-typedef int32_t clock_t;
-typedef int32_t clockid_t;
-typedef uint16_t dev_t;
-typedef uint32_t fsblkcnt_t;
-typedef uint32_t fsfilcnt_t;
-typedef uint16_t gid_t;
-typedef uint16_t id_t;
-typedef uint32_t ino_t;
-typedef int32_t key_t;
-typedef uint32_t mode_t;
-typedef uint32_t nlink_t;
-typedef int32_t off_t;
-typedef int64_t loff_t;
-typedef int16_t pid_t;
-typedef int32_t ssize_t;
-typedef uint32_t suseconds_t;
-typedef int32_t time_t; /* Year 2038 problem */
-typedef int32_t timer_t;
-typedef uint16_t uid_t;
-typedef uint32_t useconds_t;
+#define S_IRWXU 00700
+#define S_IRUSR 00400
+#define S_IWUSR 00200
+#define S_IXUSR 00100
+#define S_IRWXG 00070
+#define S_IRGRP 00040
+#define S_IWGRP 00020
+#define S_IXGRP 00010
+#define S_IRWXO 00007
+#define S_IROTH 00004
+#define S_IWOTH 00002
+#define S_IXOTH 00001
+#define S_ISUID 04000
+#define S_ISGID 02000
+#define S_ISVTX 01000
+
+#define S_ISBLK(x) (((x) & S_IFMT) == S_IFBLK)
+#define S_ISCHR(x) (((x) & S_IFMT) == S_IFCHR)
+#define S_ISDIR(x) (((x) & S_IFMT) == S_IFDIR)
+#define S_ISFIFO(x) (((x) & S_IFMT) == S_IFIFO)
+#define S_ISREG(x) (((x) & S_IFMT) == S_IFREG)
+#define S_ISLNK(x) (((x) & S_IFMT) == S_IFLNK)
+#define S_ISSOCK(x) (((x) & S_IFMT) == S_IFSOCK)
+
+#include <bits/types/stat.h>
 
 #endif

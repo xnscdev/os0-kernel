@@ -101,7 +101,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_gettimeofday,
   NULL,
   NULL,
   NULL,
@@ -659,6 +659,16 @@ int
 sys_fcntl (int fd, int cmd, int arg)
 {
   return fcntl (fd, cmd, arg);
+}
+
+int
+sys_gettimeofday (struct timeval *__restrict tv, struct timezone *__restrict tz)
+{
+  tv->tv_sec = time (NULL);
+  tv->tv_usec = 0;
+  tz->tz_minuteswest = 0;
+  tz->tz_dsttime = 0;
+  return 0;
 }
 
 int

@@ -1,5 +1,5 @@
 /*************************************************************************
- * types.h -- This file is part of OS/0.                                 *
+ * stat.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,34 +16,26 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TYPES_H
-#define _SYS_TYPES_H
+#ifndef _BITS_TYPES_STAT_H
+#define _BITS_TYPES_STAT_H
 
-#include <stdint.h>
+#include <sys/types.h>
 
-/* POSIX types */
-
-typedef int32_t blkcnt_t;
-typedef int32_t blksize_t;
-typedef int32_t clock_t;
-typedef int32_t clockid_t;
-typedef uint16_t dev_t;
-typedef uint32_t fsblkcnt_t;
-typedef uint32_t fsfilcnt_t;
-typedef uint16_t gid_t;
-typedef uint16_t id_t;
-typedef uint32_t ino_t;
-typedef int32_t key_t;
-typedef uint32_t mode_t;
-typedef uint32_t nlink_t;
-typedef int32_t off_t;
-typedef int64_t loff_t;
-typedef int16_t pid_t;
-typedef int32_t ssize_t;
-typedef uint32_t suseconds_t;
-typedef int32_t time_t; /* Year 2038 problem */
-typedef int32_t timer_t;
-typedef uint16_t uid_t;
-typedef uint32_t useconds_t;
+struct stat
+{
+  dev_t st_dev;
+  ino_t st_ino;
+  mode_t st_mode;
+  nlink_t st_nlink;
+  uid_t st_uid;
+  gid_t st_gid;
+  dev_t st_rdev;
+  off_t st_size;
+  time_t st_atime;
+  time_t st_mtime;
+  time_t st_ctime;
+  blksize_t st_blksize;
+  blkcnt_t st_blocks;
+};
 
 #endif
