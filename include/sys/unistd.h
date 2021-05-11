@@ -1,5 +1,5 @@
 /*************************************************************************
- * fcntl.h -- This file is part of OS/0.                                 *
+ * unistd.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,16 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _FCNTL_H
-#define _FCNTL_H
+#ifndef _SYS_UNISTD_H
+#define _SYS_UNISTD_H
 
-#include <sys/cdefs.h>
-#include <sys/fcntl.h>
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
-__BEGIN_DECLS
-
-int fcntl (int fd, int cmd, int arg);
-
-__END_DECLS
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
 
 #endif

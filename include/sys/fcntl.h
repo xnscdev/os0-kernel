@@ -16,16 +16,49 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _FCNTL_H
-#define _FCNTL_H
+#ifndef _SYS_FCNTL_H
+#define _SYS_FCNTL_H
 
-#include <sys/cdefs.h>
-#include <sys/fcntl.h>
+#define O_RDONLY  0x00000000
+#define O_WRONLY  0x00000001
+#define O_RDWR    0x00000002
+#define O_ACCMODE 0x00000003
 
-__BEGIN_DECLS
+#define O_CREAT     0x00000100
+#define O_EXCL      0x00000200
+#define O_NOCTTY    0x00000400
+#define O_TRUNC     0x00001000
+#define O_APPEND    0x00002000
+#define O_NONBLOCK  0x00004000
+#define O_DSYNC     0x00010000
+#define O_DIRECT    0x00040000
+#define O_LARGEFILE 0x00100000
+#define O_DIRECTORY 0x00200000
+#define O_NOFOLLOW  0x00400000
+#define O_NOATIME   0x01000000
+#define O_CLOEXEC   0x02000000
 
-int fcntl (int fd, int cmd, int arg);
+#define F_DUPFD  0
+#define F_GETFD  1
+#define F_SETFD  2
+#define F_GETFL  3
+#define F_SETFL  4
+#define F_GETLK  5
+#define F_SETLK  6
+#define F_SETLKW 7
+#define F_GETOWN 8
+#define F_SETOWN 9
+#define F_GETSIG 10
+#define F_SETSIG 11
 
-__END_DECLS
+#define F_DUPFD_CLOEXEC 20
+
+#define FD_CLOEXEC 1
+
+#define AT_FDCWD            0x100
+#define AT_SYMLINK_FOLLOW   0x200
+#define AT_SYMLINK_NOFOLLOW 0x400
+#define AT_EACCESS          0x800
+#define AT_REMOVEDIR        0x1000
 
 #endif

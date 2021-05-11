@@ -1,5 +1,7 @@
 install_headers('cdefs.h',
 		'errno.h',
+		'fcntl.h',
 		'io.h',
 		'sysmacros.h',
-		'types.h', subdir: 'sys')
+		'types.h',
+		'unistd.h', subdir: 'sys')
