@@ -114,7 +114,8 @@
 #define SYS_getxattr      229
 #define SYS_listxattr     232
 #define SYS_removexattr   235
+#define SYS_openat        295
 
-#define NR_syscalls 236
+#define NR_syscalls 308
 
 #endif

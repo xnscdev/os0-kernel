@@ -258,7 +258,67 @@ void *syscall_table[NR_syscalls] = {
   sys_listxattr,
   NULL,
   NULL,
-  sys_removexattr
+  sys_removexattr,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  sys_openat
 };
 
 extern uint32_t exit_task;
@@ -784,5 +844,18 @@ sys_removexattr (const char *path, const char *name)
     return -ENOENT;
   ret = vfs_removexattr (inode, name);
   vfs_unref_inode (inode);
+  return ret;
+}
+
+int
+sys_openat (int fd, const char *path, int flags, mode_t mode)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd == AT_FDCWD)
+    proc->p_cwd = proc->p_files[fd].pf_inode;
+  ret = sys_open (path, flags, mode);
+  proc->p_cwd = cwd;
   return ret;
 }

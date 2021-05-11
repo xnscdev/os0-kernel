@@ -65,6 +65,7 @@ int sys_setxattr (const char *path, const char *name, const void *value,
 int sys_getxattr (const char *path, const char *name, void *value, size_t len);
 int sys_listxattr (const char *path, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
+int sys_openat (int fd, const char *path, int flags, mode_t mode);
 
 __END_DECLS
 
