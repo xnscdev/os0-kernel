@@ -67,7 +67,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  sys_isatty,
+  NULL,
   sys_brk,
   NULL,
   NULL,
@@ -639,12 +639,6 @@ sys_rmdir (const char *path)
   vfs_unref_inode (dir);
   kfree (name);
   return ret;
-}
-
-int
-sys_isatty (int fd)
-{
-  return is_vga_tty (fd);
 }
 
 int

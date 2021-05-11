@@ -16,7 +16,6 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <sys/process.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <errno.h>
@@ -71,13 +70,3 @@ VFSSuperblock vga_stdout_sb = {
 VFSSuperblock vga_stderr_sb = {
   .sb_ops = &vga_stderr_sb_ops
 };
-
-int
-is_vga_tty (int fd)
-{
-  Process *proc = &process_table[task_getpid ()];
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd].pf_inode == NULL)
-    return -EBADF;
-  return proc->p_files[fd].pf_inode->vi_sb == &vga_stdout_sb
-    || proc->p_files[fd].pf_inode->vi_sb == &vga_stderr_sb;
-}

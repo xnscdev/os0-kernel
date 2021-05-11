@@ -67,8 +67,6 @@ void vga_write (const char *s, size_t size);
 void vga_puts (const char *s);
 void vga_setcurs (size_t x, size_t y);
 
-int is_vga_tty (int fd);
-
 __END_DECLS
 
 #endif

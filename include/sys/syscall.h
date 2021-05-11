@@ -60,7 +60,6 @@
 #define SYS_rmdir         40
 #define SYS_dup           41
 #define SYS_pipe          42
-#define SYS_isatty        44
 #define SYS_brk           45
 #define SYS_setgid        46
 #define SYS_getgid        47
@@ -144,7 +143,6 @@ int sys_umount (const char *dir);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
-int sys_isatty (int fd);
 int sys_brk (void *ptr);
 int sys_fcntl (int fd, int cmd, int arg);
 int sys_gettimeofday (struct timeval *__restrict tv,
