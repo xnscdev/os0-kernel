@@ -229,7 +229,7 @@ process_free (pid_t pid)
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
   /* Clear all signal handlers */
-  memset (proc->p_signals, 0, sizeof (struct sigaction) * NR_signals);
+  memset (proc->p_signals, 0, sizeof (ProcessSignal) * NR_signals);
 }
 
 int

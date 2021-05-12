@@ -443,16 +443,33 @@ int
 sys_sigaction (int sig, const struct sigaction *__restrict act,
 	       struct sigaction *__restrict old)
 {
-  return -ENOSYS;
+  Process *proc;
+  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
+    return -EINVAL;
+  proc = &process_table[task_getpid ()];
+  if (old != NULL)
+    memcpy (old, &proc->p_signals[sig].ps_act, sizeof (struct sigaction));
+  if (act != NULL)
+    {
+      memcpy (&proc->p_signals[sig].ps_act, act, sizeof (struct sigaction));
+      proc->p_signals[sig].ps_enabled = 1;
+    }
+  return 0;
 }
 
 int
 sys_gettimeofday (struct timeval *__restrict tv, struct timezone *__restrict tz)
 {
-  tv->tv_sec = time (NULL);
-  tv->tv_usec = 0;
-  tz->tz_minuteswest = 0;
-  tz->tz_dsttime = 0;
+  if (tv != NULL)
+    {
+      tv->tv_sec = time (NULL);
+      tv->tv_usec = 0;
+    }
+  if (tz != NULL)
+    {
+      tz->tz_minuteswest = 0;
+      tz->tz_dsttime = 0;
+    }
   return 0;
 }
 

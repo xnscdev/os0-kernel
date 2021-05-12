@@ -45,8 +45,15 @@ typedef struct
 
 typedef struct
 {
+  unsigned char ps_enabled;
+  unsigned char ps_blocked;
+  struct sigaction ps_act;
+} ProcessSignal;
+
+typedef struct
+{
   ProcessFile p_files[PROCESS_FILE_LIMIT];
-  struct sigaction p_signals[NR_signals];
+  ProcessSignal p_signals[NR_signals];
   volatile ProcessTask *p_task;
   Array *p_segments;
   VFSInode *p_cwd;
