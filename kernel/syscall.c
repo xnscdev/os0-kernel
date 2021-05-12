@@ -489,6 +489,19 @@ sys_truncate (const char *path, off_t len)
 }
 
 int
+sys_ftruncate (int fd, off_t len)
+{
+  VFSInode *inode;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  if (inode == NULL)
+    return -EBADF;
+  inode->vi_size = len;
+  return vfs_truncate (inode);
+}
+
+int
 sys_fchmod (int fd, mode_t mode)
 {
   VFSInode *inode;

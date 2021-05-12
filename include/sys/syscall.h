@@ -59,6 +59,7 @@ int sys_gettimeofday (struct timeval *__restrict tv,
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
 int sys_truncate (const char *path, off_t len);
+int sys_ftruncate (int fd, off_t len);
 int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);

@@ -112,7 +112,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   sys_truncate,
-  NULL,
+  sys_ftruncate,
   sys_fchmod,
   sys_fchown,
   NULL,

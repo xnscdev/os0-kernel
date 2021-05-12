@@ -83,6 +83,7 @@
 #define SYS_mmap          90
 #define SYS_munmap        91
 #define SYS_truncate      92
+#define SYS_ftruncate     93
 #define SYS_fchmod        94
 #define SYS_fchown        95
 #define SYS_getpriority   96
