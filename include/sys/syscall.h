@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <stddef.h>
 
 __BEGIN_DECLS
 
@@ -47,6 +48,7 @@ pid_t sys_getpid (void);
 int sys_mount (const char *src, const char *dir, const char *type, int flags,
 	       void *data);
 int sys_umount (const char *dir);
+int sys_access (const char *path, int mode);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
@@ -57,6 +59,8 @@ int sys_gettimeofday (struct timeval *__restrict tv,
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
 int sys_truncate (const char *path, off_t len);
+int sys_fchmod (int fd, mode_t mode);
+int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);
 int sys_stat (const char *path, struct stat *st);
 int sys_fchdir (int fd);
@@ -66,6 +70,17 @@ int sys_getxattr (const char *path, const char *name, void *value, size_t len);
 int sys_listxattr (const char *path, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
 int sys_openat (int fd, const char *path, int flags, mode_t mode);
+int sys_mkdirat (int fd, const char *path, mode_t mode);
+int sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev);
+int sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags);
+int sys_unlinkat (int fd, const char *path, int flags);
+int sys_renameat (int oldfd, const char *old, int newfd, const char *new);
+int sys_linkat (int oldfd, const char *old, int newfd, const char *new);
+int sys_symlinkat (const char *old, int fd, const char *new);
+int sys_readlinkat (int fd, const char *__restrict path,
+		    char *__restrict buffer, size_t len);
+int sys_fchmodat (int fd, const char *path, mode_t mode, int flags);
+int sys_faccessat (int fd, const char *path, int mode, int flags);
 
 __END_DECLS
 

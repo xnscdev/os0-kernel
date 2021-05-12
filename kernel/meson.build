@@ -5,7 +5,8 @@ kernel_src = [
   'main.c',
   'memory.c',
   'process.c',
-  'syscall.c'
+  'syscall.c',
+  'systab.c'
 ]
 
 kernel = executable('kernel', kernel_src, link_args: [

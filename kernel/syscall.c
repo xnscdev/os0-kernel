@@ -22,305 +22,6 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
-void *syscall_table[NR_syscalls] = {
-  NULL,
-  sys_exit,
-  sys_fork,
-  sys_read,
-  sys_write,
-  sys_open,
-  sys_close,
-  NULL,
-  sys_creat,
-  sys_link,
-  sys_unlink,
-  sys_execve,
-  sys_chdir,
-  NULL,
-  sys_mknod,
-  sys_chmod,
-  sys_chown,
-  NULL,
-  NULL,
-  sys_lseek,
-  sys_getpid,
-  sys_mount,
-  sys_umount,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_rename,
-  sys_mkdir,
-  sys_rmdir,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_brk,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_fcntl,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_gettimeofday,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_symlink,
-  sys_readlink,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_truncate,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_statvfs,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_stat,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_fchdir,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_setxattr,
-  NULL,
-  NULL,
-  sys_getxattr,
-  NULL,
-  NULL,
-  sys_listxattr,
-  NULL,
-  NULL,
-  sys_removexattr,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  sys_openat
-};
-
 extern uint32_t exit_task;
 
 /* Separates a path into a file and its parent directory */
@@ -649,6 +350,29 @@ sys_umount (const char *dir)
 }
 
 int
+sys_access (const char *path, int mode)
+{
+  int ret = 0;
+  VFSInode *inode = vfs_open_file (path);
+  if (inode == NULL)
+    return -ENOENT;
+  switch (mode)
+    {
+    case F_OK:
+      break; /* The file exists at this point */
+    case X_OK:
+    case R_OK:
+    case W_OK:
+      ret = -ENOSYS; /* TODO Implement */
+      break;
+    default:
+      ret = -EINVAL;
+    }
+  vfs_unref_inode (inode);
+  return ret;
+}
+
+int
 sys_rename (const char *old, const char *new)
 {
   VFSInode *old_inode;
@@ -765,6 +489,30 @@ sys_truncate (const char *path, off_t len)
 }
 
 int
+sys_fchmod (int fd, mode_t mode)
+{
+  VFSInode *inode;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_chmod (inode, mode);
+}
+
+int
+sys_fchown (int fd, uid_t uid, gid_t gid)
+{
+  VFSInode *inode;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_chown (inode, uid, gid);
+}
+
+int
 sys_statvfs (const char *path, struct statvfs *st)
 {
   VFSInode *inode = vfs_open_file (path);
@@ -853,9 +601,265 @@ sys_openat (int fd, const char *path, int flags, mode_t mode)
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
   int ret;
-  if (fd == AT_FDCWD)
-    proc->p_cwd = proc->p_files[fd].pf_inode;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
   ret = sys_open (path, flags, mode);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_mkdirat (int fd, const char *path, mode_t mode)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_mkdir (path, mode);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_mknod (path, mode, dev);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_chown (path, uid, gid);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_unlinkat (int fd, const char *path, int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_unlink (path);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_renameat (int oldfd, const char *old, int newfd, const char *new)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  VFSInode *old_inode;
+  VFSInode *new_inode;
+  char *old_name;
+  char *new_name;
+  int ret;
+
+  if (oldfd != AT_FDCWD)
+    {
+      if (oldfd < 0 || oldfd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[oldfd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[oldfd].pf_inode;
+    }
+  ret = sys_path_sep (old, &old_inode, &old_name);
+  if (ret != 0)
+    {
+      proc->p_cwd = cwd;
+      return ret;
+    }
+
+  if (newfd != AT_FDCWD)
+    {
+      if (newfd < 0 || newfd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[newfd].pf_inode == NULL)
+	{
+	  vfs_unref_inode (old_inode);
+	  kfree (old_name);
+	  proc->p_cwd = cwd;
+	  return -EBADF;
+	}
+      proc->p_cwd = proc->p_files[newfd].pf_inode;
+    }
+  ret = sys_path_sep (new, &new_inode, &new_name);
+  if (ret != 0)
+    {
+      vfs_unref_inode (old_inode);
+      kfree (old_name);
+      proc->p_cwd = cwd;
+      return ret;
+    }
+
+  ret = vfs_rename (old_inode, old_name, new_inode, new_name);
+  vfs_unref_inode (old_inode);
+  kfree (old_name);
+  vfs_unref_inode (new_inode);
+  kfree (new_name);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_linkat (int oldfd, const char *old, int newfd, const char *new)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  VFSInode *old_inode;
+  VFSInode *new_inode;
+  char *name;
+  int ret;
+
+  if (oldfd != AT_FDCWD)
+    {
+      if (oldfd < 0 || oldfd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[oldfd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[oldfd].pf_inode;
+    }
+  old_inode = vfs_open_file (old);
+  if (old_inode == NULL)
+    {
+      proc->p_cwd = cwd;
+      return -ENOENT;
+    }
+
+  if (newfd != AT_FDCWD)
+    {
+      if (newfd < 0 || newfd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[newfd].pf_inode == NULL)
+	{
+	  vfs_unref_inode (old_inode);
+	  proc->p_cwd = cwd;
+	  return -EBADF;
+	}
+      proc->p_cwd = proc->p_files[newfd].pf_inode;
+    }
+  ret = sys_path_sep (new, &new_inode, &name);
+  if (ret != 0)
+    {
+      vfs_unref_inode (old_inode);
+      proc->p_cwd = cwd;
+      return ret;
+    }
+
+  ret = vfs_link (old_inode, new_inode, name);
+  vfs_unref_inode (old_inode);
+  vfs_unref_inode (new_inode);
+  kfree (name);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_symlinkat (const char *old, int fd, const char *new)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_symlink (old, new);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_readlinkat (int fd, const char *__restrict path, char *__restrict buffer,
+		size_t len)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_readlink (path, buffer, len);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_fchmodat (int fd, const char *path, mode_t mode, int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_chmod (path, mode);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
+sys_faccessat (int fd, const char *path, int mode, int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
+	  || proc->p_files[fd].pf_inode == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd].pf_inode;
+    }
+  ret = sys_access (path, mode);
   proc->p_cwd = cwd;
   return ret;
 }

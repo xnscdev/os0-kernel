@@ -83,6 +83,8 @@
 #define SYS_mmap          90
 #define SYS_munmap        91
 #define SYS_truncate      92
+#define SYS_fchmod        94
+#define SYS_fchown        95
 #define SYS_getpriority   96
 #define SYS_setpriority   97
 #define SYS_statvfs       99
@@ -115,6 +117,16 @@
 #define SYS_listxattr     232
 #define SYS_removexattr   235
 #define SYS_openat        295
+#define SYS_mkdirat       296
+#define SYS_mknodat       297
+#define SYS_fchownat      298
+#define SYS_unlinkat      301
+#define SYS_renameat      302
+#define SYS_linkat        303
+#define SYS_symlinkat     304
+#define SYS_readlinkat    305
+#define SYS_fchmodat      306
+#define SYS_faccessat     307
 
 #define NR_syscalls 308
 
