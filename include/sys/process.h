@@ -21,7 +21,7 @@
 
 #include <fs/vfs.h>
 #include <libk/array.h>
-#include <sys/cdefs.h>
+#include <sys/signal.h>
 #include <sys/task.h>
 
 #define PROCESS_LIMIT         256
@@ -46,6 +46,7 @@ typedef struct
 typedef struct
 {
   ProcessFile p_files[PROCESS_FILE_LIMIT];
+  struct sigaction p_signals[NR_signals];
   volatile ProcessTask *p_task;
   Array *p_segments;
   VFSInode *p_cwd;

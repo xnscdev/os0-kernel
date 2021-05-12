@@ -19,7 +19,6 @@
 #ifndef _SYS_STAT_H
 #define _SYS_STAT_H
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #define S_IFMT   0170000

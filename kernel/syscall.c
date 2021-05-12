@@ -440,6 +440,13 @@ sys_fcntl (int fd, int cmd, int arg)
 }
 
 int
+sys_sigaction (int sig, const struct sigaction *__restrict act,
+	       struct sigaction *__restrict old)
+{
+  return -ENOSYS;
+}
+
+int
 sys_gettimeofday (struct timeval *__restrict tv, struct timezone *__restrict tz)
 {
   tv->tv_sec = time (NULL);

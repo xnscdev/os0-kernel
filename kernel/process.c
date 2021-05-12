@@ -214,15 +214,22 @@ process_free (pid_t pid)
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
+
+  /* Reset working directory and program break */
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = NULL;
   proc->p_break = 0;
+
+  /* Clear all open file descriptors */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
       if (proc->p_files[i].pf_inode != NULL)
         vfs_unref_inode (proc->p_files[i].pf_inode);
     }
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+
+  /* Clear all signal handlers */
+  memset (proc->p_signals, 0, sizeof (struct sigaction) * NR_signals);
 }
 
 int
