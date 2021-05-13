@@ -56,7 +56,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_kill,
   sys_rename,
   sys_mkdir,
   sys_rmdir,

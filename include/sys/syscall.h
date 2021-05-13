@@ -50,6 +50,7 @@ int sys_mount (const char *src, const char *dir, const char *type, int flags,
 	       void *data);
 int sys_umount (const char *dir);
 int sys_access (const char *path, int mode);
+int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);

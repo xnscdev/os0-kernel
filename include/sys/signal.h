@@ -106,15 +106,10 @@ typedef struct
   int si_band;
 } siginfo_t;
 
-union __sighandler
+struct sigaction
 {
   sighandler_t sa_handler;
   void (*sa_sigaction) (int, siginfo_t *, void *);
-};
-
-struct sigaction
-{
-  union __sighandler __sa_handler;
   unsigned long sa_flags;
   sigset_t sa_mask;
 };

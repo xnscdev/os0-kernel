@@ -373,6 +373,41 @@ sys_access (const char *path, int mode)
 }
 
 int
+sys_kill (pid_t pid, int sig)
+{
+  int exit = sig == SIGKILL;
+  ProcessSignal *signal;
+  if (sig < 0 || sig >= NR_signals)
+    return -EINVAL;
+  signal = &process_table[pid].p_signals[sig];
+
+  if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
+      || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
+    {
+      if (!signal->ps_enabled || (!(signal->ps_act.sa_flags & SA_SIGINFO)
+				  && signal->ps_act.sa_handler == SIG_DFL))
+	exit = 1; /* Default action is to terminate process */
+    }
+
+  if (exit)
+    {
+      if (pid == task_getpid ())
+	{
+	  exit_task = pid;
+	  task_yield ();
+	}
+      else
+	process_free (pid);
+    }
+
+  if (signal->ps_act.sa_flags & SA_SIGINFO)
+    ; /* TODO Call signal->ps_act.sa_sigaction */
+  else
+    signal->ps_act.sa_handler (sig);
+  return 0;
+}
+
+int
 sys_rename (const char *old, const char *new)
 {
   VFSInode *old_inode;
