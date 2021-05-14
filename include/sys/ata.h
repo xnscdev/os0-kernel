@@ -160,9 +160,10 @@ int atapi_eject (unsigned char drive);
 int ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		      void *buffer);
 int ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		       void *buffer);
+		       const void *buffer);
 int ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset);
-int ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset);
+int ata_device_write (SpecDevice *dev, const void *buffer, size_t len,
+		      off_t offset);
 
 __END_DECLS
 

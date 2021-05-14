@@ -19,6 +19,7 @@
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/sysmacros.h>
+#include <video/vga.h>
 #include <vm/heap.h>
 
 static unsigned char mbr_buffer[512];
@@ -81,18 +82,26 @@ devices_init (void)
 
       /* Set device name and register it */
       name[2] = 'a' + j++;
-      dev = device_register (i + 1, 0, DEVICE_TYPE_BLOCK, name, ata_device_read,
+      dev = device_register (i + 2, 0, DEVICE_TYPE_BLOCK, name, ata_device_read,
 			     ata_device_write);
 
       /* Create more block devices for each partition */
       device_disk_init (i, dev);
     }
+
+  /* Initialize standard streams */
+  device_register (1, STDIN_FILENO, DEVICE_TYPE_CHAR, "stdin", vga_dev_read,
+		   NULL);
+  device_register (1, STDOUT_FILENO, DEVICE_TYPE_CHAR, "stdout", NULL,
+		   vga_dev_write);
+  device_register (1, STDERR_FILENO, DEVICE_TYPE_CHAR, "stderr", NULL,
+		   vga_dev_write);
 }
 
 SpecDevice *
 device_register (dev_t major, dev_t minor, unsigned char type, const char *name,
 		 int (*read) (SpecDevice *, void *, size_t, off_t),
-		 int (*write) (SpecDevice *, void *, size_t, off_t))
+		 int (*write) (SpecDevice *, const void *, size_t, off_t))
 {
   size_t i;
   for (i = 0; i < DEVICE_TABLE_SIZE; i++)

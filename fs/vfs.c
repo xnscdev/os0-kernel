@@ -298,7 +298,7 @@ vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 }
 
 int
-vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
+vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   if (inode->vi_ops->vfs_write != NULL)
     return inode->vi_ops->vfs_write (inode, buffer, len, offset);

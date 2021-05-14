@@ -383,7 +383,7 @@ ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 }
 
 int
-ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
+ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
 		   size_t nblocks)
 {
   int ret = sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,

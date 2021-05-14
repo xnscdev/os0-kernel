@@ -324,7 +324,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 }
 
 int
-ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset)
+ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   char *temp;
   uint32_t realblock;

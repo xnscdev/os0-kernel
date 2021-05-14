@@ -17,9 +17,33 @@
  *************************************************************************/
 
 #include <libk/libk.h>
+#include <sys/process.h>
+
+static int
+ioctl_tcgets (Process *proc, int fd, struct termios *data)
+{
+  SpecDevice *dev = proc->p_files[fd].pf_inode->vi_private;
+  if (dev == NULL || dev->sd_major != 1 || (dev->sd_minor != STDIN_FILENO
+					    && dev->sd_minor != STDOUT_FILENO
+					    && dev->sd_minor != STDERR_FILENO))
+    return -ENOTTY;
+  data->c_iflag = BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY;
+  data->c_oflag = OPOST | ONLCR | XTABS;
+  data->c_cflag = B9600 | CREAD | CS7 | PARENB | HUPCL;
+  data->c_lflag = ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL;
+  return 0;
+}
 
 int
 ioctl (int fd, unsigned long req, void *data)
 {
-  return -ENOSYS;
+  Process *proc = &process_table[task_getpid ()];
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd].pf_inode == NULL)
+    return -EBADF;
+  switch (req)
+    {
+    case TCGETS:
+      return ioctl_tcgets (proc, fd, data);
+    }
+  return -EINVAL;
 }

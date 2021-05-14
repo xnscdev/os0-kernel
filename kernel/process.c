@@ -245,19 +245,25 @@ process_setup_std_streams (pid_t pid)
     return -EINVAL; /* File descriptors for std streams are used */
 
   /* Create stdin */
-  proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
+  proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDIN_FILENO].pf_inode->vi_private =
+    device_lookup (1, STDIN_FILENO);
   proc->p_files[STDIN_FILENO].pf_mode = O_RDONLY;
   proc->p_files[STDIN_FILENO].pf_flags = 0;
   proc->p_files[STDIN_FILENO].pf_offset = 0;
 
-  /* Create stdout */
-  proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_stdout_sb);
+  /* Create tty */
+  proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDOUT_FILENO].pf_inode->vi_private =
+    device_lookup (1, STDOUT_FILENO);
   proc->p_files[STDOUT_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDOUT_FILENO].pf_flags = 0;
   proc->p_files[STDOUT_FILENO].pf_offset = 0;
 
   /* Create stderr */
-  proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_stderr_sb);
+  proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDERR_FILENO].pf_inode->vi_private =
+    device_lookup (1, STDERR_FILENO);
   proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDERR_FILENO].pf_flags = 0;
   proc->p_files[STDERR_FILENO].pf_offset = 0;

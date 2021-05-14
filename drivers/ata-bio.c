@@ -44,7 +44,7 @@ ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 
 int
 ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
-		   void *buffer)
+		   const void *buffer)
 {
   int err;
   if (drive > 3 || !ata_devices[drive].id_reserved
@@ -52,7 +52,7 @@ ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
     return -EINVAL;
 
   if (ata_devices[drive].id_type == IDE_ATA)
-    err = ata_access (ATA_WRITE, drive, lba, nsects, buffer);
+    err = ata_access (ATA_WRITE, drive, lba, nsects, (void *) buffer);
   else if (ata_devices[drive].id_type == IDE_ATAPI)
     err = -EINVAL;
   err = ata_perror (drive, err);
@@ -155,7 +155,7 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 }
 
 int
-ata_device_write (SpecDevice *dev, void *buffer, size_t len, off_t offset)
+ata_device_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
 {
   size_t start_diff;
   size_t end_diff;

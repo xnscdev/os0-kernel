@@ -167,7 +167,7 @@ int ext2_extend_inode (VFSInode *inode, blkcnt_t origblocks,
 		       blkcnt_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		      size_t nblocks);
-int ext2_write_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
+int ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
 		       size_t nblocks);
 off_t ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block);
 int ext2_unalloc_data_blocks (VFSInode *inode, off_t start, blkcnt_t nblocks);
@@ -198,7 +198,7 @@ int ext2_link (VFSInode *old, VFSInode *dir, const char *new);
 int ext2_unlink (VFSInode *dir, const char *name);
 int ext2_symlink (VFSInode *dir, const char *old, const char *new);
 int ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
-int ext2_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
+int ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 VFSDirEntry *ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb);
 int ext2_chmod (VFSInode *inode, mode_t mode);
 int ext2_chown (VFSInode *inode, uid_t uid, gid_t gid);

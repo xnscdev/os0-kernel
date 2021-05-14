@@ -59,7 +59,7 @@ typedef struct
   int (*vfs_unlink) (VFSInode *, const char *);
   int (*vfs_symlink) (VFSInode *, const char *, const char *);
   int (*vfs_read) (VFSInode *, void *, size_t, off_t);
-  int (*vfs_write) (VFSInode *, void *, size_t, off_t);
+  int (*vfs_write) (VFSInode *, const void *, size_t, off_t);
   VFSDirEntry *(*vfs_readdir) (VFSDirectory *, VFSSuperblock *);
   int (*vfs_chmod) (VFSInode *, mode_t);
   int (*vfs_chown) (VFSInode *, uid_t, gid_t);
@@ -183,7 +183,7 @@ int vfs_link (VFSInode *old, VFSInode *dir, const char *new);
 int vfs_unlink (VFSInode *dir, const char *name);
 int vfs_symlink (VFSInode *dir, const char *old, const char *new);
 int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
-int vfs_write (VFSInode *inode, void *buffer, size_t len, off_t offset);
+int vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 VFSDirEntry *vfs_readdir (VFSDirectory *dir, VFSSuperblock *sb);
 int vfs_chmod (VFSInode *inode, mode_t mode);
 int vfs_chown (VFSInode *inode, uid_t uid, gid_t gid);

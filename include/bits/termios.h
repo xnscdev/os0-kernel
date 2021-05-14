@@ -99,6 +99,7 @@ struct termios
 #define TAB1   0x0800
 #define TAB2   0x1000
 #define TAB3   0x1800
+#define XTABS  0x1800
 
 #define BSDLY  0x2000
 #define BS0    0x0000
@@ -157,6 +158,23 @@ struct termios
 #define B3000000 0x100d
 #define B3500000 0x100e
 #define B4000000 0x100f
+
+#define ISIG    0x0001
+#define ICANON  0x0002
+#define XCASE   0x0004
+#define ECHO    0x0008
+#define ECHOE   0x0010
+#define ECHOK   0x0020
+#define ECHONL  0x0040
+#define NOFLSH  0x0080
+#define TOSTOP  0x0100
+#define ECHOCTL 0x0200
+#define ECHOPRT 0x0400
+#define ECHOKE  0x0800
+#define FLUSHO  0x1000
+#define PENDIN  0x4000
+#define IEXTEN  0x8000
+#define EXTPROC 0x10000
 
 #define TCOOFF 0
 #define TCOON  1
