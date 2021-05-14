@@ -143,6 +143,9 @@ struct termios
 #define HUPCL  0x0400
 #define CLOCAL 0x0800
 
+#define CBAUD    0x100f
+#define CBAUDEX  0x1000
+
 #define B57600   0x1001
 #define B115200  0x1002
 #define B230400  0x1003
@@ -158,6 +161,8 @@ struct termios
 #define B3000000 0x100d
 #define B3500000 0x100e
 #define B4000000 0x100f
+
+#define __MAX_BAUD B4000000
 
 #define ISIG    0x0001
 #define ICANON  0x0002
