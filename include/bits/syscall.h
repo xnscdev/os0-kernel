@@ -95,6 +95,7 @@
 #define SYS_setitimer     104
 #define SYS_getitimer     105
 #define SYS_stat          106
+#define SYS_fstat         108
 #define SYS_wait4         114
 #define SYS_swapoff       115
 #define SYS_sysinfo       116

@@ -69,6 +69,7 @@ int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);
 int sys_stat (const char *path, struct stat *st);
+int sys_fstat (int fd, struct stat *st);
 int sys_fchdir (int fd);
 int sys_setxattr (const char *path, const char *name, const void *value,
 		  size_t len, int flags);

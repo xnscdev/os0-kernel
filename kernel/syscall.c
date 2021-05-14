@@ -615,6 +615,18 @@ sys_stat (const char *path, struct stat *st)
 }
 
 int
+sys_fstat (int fd, struct stat *st)
+{
+  VFSInode *inode;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_getattr (inode, st);
+}
+
+int
 sys_fchdir (int fd)
 {
   Process *proc = &process_table[task_getpid ()];
