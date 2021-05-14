@@ -73,7 +73,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_ioctl,
   sys_fcntl,
   NULL,
   NULL,

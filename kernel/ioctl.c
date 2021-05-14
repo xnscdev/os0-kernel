@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * ioctl.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,17 +16,10 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/macros.h>
-#include <libk/types.h>
-#include <sys/ioctl.h>
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
+#include <libk/libk.h>
+
+int
+ioctl (int fd, unsigned long req, void *data)
+{
+  return -ENOSYS;
+}

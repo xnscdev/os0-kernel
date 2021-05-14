@@ -469,6 +469,12 @@ sys_brk (void *ptr)
 }
 
 int
+sys_ioctl (int fd, unsigned long req, void *data)
+{
+  return ioctl (fd, req, data);
+}
+
+int
 sys_fcntl (int fd, int cmd, int arg)
 {
   return fcntl (fd, cmd, arg);
