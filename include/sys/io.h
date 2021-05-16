@@ -115,42 +115,42 @@ outl_p (unsigned int value, unsigned short port)
 __attribute__ ((always_inline)) static __inline void
 insb (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; insb" : "=D" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep insb" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
 __attribute__ ((always_inline)) static __inline void
 insw (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; insw" : "=D" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep insw" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
 __attribute__ ((always_inline)) static __inline void
 insl (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; insl" : "=D" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep insl" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
 __attribute__ ((always_inline)) static __inline void
 outsb (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; outsb" : "=S" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep outsb" : "=S" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
 __attribute__ ((always_inline)) static __inline void
 outsw (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; outsw" : "=S" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep outsw" : "=S" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
 __attribute__ ((always_inline)) static __inline void
 outsl (unsigned short port, void *addr, unsigned int count)
 {
-  __asm__ volatile ("cld; rep; outsl" : "=S" (addr), "=c" (count) : "d" (port),
+  __asm__ volatile ("cld; rep outsl" : "=S" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
