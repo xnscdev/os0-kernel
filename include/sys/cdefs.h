@@ -35,4 +35,6 @@
 #define __restrict
 #endif
 
+#define __hidden __attribute__ ((visibility ("hidden")))
+
 #endif
