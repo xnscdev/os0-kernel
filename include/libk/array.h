@@ -38,15 +38,13 @@ typedef struct
   unsigned char sa_alloc;
 } SortedArray;
 
-typedef void (*ArrayElementFreeFunc) (void *, void *);
-
 __BEGIN_DECLS
 
 int default_cmp (const void *a, const void *b);
 
 Array *array_new (uint32_t max);
 int array_append (Array *array, void *elem);
-void array_destroy (Array *array, ArrayElementFreeFunc func, void *data);
+void array_destroy (Array *array, ReleasePredicate func, void *data);
 
 int sorted_array_new (SortedArray *array, uint32_t max, ComparePredicate cmp);
 int sorted_array_place (SortedArray *array, void *addr, uint32_t max,

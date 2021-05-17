@@ -8,6 +8,7 @@ libk_src = [
   'pregs.S',
   'printk.c',
   'qsort.c',
+  'stack.c',
   'string.c'
 ]
 

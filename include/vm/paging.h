@@ -30,7 +30,13 @@ __BEGIN_DECLS
 
 extern uint32_t kernel_page_dir[PAGE_DIR_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
-extern uint32_t kernel_page_table[PAGE_DIR_SIZE][PAGE_TBL_SIZE]
+extern uint32_t kernel_page_table[2][PAGE_TBL_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t kernel_vmap[PAGE_DIR_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t kheap_page_table[65][PAGE_TBL_SIZE]
+  __attribute__ ((aligned (PAGE_SIZE)));
+extern uint32_t page_stack_table[PAGE_TBL_SIZE]
   __attribute__ ((aligned (PAGE_SIZE)));
 extern uint32_t *curr_page_dir;
 

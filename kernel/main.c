@@ -176,8 +176,8 @@ kmain (MultibootInfo *info, uint32_t stack)
   cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
 
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
-  mem_init (info->mi_memhigh);
   heap_init ();
+  mem_init (info->mi_memhigh);
 
   task_stack_addr = stack;
   scheduler_init ();

@@ -19,6 +19,7 @@
 #include <libk/array.h>
 #include <libk/compile.h>
 #include <libk/macros.h>
+#include <libk/stack.h>
 #include <libk/types.h>
 #include <sys/ioctl.h>
 #include <assert.h>

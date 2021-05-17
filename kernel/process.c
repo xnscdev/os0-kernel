@@ -36,7 +36,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
   for (addr = phdr->p_vaddr & 0xfffff000; addr < phdr->p_vaddr + phdr->p_memsz;
        addr += PAGE_SIZE)
     {
-      uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
+      uint32_t paddr = (uint32_t) alloc_page ();
       if (unlikely (paddr == 0))
 	return -ENOMEM;
       map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
@@ -116,9 +116,9 @@ process_segment_free (void *elem, void *data)
   for (addr = segment->ps_addr; addr < segment->ps_addr + segment->ps_size;
        addr += PAGE_SIZE)
     {
-      void *paddr = (void *) get_paddr (data, (void *) addr);
-      assert (paddr != NULL);
-      mem_free (paddr, PAGE_SIZE);
+      uint32_t paddr = get_paddr (data, (void *) addr);
+      if (paddr != 0)
+	free_page (paddr);
     }
   kfree (segment);
 }
@@ -292,7 +292,7 @@ process_set_break (uint32_t addr)
   /* Map pages until the new program break is reached */
   for (; i < addr; i += PAGE_SIZE)
     {
-      uint32_t paddr = (uint32_t) mem_alloc (PAGE_SIZE, 0);
+      uint32_t paddr = (uint32_t) alloc_page ();
       if (paddr == 0)
 	return proc->p_break;
       map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);

@@ -29,7 +29,10 @@ extern uint32_t _kernel_heap_start;
 extern uint32_t _kernel_heap_end;
 
 uint32_t kernel_page_dir[PAGE_DIR_SIZE];
-uint32_t kernel_page_table[PAGE_DIR_SIZE][PAGE_TBL_SIZE];
+uint32_t kernel_page_table[2][PAGE_TBL_SIZE];
+uint32_t kernel_vmap[PAGE_DIR_SIZE];
+uint32_t kheap_page_table[65][PAGE_TBL_SIZE];
+uint32_t page_stack_table[PAGE_TBL_SIZE];
 uint32_t *curr_page_dir;
 
 void
@@ -42,28 +45,60 @@ paging_init (void)
   curr_page_dir = kernel_page_dir;
 
   /* Fill page directory */
-  for (i = 0; i < PAGE_DIR_SIZE; i++)
-    kernel_page_dir[i] = ((uint32_t) kernel_page_table[i] - RELOC_VADDR)
-      | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT | PAGE_FLAG_USER;
+  for (i = 0; i < 2; i++)
+    {
+      kernel_page_dir[i + (RELOC_VADDR >> 22)] =
+	((uint32_t) kernel_page_table[i] - RELOC_VADDR)
+	| PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT | PAGE_FLAG_USER;
+      kernel_vmap[i + (RELOC_VADDR >> 22)] = (uint32_t) kernel_page_table[i];
+    }
+  for (i = 0; i < 65; i++)
+    {
+      kernel_page_dir[i + (KHEAP_DATA_VADDR >> 22)] =
+	((uint32_t) kheap_page_table[i] - RELOC_VADDR)
+	| PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+      kernel_vmap[i + (KHEAP_DATA_VADDR >> 22)] =
+	(uint32_t) kheap_page_table[i];
+    }
+  kernel_page_dir[PAGE_STACK_VADDR >> 22] =
+    ((uint32_t) page_stack_table - RELOC_VADDR)
+    | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  kernel_vmap[PAGE_STACK_VADDR >> 22] = (uint32_t) kernel_page_dir;
 
   /* Map low memory + kernel to RELOC_VADDR */
-  for (i = 0, addr = 0; addr <= RELOC_LEN; i++, addr += PAGE_SIZE)
+  for (addr = 0; addr <= RELOC_LEN; addr += PAGE_SIZE)
     {
       uint32_t vaddr = addr + RELOC_VADDR;
       uint32_t pdi = vaddr >> 22;
       uint32_t pti = vaddr >> 12 & (PAGE_DIR_SIZE - 1);
-      uint32_t *table =
-	(uint32_t *) ((kernel_page_dir[pdi] & 0xfffff000) + RELOC_VADDR);
-      table[pti] = addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+      kernel_page_table[pdi - (RELOC_VADDR >> 22)][pti] =
+	addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
     }
+
+  /* Map kernel heap data and index */
+  for (addr = 0; addr < KHEAP_DATA_LEN; addr += PAGE_SIZE)
+    {
+      uint32_t pdi = addr >> 22;
+      uint32_t pti = addr >> 12 & (PAGE_DIR_SIZE - 1);
+      kheap_page_table[pdi][pti] =
+	(addr + KHEAP_DATA_PADDR) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+    }
+  for (addr = 0; addr < KHEAP_INDEX_LEN; addr += PAGE_SIZE)
+    {
+      uint32_t pti = addr >> 12 & (PAGE_DIR_SIZE - 1);
+      kheap_page_table[64][pti] =
+	(addr + KHEAP_INDEX_PADDR) | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
+    }
+
+  /* Map page frame allocator stack */
+  for (i = 0, addr = PAGE_STACK_VADDR; i < PAGE_TBL_SIZE;
+       i++, addr += PAGE_SIZE)
+    page_stack_table[i] = addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
 
   paging_loaddir ((uint32_t) kernel_page_dir - RELOC_VADDR);
 
   /* Map last page table to page directory virtual addresses */
-  kernel_page_dir[PAGE_DIR_SIZE - 1] =
-    (uint32_t) kernel_page_table[PAGE_DIR_SIZE - 1];
-  for (i = 0; i < PAGE_TBL_SIZE; i++)
-    kernel_page_table[PAGE_DIR_SIZE - 1][i] = (uint32_t) kernel_page_table[i];
+  kernel_page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kernel_vmap;
 }
 
 uint32_t
@@ -121,7 +156,7 @@ page_table_clone (uint32_t index, uint32_t *orig)
   for (i = 0; i < PAGE_TBL_SIZE; i++)
     {
       uint32_t vaddr = (index << 22) | (i << 12);
-      void *buffer;
+      uint32_t buffer;
       if (!(orig[i] & PAGE_FLAG_PRESENT))
 	{
 	  table[i] = 0;
@@ -136,22 +171,21 @@ page_table_clone (uint32_t index, uint32_t *orig)
 	}
 
       /* Allocate and copy page contents */
-      buffer = mem_alloc (PAGE_SIZE, 0);
-      if (unlikely (buffer == NULL))
+      buffer = alloc_page ();
+      if (unlikely (buffer == 0))
 	{
 	  kfree (table);
 	  table = NULL;
 	  goto end;
 	}
-      map_page (curr_page_dir, (uint32_t) buffer, PAGE_COPY_VADDR,
-		PAGE_FLAG_WRITE);
+      map_page (curr_page_dir, buffer, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (PAGE_COPY_VADDR);
 #else
       vm_tlb_reset ();
 #endif
       memcpy ((void *) PAGE_COPY_VADDR, (const void *) vaddr, PAGE_SIZE);
-      table[i] = (uint32_t) buffer | (orig[i] & 0xfff);
+      table[i] = buffer | (orig[i] & 0xfff);
     }
 
  end:
@@ -170,6 +204,7 @@ page_dir_clone (uint32_t *orig)
   int i;
   uint32_t *dir = kvalloc (PAGE_DIR_SIZE << 2);
   uint32_t *vmap;
+  uint32_t *vtable;
   if (unlikely (dir == NULL))
     return NULL;
   memset (dir, 0, PAGE_DIR_SIZE << 2);
@@ -180,15 +215,14 @@ page_dir_clone (uint32_t *orig)
       return NULL;
     }
   dir[PAGE_DIR_SIZE - 1] = (uint32_t) vmap;
+  vtable = (uint32_t *) orig[PAGE_DIR_SIZE - 1];
   for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
     {
-      uint32_t *vtable;
       if (!(orig[i] & PAGE_FLAG_PRESENT))
 	{
 	  vmap[i] = 0;
 	  continue;
 	}
-      vtable = (uint32_t *) orig[PAGE_DIR_SIZE - 1];
       if (memcmp ((const void *) vtable[i], page_empty, PAGE_SIZE) == 0)
 	{
 	  /* Table has no present entries, no need to copy */
@@ -218,8 +252,8 @@ page_dir_free (uint32_t *dir)
   for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
     {
       /* If page table is on kernel heap, assume it's allocated and free it */
-      if (vmap[i] >= kernel_heap->mh_addr
-	  && vmap[i] < kernel_heap->mh_addr + kernel_heap->mh_size)
+      if (vmap[i] >= kernel_heap.mh_addr
+	  && vmap[i] < kernel_heap.mh_addr + kernel_heap.mh_size)
 	kfree ((uint32_t *) vmap[i]);
       dir[i] = 0;
       vmap[i] = 0;

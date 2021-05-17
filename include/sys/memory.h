@@ -30,25 +30,39 @@
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
 
-#define MEM_MAX_BLOCK_ORDER 16 /* 256 MiB blocks */
-
-#define MEM_STARTADDR 0x800000
-
 #define PAGE_SIZE 0x1000
 
-#define KERNEL_PADDR 0x100000
+#define KERNEL_PADDR 0x00100000
 #define KERNEL_VADDR 0xc0100000
 #ifndef _ASM
 #define KERNEL_LEN   ((uint32_t) &_kernel_end - KERNEL_VADDR)
 #endif
 
-#define RELOC_PADDR 0x0
+#define RELOC_PADDR 0x00000000
 #define RELOC_VADDR 0xc0000000
 #ifndef _ASM
 #define RELOC_LEN   ((uint32_t) &_kernel_end - RELOC_VADDR)
 #endif
 
-#define TASK_LOCAL_BOUND 0xe0000000
+#define KHEAP_DATA_PADDR 0x00808000
+#define KHEAP_DATA_VADDR 0xd0000000
+#define KHEAP_DATA_LEN   0x10000000
+
+#define KHEAP_INDEX_PADDR 0x00800000
+#define KHEAP_INDEX_VADDR 0xe0000000
+#define KHEAP_INDEX_NELEM 0x8000
+#define KHEAP_INDEX_LEN   (KHEAP_INDEX_NELEM << 2)
+
+#define PAGE_STACK_PADDR 0x10808000
+#define PAGE_STACK_VADDR 0xe0400000
+#define PAGE_STACK_NELEM 0x100000
+#ifndef _ASM
+#define PAGE_STACK_LEN   (PAGE_STACK_NELEM * sizeof (void *))
+#endif
+
+#define MEM_ALLOC_START 0x1c000000
+
+#define TASK_LOCAL_BOUND 0xf0000000
 
 #ifndef _ASM
 
@@ -59,8 +73,8 @@ extern void *_kernel_end;
 
 void mem_init (uint32_t mem);
 
-void *mem_alloc (size_t size, uint32_t flags);
-void mem_free (void *ptr, size_t size);
+uint32_t alloc_page (void);
+void free_page (uint32_t addr);
 
 __END_DECLS
 

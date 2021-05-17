@@ -1,5 +1,5 @@
 /*************************************************************************
- * types.h -- This file is part of OS/0.                                 *
+ * stack.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,12 +16,29 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_TYPES_H
-#define _LIBK_TYPES_H
+#ifndef _LIBK_STACK_H
+#define _LIBK_STACK_H
 
-#include <sys/types.h>
+#include <libk/types.h>
+#include <sys/cdefs.h>
+#include <stddef.h>
 
-typedef int (*ComparePredicate) (const void *, const void *);
-typedef void (*ReleasePredicate) (void *, void *);
+typedef struct
+{
+  void **s_base;
+  void **s_ptr;
+  size_t s_size;
+  size_t s_max;
+} Stack;
+
+__BEGIN_DECLS
+
+Stack *stack_new (uint32_t max);
+Stack *stack_place (void *addr, uint32_t max);
+int stack_push (Stack *stack, void *elem);
+void *stack_pop (Stack *stack);
+void stack_destroy (Stack *stack, ReleasePredicate func, void *data);
+
+__END_DECLS
 
 #endif

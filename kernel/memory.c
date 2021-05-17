@@ -20,162 +20,37 @@
 #include <sys/memory.h>
 #include <limits.h>
 
+static Stack *page_stack;
+static uint32_t mem_curraddr;
 static uint32_t mem_maxaddr; /* Physical address of max memory location */
-
-static unsigned char o16[0x1];
-static unsigned char o15[0x2];
-static unsigned char o14[0x4];
-static unsigned char o13[0x8];
-static unsigned char o12[0x10];
-static unsigned char o11[0x20];
-static unsigned char o10[0x40];
-static unsigned char o9[0x80];
-static unsigned char o8[0x100];
-static unsigned char o7[0x200];
-static unsigned char o6[0x400];
-static unsigned char o5[0x800];
-static unsigned char o4[0x1000];
-static unsigned char o3[0x2000];
-static unsigned char o2[0x4000];
-static unsigned char o1[0x8000];
-static unsigned char o0[0x10000];
-static unsigned char *block_list[] =
-  {o0, o1, o2, o3, o4, o5, o6, o7, o8, o9, o10, o11, o12, o13, o14, o15, o16};
-
-static int
-mem_search_free (uint32_t order, int *index, int *bit)
-{
-  size_t i;
-  for (i = 0; i < 1 << (MEM_MAX_BLOCK_ORDER - order); i++)
-    {
-      unsigned char num = ~block_list[order][i];
-      int nbit = fls (num);
-      if (nbit == 0)
-	continue;
-      *index = i;
-      *bit = CHAR_BIT - nbit;
-      return 0;
-    }
-  return -1;
-}
 
 void
 mem_init (uint32_t mem)
 {
-  mem_maxaddr = mem * 1024 + 0x100000;
   printk ("Detected %luK of available upper memory\n", mem);
+  if (mem < 524288)
+    panic ("Too little memory available, at least 512K is required");
+  mem_maxaddr = mem * 1024 + KERNEL_PADDR;
+  page_stack = stack_place ((void *) PAGE_STACK_VADDR, PAGE_STACK_NELEM);
+  if (unlikely (page_stack == NULL))
+    panic ("Failed to setup page allocation stack");
+  mem_curraddr = MEM_ALLOC_START;
 }
 
-void *
-mem_alloc (size_t size, uint32_t flags)
+uint32_t
+alloc_page (void)
 {
-  unsigned char order = 0;
-  uint32_t addr;
-  int index;
-  int bit;
-  int save_index;
-  int save_bit;
-  int i;
-  int j;
-
-  while (1 << (order + 12) < size)
-    order++;
-  if (order > MEM_MAX_BLOCK_ORDER)
-    return NULL; /* Requested too much memory */
-
-  if (mem_search_free (order, &index, &bit) != 0)
-    return NULL; /* No blocks that can fit size bytes are available */
-
-  addr = MEM_STARTADDR + (1 << (order + 12)) * (index * CHAR_BIT + bit);
-  if (addr > mem_maxaddr)
-    return NULL; /* System does not have enough memory */
-  save_index = index;
-  save_bit = bit;
-
-  /* Mark block as used in bitmap and all corresponding indices in larger
-     order bitmaps */
-  for (i = order; i <= MEM_MAX_BLOCK_ORDER; i++)
+  uint32_t addr = (uint32_t) stack_pop (page_stack);
+  if (addr == 0)
     {
-      int offset;
-      block_list[i][index] |= (1 << (CHAR_BIT - bit - 1));
-      offset = index * CHAR_BIT + bit;
-      offset >>= 1;
-      index = offset / CHAR_BIT;
-      bit = offset - index * CHAR_BIT;
+      addr = mem_curraddr;
+      mem_curraddr += PAGE_SIZE;
     }
-
-  index = save_index;
-  bit = save_bit;
-  for (i = order - 1, j = 2; i >= 0; i--, j <<= 1)
-    {
-      int offset = index * CHAR_BIT + bit;
-      int k;
-      for (k = 0; k < j; k++)
-	{
-	  int to = offset + k;
-	  int ti = to / CHAR_BIT;
-	  int tb = to - ti * CHAR_BIT;
-	  block_list[i][ti] |= 1 << (CHAR_BIT - tb - 1);
-	}
-      offset <<= 1;
-      index = offset / CHAR_BIT;
-      bit = offset - index * CHAR_BIT;
-    }
-
-  return (void *) addr;
+  return addr;
 }
 
 void
-mem_free (void *ptr, size_t size)
+free_page (uint32_t addr)
 {
-  unsigned char order = 0;
-  int offset;
-  int index;
-  int bit;
-  int save_index;
-  int save_bit;
-  int i;
-
-  if (ptr == NULL)
-    return;
-  if (((uint32_t) ptr - MEM_STARTADDR) % PAGE_SIZE != 0)
-    return; /* Bad address */
-
-  while (1 << (order + 12) < size)
-    order++;
-  if (order > MEM_MAX_BLOCK_ORDER)
-    return; /* Freeing too much memory */
-
-  offset = ((uint32_t) ptr - MEM_STARTADDR) >> 12;
-  index = offset / CHAR_BIT;
-  bit = offset - index * CHAR_BIT;
-  save_index = index;
-  save_bit = bit;
-
-  i = order;
-  while (i < MEM_MAX_BLOCK_ORDER)
-    {
-      block_list[i][index] &= ~(1 << (CHAR_BIT - bit - 1));
-      if (bit % 2 != 0 || (block_list[i][index] & 1 << (CHAR_BIT - bit)))
-	break;
-      offset = index * CHAR_BIT + bit;
-      offset >>= 1;
-      index = offset / CHAR_BIT;
-      bit = offset - index * CHAR_BIT;
-      block_list[++i][index] &= ~(1 << (CHAR_BIT - bit - 1));
-    }
-
-  index = save_index;
-  bit = save_bit;
-  for (i = 0; i < order; i++)
-    {
-      int k;
-      for (k = 0; k < 1 << (order - i); k++)
-	{
-	  int to = index * CHAR_BIT + bit + k;
-	  int ti = to / CHAR_BIT;
-	  int tb = to - ti * CHAR_BIT;
-	  block_list[i][ti] &= ~(1 << (CHAR_BIT - tb - 1));
-	}
-    }
+  stack_push (page_stack, (void *) (addr & 0xfffff000));
 }

@@ -47,15 +47,13 @@ typedef struct
   SortedArray mh_index;
   uint32_t mh_addr;
   uint32_t mh_size;
-  uint16_t mh_supvsr;
-  uint16_t mh_rdonly;
   uint32_t mh_pdata;
   uint32_t mh_pindex;
 } MemHeap;
 
 __BEGIN_DECLS
 
-extern MemHeap *kernel_heap;
+extern MemHeap kernel_heap;
 
 int heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
 	      unsigned char supervisor, unsigned char readonly);

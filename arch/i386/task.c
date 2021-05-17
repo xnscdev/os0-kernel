@@ -73,7 +73,7 @@ task_free (ProcessTask *task)
     {
       uint32_t paddr = get_paddr (task->t_pgdir, (void *) i);
       if (paddr != 0)
-	mem_free ((void *) paddr, PAGE_SIZE);
+	free_page (paddr);
     }
 
   page_dir_free (task->t_pgdir);
@@ -92,9 +92,8 @@ task_relocate_stack (void *addr, uint32_t size)
 
   for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= PAGE_SIZE)
     {
-      void *paddr = mem_alloc (PAGE_SIZE, 0);
-      map_page (curr_page_dir, (uint32_t) paddr, i,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
+      uint32_t paddr = alloc_page ();
+      map_page (curr_page_dir, paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (i);
 #endif
@@ -143,17 +142,24 @@ _task_fork (void)
     return NULL;
 
   /* Allocate and copy the stack */
-  paddr = (uint32_t) mem_alloc (TASK_STACK_SIZE, 0);
-  if (paddr == 0)
-    {
-      page_dir_free (dir);
-      return NULL;
-    }
   for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
     {
-      map_page (dir, paddr + i, TASK_STACK_BOTTOM + i,
+      paddr = alloc_page ();
+      if (unlikely (paddr == 0))
+	{
+	  int j;
+	  for (j = 0; j < i; j += PAGE_SIZE)
+	    {
+	      paddr = get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
+	      if (paddr != 0)
+		free_page (paddr);
+	    }
+	  page_dir_free (dir);
+	  return NULL;
+	}
+      map_page (dir, paddr, TASK_STACK_BOTTOM + i,
 		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-      map_page (curr_page_dir, paddr + i, PAGE_COPY_VADDR + i,
+      map_page (curr_page_dir, paddr, PAGE_COPY_VADDR + i,
 		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr + i);
@@ -173,7 +179,13 @@ _task_fork (void)
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
     {
-      mem_free ((void *) paddr, TASK_STACK_SIZE);
+      for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
+	{
+	  uint32_t paddr =
+	    get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
+	  if (paddr != 0)
+	    free_page (paddr);
+	}
       page_dir_free (dir);
       return NULL;
     }

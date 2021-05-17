@@ -22,84 +22,12 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
-static MemHeap _kernel_heap;
-
-MemHeap *kernel_heap;
+MemHeap kernel_heap;
 
 static int
 heap_cmp (const void *a, const void *b)
 {
   return ((MemHeader *) a)->mh_size < ((MemHeader *) b)->mh_size;
-}
-
-int
-heap_new (MemHeap *heap, void *vaddr, uint32_t indexsize, uint32_t heapsize,
-	  unsigned char supervisor, unsigned char readonly)
-{
-  MemHeader *header;
-  MemFooter *footer;
-  uint32_t heapaddr;
-  uint32_t indexaddr;
-  uint32_t addr;
-  uint32_t flags = 0;
-  if (!supervisor)
-    flags |= PAGE_FLAG_USER;
-  if (!readonly)
-    flags |= PAGE_FLAG_WRITE;
-
-  /* Page-align indexsize and heapsize */
-  if (indexsize & (PAGE_SIZE - 1))
-    {
-      indexsize &= 0xfffff000;
-      indexsize += PAGE_SIZE;
-    }
-  if (heapsize & (PAGE_SIZE - 1))
-    {
-      heapsize &= 0xfffff000;
-      heapsize += PAGE_SIZE;
-    }
-
-  indexaddr = (uint32_t) mem_alloc (sizeof (void *) * indexsize, 0);
-  if (indexaddr == 0)
-    return -1;
-  /* Identity map the index array */
-  for (addr = 0; addr < sizeof (void *) * indexsize; addr += PAGE_SIZE)
-    map_page (curr_page_dir, addr + indexaddr, addr + indexaddr,
-              flags | PAGE_FLAG_WRITE);
-  if (sorted_array_place (&heap->mh_index, (void *) indexaddr, indexsize,
-			  heap_cmp) != 0)
-    return -1;
-
-  heapaddr = (uint32_t) mem_alloc (heapsize, 0);
-  if (heapaddr == 0)
-    {
-      mem_free ((void *) indexaddr, sizeof (void *) * indexsize);
-      return -1;
-    }
-  /* Map heap pages from the desired virtual address */
-  for (addr = 0; addr < heapsize; addr += PAGE_SIZE)
-    map_page (curr_page_dir, addr + heapaddr, addr + (uint32_t) vaddr,
-	      flags);
-
-  /* Add a single unallocated memory block to the heap */
-  header = vaddr;
-  header->mh_magic = MEM_MAGIC;
-  header->mh_size = heapsize - sizeof (MemHeader) - sizeof (MemFooter);
-  header->mh_alloc = 0;
-  sorted_array_insert (&heap->mh_index, header);
-
-  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
-			  header->mh_size);
-  footer->mf_cigam = MEM_CIGAM;
-  footer->mf_header = (uint32_t) header;
-
-  heap->mh_addr = (uint32_t) vaddr;
-  heap->mh_size = heapsize;
-  heap->mh_supvsr = supervisor;
-  heap->mh_rdonly = readonly;
-  heap->mh_pdata = heapaddr;
-  heap->mh_pindex = indexaddr;
-  return 0;
 }
 
 void *
@@ -394,13 +322,13 @@ heap_free (MemHeap *heap, void *ptr)
 void *
 kmalloc (size_t size)
 {
-  return heap_alloc (kernel_heap, size, 0);
+  return heap_alloc (&kernel_heap, size, 0);
 }
 
 void *
 kvalloc (size_t size)
 {
-  return heap_alloc (kernel_heap, size, 1);
+  return heap_alloc (&kernel_heap, size, 1);
 }
 
 void *
@@ -416,20 +344,39 @@ kzalloc (size_t size)
 void *
 krealloc (void *ptr, size_t size)
 {
-  return heap_realloc (kernel_heap, ptr, size);
+  return heap_realloc (&kernel_heap, ptr, size);
 }
 
 void
 kfree (void *ptr)
 {
-  heap_free (kernel_heap, ptr);
+  heap_free (&kernel_heap, ptr);
 }
 
 void
 heap_init (void)
 {
-  kernel_heap = &_kernel_heap;
-  if (heap_new (kernel_heap, (void *) KERNEL_HEAP_DATA_ADDR,
-		KERNEL_HEAP_INDEX_SIZE, KERNEL_HEAP_DATA_SIZE, 1, 0) != 0)
+  MemHeader *header = (MemHeader *) KHEAP_DATA_VADDR;
+  MemFooter *footer;
+
+  /* Setup heap index array */
+  if (sorted_array_place (&kernel_heap.mh_index, (void *) KHEAP_INDEX_VADDR,
+			  KHEAP_INDEX_NELEM, heap_cmp) != 0)
     panic ("Failed to create kernel heap");
+
+  /* Add a single unallocated memory block to the heap */
+  header->mh_magic = MEM_MAGIC;
+  header->mh_size = KHEAP_DATA_LEN - sizeof (MemHeader) - sizeof (MemFooter);
+  header->mh_alloc = 0;
+  sorted_array_insert (&kernel_heap.mh_index, header);
+
+  footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
+			  header->mh_size);
+  footer->mf_cigam = MEM_CIGAM;
+  footer->mf_header = (uint32_t) header;
+
+  kernel_heap.mh_addr = KHEAP_DATA_VADDR;
+  kernel_heap.mh_size = KHEAP_DATA_LEN;
+  kernel_heap.mh_pdata = KHEAP_DATA_PADDR;
+  kernel_heap.mh_pindex = KHEAP_INDEX_PADDR;
 }

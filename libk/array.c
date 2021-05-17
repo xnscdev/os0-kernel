@@ -53,7 +53,7 @@ array_append (Array *array, void *elem)
 }
 
 void
-array_destroy (Array *array, ArrayElementFreeFunc func, void *data)
+array_destroy (Array *array, ReleasePredicate func, void *data)
 {
   if (array == NULL)
     return;
