@@ -39,6 +39,14 @@
 #define PAGE_FLAG_ACCESS  (1 << 5)
 #define PAGE_FLAG_4M      (1 << 6)
 
+/* Page fault flags */
+
+#define PF_FLAG_PROT      (1 << 0)
+#define PF_FLAG_WRITE     (1 << 1)
+#define PF_FLAG_USER      (1 << 2)
+#define PF_FLAG_RESERVED  (1 << 3)
+#define PF_FLAG_INSTFETCH (1 << 4)
+
 #ifndef _ASM
 
 __BEGIN_DECLS

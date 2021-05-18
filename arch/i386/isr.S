@@ -18,23 +18,18 @@
 
 #define _ASM
 
-#define EXC_PUSH(x) EXC_PUSH_ ## x
-#define EXC_PUSH_0 pushl (%esp)
-#define EXC_PUSH_1 pushl 4(%esp)
-
-#define EXC_POP(x) EXC_POP_ ## x
-#define EXC_POP_0 add $4, %esp
-#define EXC_POP_1 add $8, %esp
-
 	.section .text
 	.align 16
-#define EXC(x, p)			\
+#define EXC(x)				\
 	.global exc ## x;		\
 	.type exc ## x, @function;	\
-exc ## x:				\
-	EXC_PUSH(p);			\
+	exc ## x:			\
+	pusha;				\
+	pushl	36(%esp);		\
+	pushl	36(%esp);		\
 	call	exc ## x ## _handler;	\
-	EXC_POP(p);			\
+	add	$8, %esp;		\
+	popa;				\
 	iret;				\
 	.size exc ## x, . - exc ## x
 #define IRQ_SKIP_8

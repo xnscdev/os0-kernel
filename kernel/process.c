@@ -290,7 +290,7 @@ process_set_break (uint32_t addr)
     }
 
   /* Map pages until the new program break is reached */
-  for (; i < addr; i += PAGE_SIZE)
+  for (; i <= addr; i += PAGE_SIZE)
     {
       uint32_t paddr = (uint32_t) alloc_page ();
       if (paddr == 0)

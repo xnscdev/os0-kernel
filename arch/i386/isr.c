@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <i386/paging.h>
 #include <i386/pic.h>
 #include <i386/timer.h>
 #include <sys/ata.h>
@@ -25,123 +26,137 @@
 void
 exc0_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Divide-by-zero Fault\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Divide-by-zero Fault\nException address: 0x%lx", eip);
 }
 
 void
 exc1_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Debug Trap\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Debug Trap\nException address: 0x%lx", eip);
 }
 
 void
 exc2_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Non-maskable Interrupt\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Non-maskable Interrupt\nException address: 0x%lx",
+	 eip);
 }
 
 void
 exc3_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Breakpoint Trap\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Breakpoint Trap\nException address: 0x%lx", eip);
 }
 
 void
 exc4_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Overflow Trap\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Overflow Trap\nException address: 0x%lx", eip);
 }
 
 void
 exc5_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Bound Range Exceeded\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Bound Range Exceeded\nException address: 0x%lx", eip);
 }
 
 void
 exc6_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Invalid Opcode\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Invalid Opcode\nException address: 0x%lx", eip);
 }
 
 void
 exc7_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Device Not Available\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Device Not Available\nException address: 0x%lx", eip);
 }
 
 void
-exc8_handler (uint32_t eip)
+exc8_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Double Fault\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Double Fault\nException address: 0x%lx", eip);
 }
 
 void
-exc10_handler (uint32_t eip)
+exc10_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Invalid TSS\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Invalid TSS\nSegment selector: 0x%lx\n"
+	 "Exception address: 0x%lx", err, eip);
 }
 
 void
-exc11_handler (uint32_t eip)
+exc11_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Segment Not Present\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Segment Not Present\nSegment selector: 0x%lx\n"
+	 "Exception address: 0x%lx", err, eip);
 }
 
 void
-exc12_handler (uint32_t eip)
+exc12_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Stack-Segment Fault\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Stack-Segment Fault\nSegment selector: 0x%lx\n"
+	 "Exception address: 0x%lx", err, eip);
 }
 
 void
-exc13_handler (uint32_t eip)
+exc13_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: General Protection Fault\nEIP 0x%lx", eip);
+  panic ("CPU Exception: General Protection Fault\nSegment selector: 0x%lx\n"
+	 "Exception address: 0x%lx", err, eip);
 }
 
 void
-exc14_handler (uint32_t eip)
+exc14_handler (uint32_t err, uint32_t eip)
 {
   uint32_t addr;
   __asm__ volatile ("mov %%cr2, %0" : "=r" (addr));
-  panic ("CPU Exception: Page Fault\nCR2 0x%lx\nEIP 0x%lx", addr, eip);
+  panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
+	 "Fault address: 0x%lx\nException address: 0x%lx",
+	 err & PF_FLAG_PROT ? "protection violation" : "non-present",
+	 err & PF_FLAG_WRITE ? "write access" : "read access",
+	 err & PF_FLAG_USER ? "user mode" : "kernel mode",
+	 err & PF_FLAG_RESERVED ? ", reserved entries" : "",
+	 err & PF_FLAG_INSTFETCH ? ", instruction fetch" : "", addr, eip);
 }
 
 void
 exc16_handler (uint32_t eip)
 {
-  panic ("CPU Exception: x87 Floating-Point Exception\nEIP 0x%lx", eip);
+  panic ("CPU Exception: x87 Floating-Point Exception\n"
+	 "Exception address: 0x%lx", eip);
 }
 
 void
-exc17_handler (uint32_t eip)
+exc17_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Alignment Check\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Alignment Check\nException address: 0x%lx", eip);
 }
 
 void
 exc18_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Machine Check\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Machine Check\nException address: 0x%lx", eip);
 }
 
 void
 exc19_handler (uint32_t eip)
 {
-  panic ("CPU Exception: SIMD Floating-Point Exception\nEIP 0x%lx", eip);
+  panic ("CPU Exception: SIMD Floating-Point Exception\n"
+	 "Exception address: 0x%lx", eip);
 }
 
 void
 exc20_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Virtualization Exception\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Virtualization Exception\nException address: 0x%lx",
+	 eip);
 }
 
 void
-exc30_handler (uint32_t eip)
+exc30_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: Security Exception\nEIP 0x%lx", eip);
+  panic ("CPU Exception: Security Exception\nException address: 0x%lx", eip);
 }
 
 void
