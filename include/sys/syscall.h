@@ -55,6 +55,7 @@ int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
 int sys_brk (void *ptr);
+sighandler_t sys_signal (int sig, sighandler_t func);
 int sys_ioctl (int fd, unsigned long req, void *data);
 int sys_fcntl (int fd, int cmd, int arg);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,

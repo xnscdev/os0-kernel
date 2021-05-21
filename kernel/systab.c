@@ -67,7 +67,7 @@ void *syscall_table[NR_syscalls] = {
   sys_brk,
   NULL,
   NULL,
-  NULL,
+  sys_signal,
   NULL,
   NULL,
   NULL,

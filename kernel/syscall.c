@@ -468,6 +468,22 @@ sys_brk (void *ptr)
   return process_set_break ((uint32_t) ptr);
 }
 
+sighandler_t
+sys_signal (int sig, sighandler_t func)
+{
+  struct sigaction old;
+  struct sigaction act;
+  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
+    return SIG_ERR;
+  act.sa_handler = func;
+  act.sa_sigaction = NULL;
+  act.sa_flags = 0;
+  memset (&act.sa_mask, 0, sizeof (sigset_t));
+  if (sys_sigaction (sig, &act, &old) == -1)
+    return SIG_ERR;
+  return old.sa_handler;
+}
+
 int
 sys_ioctl (int fd, unsigned long req, void *data)
 {
