@@ -82,6 +82,8 @@
 
 typedef void (*sighandler_t) (int);
 
+typedef sighandler_t sig_t; /* BSD type */
+
 typedef struct
 {
   char sig[NR_signals / CHAR_BIT];
