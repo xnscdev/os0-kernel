@@ -1,5 +1,5 @@
 /*************************************************************************
- * process.h -- This file is part of OS/0.                               *
+ * resource.h -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,63 +16,9 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_PROCESS_H
-#define _SYS_PROCESS_H
+#ifndef _SYS_RESOURCE_H
+#define _SYS_RESOURCE_H
 
-#include <fs/vfs.h>
-#include <libk/array.h>
-#include <sys/resource.h>
-#include <sys/signal.h>
-#include <sys/task.h>
-
-#define PROCESS_LIMIT         256
-#define PROCESS_FILE_LIMIT    64
-#define PROCESS_SEGMENT_LIMIT 32
-#define PROCESS_BREAK_LIMIT   0xb0000000
-
-typedef struct
-{
-  VFSInode *pf_inode;
-  int pf_mode;
-  int pf_flags;
-  off_t pf_offset;
-} ProcessFile;
-
-typedef struct
-{
-  uint32_t ps_addr;
-  uint32_t ps_size;
-} ProcessSegment;
-
-typedef struct
-{
-  unsigned char ps_enabled;
-  unsigned char ps_blocked;
-  struct sigaction ps_act;
-} ProcessSignal;
-
-typedef struct
-{
-  ProcessFile p_files[PROCESS_FILE_LIMIT];
-  ProcessSignal p_signals[NR_signals];
-  volatile ProcessTask *p_task;
-  Array *p_segments;
-  VFSInode *p_cwd;
-  uint32_t p_break;
-  struct rusage p_rusage;
-  int p_term;
-  int p_waitstat;
-} Process;
-
-__BEGIN_DECLS
-
-extern Process process_table[PROCESS_LIMIT];
-
-int process_exec (VFSInode *inode, uint32_t *entry);
-void process_free (pid_t pid);
-int process_setup_std_streams (pid_t pid);
-uint32_t process_set_break (uint32_t addr);
-
-__END_DECLS
+#include <bits/resource.h>
 
 #endif

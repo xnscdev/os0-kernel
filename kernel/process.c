@@ -215,10 +215,13 @@ process_free (pid_t pid)
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
 
-  /* Reset working directory and program break */
+  /* Reset process data */
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = NULL;
   proc->p_break = 0;
+  proc->p_term = 0;
+  proc->p_waitstat = 0;
+  memset (&proc->p_rusage, 0, sizeof (struct rusage));
 
   /* Clear all open file descriptors */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)

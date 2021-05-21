@@ -22,8 +22,6 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
-extern uint32_t exit_task;
-
 /* Separates a path into a file and its parent directory */
 
 static int
@@ -74,7 +72,9 @@ sys_exit (int code)
   pid_t pid = task_getpid ();
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
-  exit_task = pid;
+  process_table[pid].p_term = 1;
+  process_table[pid].p_waitstat = (code & 0xff) << 8;
+  /* TODO Free process after other processes waiting receive status */
 }
 
 int
@@ -377,6 +377,12 @@ sys_kill (pid_t pid, int sig)
 {
   int exit = sig == SIGKILL;
   ProcessSignal *signal;
+  if (pid == 0 || pid == -1)
+    return -ENOSYS;
+  if (pid < 0)
+    pid = -pid;
+  if (pid >= PROCESS_LIMIT)
+    return -EINVAL;
   if (sig < 0 || sig >= NR_signals)
     return -EINVAL;
   signal = &process_table[pid].p_signals[sig];
@@ -391,13 +397,8 @@ sys_kill (pid_t pid, int sig)
 
   if (exit)
     {
-      if (pid == task_getpid ())
-	{
-	  exit_task = pid;
-	  task_yield ();
-	}
-      else
-	process_free (pid);
+      process_table[pid].p_term = 1;
+      process_table[pid].p_waitstat = sig;
     }
 
   if (signal->ps_act.sa_flags & SA_SIGINFO)
