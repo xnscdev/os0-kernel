@@ -33,7 +33,7 @@
 #define WNOWAIT 0x01000000
 
 #define WEXITSTATUS(status) (((status) & 0xff00) >> 8)
-#define WTERMSIG(status) ((status & 0x7f)
+#define WTERMSIG(status) (status & 0x7f)
 #define WSTOPSIG(status) WEXITSTATUS (status)
 #define WIFEXITED(status) (WTERMSIG (status) == 0)
 #define WIFSIGNALED(status) (((signed char) (WTERMSIG (status) + 1) >> 1) > 0)
