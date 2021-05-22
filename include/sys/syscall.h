@@ -23,6 +23,7 @@
 #include <sys/cdefs.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -36,6 +37,7 @@ int sys_read (int fd, void *buffer, size_t len);
 int sys_write (int fd, void *buffer, size_t len);
 int sys_open (const char *path, int flags, mode_t mode);
 int sys_close (int fd);
+pid_t sys_waitpid (pid_t pid, int *status, int options);
 int sys_creat (const char *path, mode_t mode);
 int sys_link (const char *old, const char *new);
 int sys_unlink (const char *path);
@@ -71,6 +73,7 @@ int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);
 int sys_stat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);
+pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
 int sys_fchdir (int fd);
 int sys_setxattr (const char *path, const char *name, const void *value,
 		  size_t len, int flags);

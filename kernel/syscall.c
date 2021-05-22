@@ -19,6 +19,7 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <sys/wait.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 
@@ -186,6 +187,12 @@ sys_close (int fd)
   file->pf_mode = 0;
   file->pf_offset = 0;
   return 0;
+}
+
+pid_t
+sys_waitpid (pid_t pid, int *status, int options)
+{
+  return wait4 (pid, status, options, NULL);
 }
 
 int
@@ -644,6 +651,12 @@ sys_fstat (int fd, struct stat *st)
   if (inode == NULL)
     return -EBADF;
   return vfs_getattr (inode, st);
+}
+
+pid_t
+sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage)
+{
+  return wait4 (pid, status, options, usage);
 }
 
 int
