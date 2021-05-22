@@ -26,6 +26,7 @@
 #include "elf.h"
 
 Process process_table[PROCESS_LIMIT];
+int exit_task;
 
 static int
 process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)

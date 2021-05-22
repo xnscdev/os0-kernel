@@ -56,13 +56,23 @@ irq8:
 	jz	.finish /* If EAX is zero we have just switched tasks */
 	mov	%eax, 12(%edi)
 
+1:
 	/* Switch to next task */
 	mov	24(%edi), %edi
 	test	%edi, %edi
-	jnz	1f
+	jnz	2f
 	mov	task_queue, %edi
 
-1:
+2:
+	/* If this process is terminated, skip it */
+	mov	(%edi), %ax
+	cwtl
+	mov	$2276, %ecx
+	mul	%ecx
+	mov	process_table+2264(%eax), %ecx
+	test	%ecx, %ecx
+	jnz	1b
+
 	mov	%edi, task_current
 	mov	8(%edi), %ebx
 	mov	16(%edi), %esi
@@ -78,10 +88,10 @@ irq8:
 	mov	%esi, curr_page_dir
 	mov	%cr3, %ecx
 	cmp	%ecx, %eax
-	je	2f
+	je	3f
 	mov	%eax, %cr3
 
-2:
+3:
 	/* Switch stack and jump to new task EIP */
 	mov	%ebx, %esp
 	mov	task_current, %edi
@@ -90,6 +100,17 @@ irq8:
 	jmp	*%ecx
 
 .finish:
+	/* Free exited process, if any */
+	mov	exit_task, %eax
+	test	%eax, %eax
+	jz	4f
+
+	push	%eax
+	call	process_free
+	add	$4, %esp
+	movl	$0, exit_task
+
+4:
 	popa
 	iret
 

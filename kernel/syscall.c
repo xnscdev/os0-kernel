@@ -22,6 +22,8 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
+extern int exit_task;
+
 /* Separates a path into a file and its parent directory */
 
 static int
@@ -74,7 +76,8 @@ sys_exit (int code)
     panic ("Attempted to exit from kernel task");
   process_table[pid].p_term = 1;
   process_table[pid].p_waitstat = (code & 0xff) << 8;
-  /* TODO Free process after other processes waiting receive status */
+  if (process_table[pid].p_refcnt == 0)
+    exit_task = pid;
 }
 
 int

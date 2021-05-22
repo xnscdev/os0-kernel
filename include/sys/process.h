@@ -62,6 +62,7 @@ typedef struct
   struct rusage p_rusage;
   int p_term;
   int p_waitstat;
+  volatile unsigned int p_refcnt;
 } Process;
 
 __BEGIN_DECLS

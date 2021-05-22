@@ -20,6 +20,8 @@
 #include <sys/process.h>
 #include <sys/wait.h>
 
+extern int exit_task;
+
 pid_t
 wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 {
@@ -33,9 +35,12 @@ wait4 (pid_t pid, int *status, int options, struct rusage *usage)
   proc = &process_table[pid];
   if (!proc->p_term && (options & WNOHANG))
     return 0;
+  proc->p_refcnt++;
   while (!proc->p_term)
     ;
   *status = proc->p_waitstat;
+  if (--proc->p_refcnt == 0)
+    exit_task = pid;
   if (usage != NULL)
     memcpy (usage, &proc->p_rusage, sizeof (struct rusage));
   return pid;
