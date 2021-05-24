@@ -20,6 +20,7 @@
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/device.h>
+#include <sys/process.h>
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
 
@@ -117,10 +118,43 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	return -ENOENT;
       if (strcmp (entry->d_name, name) == 0)
 	{
-	  /* TODO Follow symbolic links if desired */
-	  *inode = entry->d_inode;
-	  kfree (entry->d_name);
-	  kfree (entry);
+	  /* TODO Return -ELOOP if the number of symlinks encountered is
+	     over MAXSYMLINKS */
+	  if (follow_symlinks && S_ISLNK (entry->d_inode->vi_mode))
+	    {
+	      Process *proc = &process_table[task_getpid ()];
+	      VFSInode *cwd;
+	      char *buffer = kmalloc (256);
+	      int ret;
+	      if (buffer == NULL)
+		{
+		  vfs_destroy_dir_entry (entry);
+		  return -ENOMEM;
+		}
+
+	      /* Read symlink path */
+	      ret = ext2_readlink (entry->d_inode, buffer, 256);
+	      vfs_destroy_dir_entry (entry);
+	      if (ret < 0)
+		{
+		  kfree (buffer);
+		  return ret;
+		}
+
+	      /* Open symlink path */
+	      cwd = proc->p_cwd;
+	      ret = vfs_open_file (inode, buffer, 1);
+	      kfree (buffer);
+	      if (ret < 0)
+		return ret;
+	      proc->p_cwd = cwd;
+	    }
+	  else
+	    {
+	      *inode = entry->d_inode;
+	      kfree (entry->d_name);
+	      kfree (entry);
+	    }
 	  return 0;
 	}
       vfs_destroy_dir_entry (entry);
@@ -484,9 +518,9 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 		  (dir->vd_inode->vi_size + sb->sb_blksize - 1) /
 		  sb->sb_blksize)
 		return 1; /* Finished reading all directory entries */
-	      ret =
-		ext2_read_blocks (dir->vd_buffer, sb,
-				  ext2_data_block (ei, sb, dir->vd_block), 1);
+	      ret = ext2_read_blocks (dir->vd_buffer, sb,
+				      ext2_data_block (ei, sb, dir->vd_block),
+				      1);
 	      if (ret < 0)
 		return ret;
 	      dir->vd_offset = 0;
