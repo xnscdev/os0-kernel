@@ -109,8 +109,7 @@ mount_rootfs (void)
       SpecDevice *dev;
       int type;
 
-      inode = vfs_open_file (boot_options.b_root);
-      if (inode == NULL)
+      if (vfs_open_file (&inode, boot_options.b_root, 1) != 0)
 	panic ("Failed to open root filesystem device %s", boot_options.b_root);
       /* Make sure we are mounting a valid block device */
       if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0

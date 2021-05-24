@@ -205,7 +205,7 @@ int vfs_removexattr (VFSInode *inode, const char *name);
 int vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b);
 void vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode);
 
-VFSInode *vfs_open_file (const char *path);
+int vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks);
 
 __END_DECLS
 

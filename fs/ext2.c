@@ -103,11 +103,10 @@ ext2_init_disk (VFSMount *mp, int flags, const char *path)
   VFSInode *inode;
   SpecDevice *dev;
   Ext2Superblock *esb;
-  int ret;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
 
-  inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
   /* Make sure we are mounting a valid block device */
   if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0
       || !S_ISBLK (inode->vi_mode))

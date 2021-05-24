@@ -144,11 +144,11 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       mp->vfs_fstype = &fs_table[i];
 
       /* Get mount point as a path and set parent mount */
-      mp->vfs_mntpoint = vfs_open_file (dir);
-      if (mp->vfs_mntpoint == NULL)
+      ret = vfs_open_file (&mp->vfs_mntpoint, dir, 1);
+      if (ret != 0)
 	{
 	  kfree (mp);
-	  return -EPERM;
+	  return ret;
 	}
 
       /* Find a slot in the mount table */
@@ -435,8 +435,8 @@ vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode)
     entry->d_ops->d_iput (entry, inode);
 }
 
-VFSInode *
-vfs_open_file (const char *path)
+int
+vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
 {
   VFSInode *dir;
   char *buffer = strdup (path);
@@ -444,7 +444,7 @@ vfs_open_file (const char *path)
   int dont_unref = 0;
   int i;
   if (unlikely (buffer == NULL))
-    return NULL;
+    return -ENOMEM;
 
   if (*path == '/')
     {
@@ -482,12 +482,12 @@ vfs_open_file (const char *path)
 
       if (*ptr != '\0' && strcmp (ptr, ".") != 0)
 	{
-	  VFSInode *inode = vfs_lookup (dir, dir->vi_sb, ptr, 1);
+	  VFSInode *inode = vfs_lookup (dir, dir->vi_sb, ptr, follow_symlinks);
 	  if (inode == NULL)
 	    {
 	      vfs_unref_inode (dir);
 	      kfree (buffer);
-	      return NULL;
+	      return -ENOENT;
 	    }
 	  vfs_unref_inode (dir);
 	  dir = inode;
@@ -518,5 +518,6 @@ vfs_open_file (const char *path)
   kfree (buffer);
   if (!dont_unref)
     vfs_unref_inode (dir); /* Decrease refcount since dir never was changed */
-  return dir;
+  *inode = dir;
+  return 0;
 }

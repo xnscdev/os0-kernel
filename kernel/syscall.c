@@ -58,12 +58,13 @@ sys_path_sep (const char *path, VFSInode **dir, char **name)
     }
   else
     {
+      int ret;
       *sep = '\0';
-      *dir = vfs_open_file (buffer);
-      if (*dir == NULL)
+      ret = vfs_open_file (dir, buffer, 1);
+      if (ret != 0)
 	{
 	  kfree (buffer);
-	  return -ENOENT;
+	  return ret;
 	}
     }
   return 0;
@@ -124,9 +125,10 @@ sys_open (const char *path, int flags, mode_t mode)
     {
       if (files[i].pf_inode == NULL)
 	{
-	  VFSInode *inode = vfs_open_file (path);
-	  if (inode == NULL)
-	    return -ENOENT;
+	  VFSInode *inode;
+	  int ret = vfs_open_file (&inode, path, 1);
+	  if (ret != 0)
+	    return ret;
 	  files[i].pf_inode = inode;
 	  switch (flags & O_ACCMODE)
 	    {
@@ -208,11 +210,11 @@ sys_link (const char *old, const char *new)
   int ret = sys_path_sep (new, &new_inode, &name);
   if (ret != 0)
     return ret;
-  old_inode = vfs_open_file (old);
-  if (old_inode == NULL)
+  ret = vfs_open_file (&old_inode, old, 1);
+  if (ret != 0)
     {
       vfs_unref_inode (new_inode);
-      return -ENOENT;
+      return ret;
     }
   ret = vfs_link (old_inode, new_inode, name);
   vfs_unref_inode (old_inode);
@@ -239,10 +241,10 @@ int
 sys_execve (const char *path, char *const *argv, char *const *envp)
 {
   uint32_t eip;
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = process_exec (inode, &eip);
   vfs_unref_inode (inode);
   if (ret != 0)
@@ -254,9 +256,10 @@ int
 sys_chdir (const char *path)
 {
   Process *proc = &process_table[task_getpid ()];
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = inode;
   return 0;
@@ -279,10 +282,10 @@ sys_mknod (const char *path, mode_t mode, dev_t dev)
 int
 sys_chmod (const char *path, mode_t mode)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_chmod (inode, mode);
   vfs_unref_inode (inode);
   return ret;
@@ -291,10 +294,10 @@ sys_chmod (const char *path, mode_t mode)
 int
 sys_chown (const char *path, uid_t uid, gid_t gid)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_chown (inode, uid, gid);
   vfs_unref_inode (inode);
   return ret;
@@ -352,10 +355,10 @@ sys_umount (const char *dir)
 int
 sys_access (const char *path, int mode)
 {
-  int ret = 0;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   switch (mode)
     {
     case F_OK:
@@ -548,10 +551,10 @@ sys_symlink (const char *old, const char *new)
 int
 sys_readlink (const char *path, char *buffer, size_t len)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_readlink (inode, buffer, len);
   vfs_unref_inode (inode);
   return ret;
@@ -560,10 +563,10 @@ sys_readlink (const char *path, char *buffer, size_t len)
 int
 sys_truncate (const char *path, off_t len)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   inode->vi_size = len;
   ret = vfs_truncate (inode);
   vfs_unref_inode (inode);
@@ -610,10 +613,10 @@ sys_fchown (int fd, uid_t uid, gid_t gid)
 int
 sys_statvfs (const char *path, struct statvfs *st)
 {
-  VFSInode *inode = vfs_open_file (path);
-  int ret;
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_statvfs (inode->vi_sb, st);
   vfs_unref_inode (inode);
   return ret;
@@ -622,10 +625,10 @@ sys_statvfs (const char *path, struct statvfs *st)
 int
 sys_stat (const char *path, struct stat *st)
 {
-  VFSInode *inode = vfs_open_file (path);
-  int ret;
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_getattr (inode, st);
   vfs_unref_inode (inode);
   return ret;
@@ -663,10 +666,10 @@ int
 sys_setxattr (const char *path, const char *name, const void *value, size_t len,
 	      int flags)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_setxattr (inode, name, value, len, flags);
   vfs_unref_inode (inode);
   return ret;
@@ -675,10 +678,10 @@ sys_setxattr (const char *path, const char *name, const void *value, size_t len,
 int
 sys_getxattr (const char *path, const char *name, void *value, size_t len)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_getxattr (inode, name, value, len);
   vfs_unref_inode (inode);
   return ret;
@@ -687,10 +690,10 @@ sys_getxattr (const char *path, const char *name, void *value, size_t len)
 int
 sys_listxattr (const char *path, char *buffer, size_t len)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_listxattr (inode, buffer, len);
   vfs_unref_inode (inode);
   return ret;
@@ -699,10 +702,10 @@ sys_listxattr (const char *path, char *buffer, size_t len)
 int
 sys_removexattr (const char *path, const char *name)
 {
-  int ret;
-  VFSInode *inode = vfs_open_file (path);
-  if (inode == NULL)
-    return -ENOENT;
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
   ret = vfs_removexattr (inode, name);
   vfs_unref_inode (inode);
   return ret;
@@ -870,11 +873,11 @@ sys_linkat (int oldfd, const char *old, int newfd, const char *new)
 	return -EBADF;
       proc->p_cwd = proc->p_files[oldfd].pf_inode;
     }
-  old_inode = vfs_open_file (old);
-  if (old_inode == NULL)
+  ret = vfs_open_file (&old_inode, old, 1);
+  if (ret != 0)
     {
       proc->p_cwd = cwd;
-      return -ENOENT;
+      return ret;
     }
 
   if (newfd != AT_FDCWD)
