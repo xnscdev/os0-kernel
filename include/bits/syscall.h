@@ -67,6 +67,7 @@
 #define SYS_umask         60
 #define SYS_chroot        61
 #define SYS_dup2          63
+#define SSY_getppid       64
 #define SYS_sigaction     67
 #define SYS_sigsuspend    72
 #define SYS_sigpending    73

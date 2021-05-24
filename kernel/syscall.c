@@ -500,6 +500,12 @@ sys_fcntl (int fd, int cmd, int arg)
   return fcntl (fd, cmd, arg);
 }
 
+pid_t
+sys_getppid (void)
+{
+  return task_getppid ();
+}
+
 int
 sys_sigaction (int sig, const struct sigaction *__restrict act,
 	       struct sigaction *__restrict old)

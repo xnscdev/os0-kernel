@@ -60,6 +60,7 @@ int sys_brk (void *ptr);
 sighandler_t sys_signal (int sig, sighandler_t func);
 int sys_ioctl (int fd, unsigned long req, void *data);
 int sys_fcntl (int fd, int cmd, int arg);
+pid_t sys_getppid (void);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,
 		   struct sigaction *__restrict old);
 int sys_gettimeofday (struct timeval *__restrict tv,

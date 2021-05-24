@@ -37,6 +37,7 @@ scheduler_init (void)
   __asm__ volatile ("cli");
   task_current = kmalloc (sizeof (ProcessTask));
   task_current->t_pid = next_pid++;
+  task_current->t_ppid = 0;
   task_current->t_esp = 0;
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
@@ -75,6 +76,12 @@ pid_t
 task_getpid (void)
 {
   return task_current->t_pid;
+}
+
+pid_t
+task_getppid (void)
+{
+  return task_current->t_ppid;
 }
 
 ProcessTask *
@@ -139,6 +146,7 @@ _task_fork (void)
       return NULL;
     }
   task->t_pid = next_pid++;
+  task->t_ppid = task_getpid ();
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;

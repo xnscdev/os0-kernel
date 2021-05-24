@@ -38,6 +38,7 @@
 typedef struct _ProcessTask
 {
   pid_t t_pid;
+  pid_t t_ppid;
   uint32_t t_esp;
   uint32_t t_eip;
   uint32_t *t_pgdir;
@@ -56,6 +57,7 @@ void task_exec (uint32_t eip, char *const *argv, char *const *envp)
   __attribute__ ((noreturn));
 void task_free (ProcessTask *task);
 pid_t task_getpid (void);
+pid_t task_getppid (void);
 
 __END_DECLS
 
