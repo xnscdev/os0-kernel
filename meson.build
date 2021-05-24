@@ -39,5 +39,4 @@ subdir('fs')
 subdir('libk')
 
 subdir('kernel')
-subdir('include/bits')
-subdir('include/sys')
+subdir('include')

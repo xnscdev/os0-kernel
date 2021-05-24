@@ -23,7 +23,7 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
-#include "elf.h"
+#include <elf.h>
 
 Process process_table[PROCESS_LIMIT];
 int exit_task;
