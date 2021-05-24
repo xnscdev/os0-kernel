@@ -199,7 +199,7 @@ int ext2_unlink (VFSInode *dir, const char *name);
 int ext2_symlink (VFSInode *dir, const char *old, const char *new);
 int ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
-VFSDirEntry *ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb);
+int ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
 int ext2_chmod (VFSInode *inode, mode_t mode);
 int ext2_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int ext2_mkdir (VFSInode *dir, const char *name, mode_t mode);

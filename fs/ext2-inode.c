@@ -110,9 +110,11 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 
   while (1)
     {
-      entry = ext2_readdir (d, sb);
-      if (entry == NULL)
-	return -EPERM;
+      int ret = ext2_readdir (&entry, d, sb);
+      if (ret < 0)
+	return ret;
+      else if (ret == 1)
+	return -ENOENT;
       if (strcmp (entry->d_name, name) == 0)
 	{
 	  /* TODO Follow symbolic links if desired */
@@ -461,22 +463,17 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
   return 0;
 }
 
-VFSDirEntry *
-ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb)
+int
+ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  Ext2Superblock *esb;
-  Ext2Inode *ei;
-
-  if (dir->vd_inode == NULL)
-    return NULL;
-  ei = dir->vd_inode->vi_private;
-  esb = sb->sb_private;
-
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2Inode *ei = dir->vd_inode->vi_private;
   while (1)
     {
       Ext2DirEntry *guess = (Ext2DirEntry *) (dir->vd_buffer + dir->vd_offset);
       VFSDirEntry *result;
       uint16_t namelen;
+      int ret;
 
       if (guess->ed_inode == 0 || guess->ed_size == 0)
 	{
@@ -486,11 +483,12 @@ ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb)
 	      if (++dir->vd_block >=
 		  (dir->vd_inode->vi_size + sb->sb_blksize - 1) /
 		  sb->sb_blksize)
-		return NULL; /* Finished reading all directory entries */
-	      if (ext2_read_blocks (dir->vd_buffer, sb,
-				    ext2_data_block (ei, sb, dir->vd_block), 1)
-		  != 0)
-		return NULL;
+		return 1; /* Finished reading all directory entries */
+	      ret =
+		ext2_read_blocks (dir->vd_buffer, sb,
+				  ext2_data_block (ei, sb, dir->vd_block), 1);
+	      if (ret < 0)
+		return ret;
 	      dir->vd_offset = 0;
 	    }
 	  continue;
@@ -511,7 +509,8 @@ ext2_readdir (VFSDirectory *dir, VFSSuperblock *sb)
       result->d_name[namelen] = '\0';
       result->d_ops = &ext2_dops;
       dir->vd_offset += guess->ed_size;
-      return result;
+      *entry = result;
+      return 0;
     }
 }
 

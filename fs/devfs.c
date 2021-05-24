@@ -167,10 +167,10 @@ devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   return -ENOSYS;
 }
 
-VFSDirEntry *
-devfs_readdir (VFSDirectory *dir, VFSSuperblock *sb)
+int
+devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  return NULL;
+  return -ENOSYS;
 }
 
 int

@@ -31,7 +31,8 @@ VFSInode *vfs_root_inode;
 static int vfs_default_lookup (VFSInode **inode, VFSInode *dir,
 			       VFSSuperblock *sb, const char *name,
 			       int follow_symlinks);
-static VFSDirEntry *vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb);
+static int vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir,
+				VFSSuperblock *sb);
 
 static VFSInodeOps vfs_default_iops = {
   .vfs_lookup = vfs_default_lookup,
@@ -70,23 +71,26 @@ vfs_default_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
   return -ENOENT;
 }
 
-static VFSDirEntry *
-vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb)
+static int
+vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
   if (dir->vd_inode->vi_ino == 0)
     {
-      VFSDirEntry *entry;
+      VFSDirEntry *dirent;
       int ret;
       if (dir->vd_count > 0)
-	return NULL;
-      entry = kzalloc (sizeof (VFSDirEntry));
-      ret = vfs_default_lookup (&entry->d_inode, dir->vd_inode, sb, "dev", 0);
+	return 1;
+      dirent = kzalloc (sizeof (VFSDirEntry));
+      if (dirent == NULL)
+	return -ENOMEM;
+      ret = vfs_default_lookup (&dirent->d_inode, dir->vd_inode, sb, "dev", 0);
       if (ret != 0)
-	return NULL;
-      entry->d_name = strdup ("dev");
-      return entry;
+	return ret;
+      dirent->d_name = strdup ("dev");
+      *entry = dirent;
+      return 0;
     }
-  return NULL;
+  return -ENOENT;
 }
 
 void
@@ -310,12 +314,14 @@ vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
   return -ENOSYS;
 }
 
-VFSDirEntry *
-vfs_readdir (VFSDirectory *dir, VFSSuperblock *sb)
+int
+vfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
+  if (!S_ISDIR (dir->vd_inode->vi_mode))
+    return -ENOTDIR;
   if (dir->vd_inode->vi_ops->vfs_readdir != NULL)
-    return dir->vd_inode->vi_ops->vfs_readdir (dir, sb);
-  return NULL;
+    return dir->vd_inode->vi_ops->vfs_readdir (entry, dir, sb);
+  return -ENOSYS;
 }
 
 int

@@ -801,8 +801,10 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 
   while (1)
     {
-      entry = ext2_readdir (d, dir->vi_sb);
-      if (entry == NULL)
+      ret = ext2_readdir (&entry, d, dir->vi_sb);
+      if (ret < 0)
+	return ret;
+      else if (ret == 1)
 	break;
       if (strcmp (entry->d_name, name) == 0)
 	{
