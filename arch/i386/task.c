@@ -37,7 +37,6 @@ scheduler_init (void)
   __asm__ volatile ("cli");
   task_current = kmalloc (sizeof (ProcessTask));
   task_current->t_pid = next_pid++;
-  task_current->t_stack = TASK_STACK_ADDR;
   task_current->t_esp = 0;
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
@@ -61,7 +60,7 @@ task_free (ProcessTask *task)
     task->t_next->t_prev = task->t_prev;
 
   /* Free task stack */
-  for (i = task->t_stack; i >= task->t_stack - TASK_STACK_SIZE; i -= PAGE_SIZE)
+  for (i = TASK_STACK_BOTTOM; i < TASK_STACK_ADDR; i += PAGE_SIZE)
     {
       uint32_t paddr = get_paddr (task->t_pgdir, (void *) i);
       if (paddr != 0)
@@ -140,7 +139,6 @@ _task_fork (void)
       return NULL;
     }
   task->t_pid = next_pid++;
-  task->t_stack = TASK_STACK_ADDR;
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;

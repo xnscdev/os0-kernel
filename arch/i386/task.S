@@ -49,16 +49,16 @@ irq8:
 	jz	.finish
 
 	/* Save task ESP and EIP */
-	mov	%esp, 8(%edi)
+	mov	%esp, 4(%edi)
 	call	read_ip
 .entry:
 	test	%eax, %eax
 	jz	.finish /* If EAX is zero we have just switched tasks */
-	mov	%eax, 12(%edi)
+	mov	%eax, 8(%edi)
 
 1:
 	/* Switch to next task */
-	mov	24(%edi), %edi
+	mov	20(%edi), %edi
 	test	%edi, %edi
 	jnz	2f
 	mov	task_queue, %edi
@@ -74,8 +74,8 @@ irq8:
 	jnz	1b
 
 	mov	%edi, task_current
-	mov	8(%edi), %ebx
-	mov	16(%edi), %esi
+	mov	4(%edi), %ebx
+	mov	12(%edi), %esi
 
 	/* Switch page directory */
 	push	%esi
@@ -92,7 +92,7 @@ irq8:
 	/* Switch stack and jump to new task EIP */
 	mov	%ebx, %esp
 	mov	task_current, %edi
-	mov	12(%edi), %ecx
+	mov	8(%edi), %ecx
 	xor	%eax, %eax /* Zero EAX to exit on new task switch */
 	jmp	*%ecx
 
@@ -163,8 +163,8 @@ task_fork:
 	mov	%ecx, %esp
 	sub	$44, %ecx
 	mov	-8(%ebp), %eax
-	mov	%ecx, 8(%eax)
-	movl	$.entry, 12(%eax)
+	mov	%ecx, 4(%eax)
+	movl	$.entry, 8(%eax)
 
 	/* Return PID of new task as parent */
 	mov	(%eax), %eax

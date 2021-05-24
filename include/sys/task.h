@@ -38,7 +38,6 @@
 typedef struct _ProcessTask
 {
   pid_t t_pid;
-  uint32_t t_stack;
   uint32_t t_esp;
   uint32_t t_eip;
   uint32_t *t_pgdir;
