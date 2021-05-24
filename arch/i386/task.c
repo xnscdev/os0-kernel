@@ -29,15 +29,12 @@ void sys_exit_halt (void) __attribute__ ((noreturn));
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
-uint32_t task_stack_addr;
 pid_t next_pid;
 
 void
 scheduler_init (void)
 {
   __asm__ volatile ("cli");
-  task_relocate_stack ((void *) TASK_STACK_ADDR, TASK_STACK_SIZE);
-
   task_current = kmalloc (sizeof (ProcessTask));
   task_current->t_pid = next_pid++;
   task_current->t_stack = TASK_STACK_ADDR;
@@ -46,11 +43,6 @@ scheduler_init (void)
   task_current->t_pgdir = curr_page_dir;
   task_current->t_prev = task_current;
   task_current->t_next = NULL;
-
-  /* Setup user mode interrupt stack for TSS */
-  map_page (curr_page_dir,
-	    get_paddr (curr_page_dir, user_interrupt_stack) & 0xfffff000,
-	    (uint32_t) user_interrupt_stack, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
@@ -78,48 +70,6 @@ task_free (ProcessTask *task)
 
   page_dir_free (task->t_pgdir);
   kfree (task);
-}
-
-void
-task_relocate_stack (void *addr, uint32_t size)
-{
-  uint32_t old_esp;
-  uint32_t old_ebp;
-  uint32_t new_esp;
-  uint32_t new_ebp;
-  uint32_t offset;
-  uint32_t i;
-
-  for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= PAGE_SIZE)
-    {
-      uint32_t paddr = alloc_page ();
-      map_page (curr_page_dir, paddr, i, PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval (i);
-#endif
-    }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
-
-  __asm__ volatile ("mov %%esp, %0" : "=r" (old_esp));
-  __asm__ volatile ("mov %%ebp, %0" : "=r" (old_ebp));
-  offset = (uint32_t) addr - task_stack_addr;
-  new_esp = old_esp + offset;
-  new_ebp = old_ebp + offset;
-  memcpy ((void *) new_esp, (void *) old_esp,  task_stack_addr - old_esp);
-
-  for (i = (uint32_t) addr; i >= (uint32_t) addr - size; i -= 4)
-    {
-      uint32_t value = *((uint32_t *) i);
-      if (value > old_esp && value < task_stack_addr)
-	{
-	  value += offset;
-	  *((uint32_t *) i) = value;
-	}
-    }
-  __asm__ volatile ("mov %0, %%esp" :: "r" (new_esp));
-  __asm__ volatile ("mov %0, %%ebp" :: "r" (new_ebp));
 }
 
 pid_t
@@ -195,7 +145,7 @@ _task_fork (void)
   task->t_pgdir = dir;
   task->t_next = NULL;
 
-  for (temp = task_queue; temp->t_next != NULL; temp->t_next++)
+  for (temp = task_queue; temp->t_next != NULL; temp = temp->t_next)
     ;
   task->t_prev = temp;
   temp->t_next = task;

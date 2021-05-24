@@ -77,9 +77,6 @@ irq8:
 	mov	8(%edi), %ebx
 	mov	16(%edi), %esi
 
-	/* Update TSS stack */
-	call	tss_update_stack
-
 	/* Switch page directory */
 	push	%esi
 	push	curr_page_dir
@@ -151,6 +148,7 @@ task_fork:
 
 	/* Move stack pointer to new task stack */
 	mov	%esp, %ecx
+	cmp	$TASK_STACK_BOTTOM, %esp
 	sub	$(TASK_STACK_BOTTOM - PAGE_COPY_VADDR), %esp
 
 	/* Setup fake interrupt stack frame */

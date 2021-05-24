@@ -20,6 +20,7 @@
 
 #include <libk/libk.h>
 #include <sys/memory.h>
+#include <sys/task.h>
 #include <vm/paging.h>
 #include <vm/heap.h>
 
@@ -30,13 +31,14 @@ extern uint32_t _kernel_heap_end;
 
 uint32_t kernel_page_dir[PAGE_DIR_SIZE];
 uint32_t kernel_page_table[2][PAGE_TBL_SIZE];
+uint32_t kernel_stack_table[PAGE_TBL_SIZE];
 uint32_t kernel_vmap[PAGE_DIR_SIZE];
 uint32_t kheap_page_table[65][PAGE_TBL_SIZE];
 uint32_t page_stack_table[PAGE_TBL_SIZE];
 uint32_t *curr_page_dir;
 
 void
-paging_init (void)
+paging_init (uint32_t stack)
 {
   uint32_t addr;
   int i;
@@ -44,7 +46,6 @@ paging_init (void)
   /* Use kernel page directory */
   curr_page_dir = kernel_page_dir;
 
-  /* Fill page directory */
   for (i = 0; i < 2; i++)
     {
       kernel_page_dir[i + (RELOC_VADDR >> 22)] =
@@ -52,6 +53,7 @@ paging_init (void)
 	| PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT | PAGE_FLAG_USER;
       kernel_vmap[i + (RELOC_VADDR >> 22)] = (uint32_t) kernel_page_table[i];
     }
+
   for (i = 0; i < 65; i++)
     {
       kernel_page_dir[i + (KHEAP_DATA_VADDR >> 22)] =
@@ -60,10 +62,16 @@ paging_init (void)
       kernel_vmap[i + (KHEAP_DATA_VADDR >> 22)] =
 	(uint32_t) kheap_page_table[i];
     }
+
   kernel_page_dir[PAGE_STACK_VADDR >> 22] =
     ((uint32_t) page_stack_table - RELOC_VADDR)
     | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
-  kernel_vmap[PAGE_STACK_VADDR >> 22] = (uint32_t) kernel_page_dir;
+  kernel_vmap[PAGE_STACK_VADDR >> 22] = (uint32_t) page_stack_table;
+
+  kernel_page_dir[TASK_STACK_BOTTOM >> 22] =
+    ((uint32_t) kernel_stack_table - RELOC_VADDR)
+    | PAGE_FLAG_WRITE | PAGE_FLAG_PRESENT;
+  kernel_vmap[TASK_STACK_BOTTOM >> 22] = (uint32_t) kernel_stack_table;
 
   /* Map low memory + kernel to RELOC_VADDR */
   for (addr = 0; addr <= RELOC_LEN; addr += PAGE_SIZE)
@@ -95,10 +103,15 @@ paging_init (void)
        i++, addr += PAGE_SIZE)
     page_stack_table[i] = addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
 
-  paging_loaddir ((uint32_t) kernel_page_dir - RELOC_VADDR);
+  /* Map kernel stack */
+  for (i = 0, addr = 0; addr < TASK_STACK_SIZE; i++, addr += PAGE_SIZE)
+    kernel_stack_table[i] = (stack + addr - RELOC_VADDR)
+      | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
 
   /* Map last page table to page directory virtual addresses */
   kernel_page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kernel_vmap;
+
+  paging_loaddir ((uint32_t) kernel_page_dir - RELOC_VADDR);
 }
 
 uint32_t

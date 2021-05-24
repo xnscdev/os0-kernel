@@ -26,6 +26,7 @@ pid_t
 wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 {
   Process *proc;
+  __asm__ volatile ("sti");
   if (pid == 0 || pid == -1)
     return -ENOSYS;
   if (pid < 0)

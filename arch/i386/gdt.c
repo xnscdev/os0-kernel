@@ -19,9 +19,8 @@
 #include <i386/gdt.h>
 #include <i386/tss.h>
 #include <sys/io.h>
+#include <sys/task.h>
 #include <string.h>
-
-char user_interrupt_stack[PAGE_SIZE];
 
 static GDTEntry gdt_entries[GDT_SIZE];
 static DTPtr gdt;
@@ -42,12 +41,6 @@ tss_write (uint32_t n, uint16_t ss0, uint32_t esp0)
   tss.tss_es = 0x13;
   tss.tss_fs = 0x13;
   tss.tss_gs = 0x13;
-}
-
-void
-tss_update_stack (void)
-{
-  tss.tss_esp0 = (uint32_t) user_interrupt_stack + PAGE_SIZE;
 }
 
 void
@@ -73,7 +66,7 @@ gdt_init (void)
   gdt_set_gate (2, 0, 0xffffffff, 0x92, 0xcf); /* Data segment */
   gdt_set_gate (3, 0, 0xffffffff, 0xfa, 0xcf); /* User mode code segment */
   gdt_set_gate (4, 0, 0xffffffff, 0xf2, 0xcf); /* User mode data segment */
-  tss_write (5, 0x10, 0);
+  tss_write (5, 0x10, TASK_STACK_ADDR);
 
   gdt_load ((uint32_t) &gdt);
   tss_load ();

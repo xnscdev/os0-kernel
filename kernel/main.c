@@ -168,7 +168,7 @@ init (void)
 }
 
 void
-kmain (MultibootInfo *info, uint32_t stack)
+kmain (MultibootInfo *info)
 {
   timer_set_freq (1000);
   vga_init ();
@@ -178,8 +178,6 @@ kmain (MultibootInfo *info, uint32_t stack)
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   heap_init ();
   mem_init (info->mi_memhigh);
-
-  task_stack_addr = stack;
   scheduler_init ();
 
   ata_init (PATA_BAR0, PATA_BAR1, PATA_BAR2, PATA_BAR3, PATA_BAR4);

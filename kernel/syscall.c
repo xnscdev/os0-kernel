@@ -82,16 +82,6 @@ sys_exit (int code)
 }
 
 int
-sys_fork (void)
-{
-  int ret;
-  __asm__ volatile ("cli");
-  ret = task_fork ();
-  __asm__ volatile ("sti");
-  return ret;
-}
-
-int
 sys_read (int fd, void *buffer, size_t len)
 {
   ProcessFile *file;

@@ -1,5 +1,5 @@
 /*************************************************************************
- * task.h -- This file is part of OS/0.                                  *
+ * fork.S -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,50 +16,13 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TASK_H
-#define _SYS_TASK_H
+	.section .text
+	.global sys_fork
+	.type sys_fork, @function
+sys_fork:
+	cli
+	call	task_fork
+	sti
+	ret
 
-#ifndef _ASM
-#include <sys/cdefs.h>
-#include <sys/types.h>
-#endif
-
-#define TASK_STACK_BOTTOM  0xff400000
-#define TASK_STACK_ADDR    0xff405000
-#define TASK_STACK_SIZE    0x5000
-
-#define SYSCALL_STACK_ADDR 0xff404000
-#define SYSCALL_STACK_SIZE 0x1000
-
-#define TASK_EXIT_PAGE 0xff406000
-
-#ifndef _ASM
-
-typedef struct _ProcessTask
-{
-  pid_t t_pid;
-  uint32_t t_stack;
-  uint32_t t_esp;
-  uint32_t t_eip;
-  uint32_t *t_pgdir;
-  volatile struct _ProcessTask *t_prev;
-  volatile struct _ProcessTask *t_next;
-} ProcessTask;
-
-__BEGIN_DECLS
-
-void scheduler_init (void);
-void task_tick (void);
-int task_fork (void);
-void task_yield (void);
-int task_new (uint32_t eip);
-void task_exec (uint32_t eip, char *const *argv, char *const *envp)
-  __attribute__ ((noreturn));
-void task_free (ProcessTask *task);
-pid_t task_getpid (void);
-
-__END_DECLS
-
-#endif
-
-#endif
+	.size sys_fork, . - sys_fork

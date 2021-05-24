@@ -20,6 +20,7 @@
 
 #include <sys/memory.h>
 #include <sys/multiboot.h>
+#include <sys/task.h>
 
 	.set ALIGN, 1 << 0
 	.set MEMINFO, 1 << 1
@@ -64,6 +65,7 @@ boot_page_dir:
 	.skip PAGE_SIZE - 3080
 
 	.section .bootstrap_stack, "aw", @nobits
+	.align PAGE_SIZE
 stack_bottom:
 	.skip 16384
 stack_top:
@@ -87,14 +89,20 @@ _start:
 higher_start:
 	mov	$stack_top, %esp
 
+	/* Initialize main page tables */
+	pushl	$stack_bottom
 	call	paging_init
+
+	/* Set new stack pointer */
+	mov	$SYSCALL_STACK_ADDR, %esp
+
 	call	gdt_init
 	call	idt_init
 	call	rtc_init
 
 	sti
 
-	push	%esp
+	pushl	$stack_bottom
 	add	$RELOC_VADDR, %ebx
 	push	%ebx
 	call	kmain
