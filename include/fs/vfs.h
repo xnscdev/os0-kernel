@@ -54,7 +54,8 @@ typedef struct
 typedef struct
 {
   int (*vfs_create) (VFSInode *, const char *, mode_t);
-  VFSInode *(*vfs_lookup) (VFSInode *, VFSSuperblock *, const char *, int);
+  int (*vfs_lookup) (VFSInode **, VFSInode *, VFSSuperblock *, const char *,
+		     int);
   int (*vfs_link) (VFSInode *, VFSInode *, const char *);
   int (*vfs_unlink) (VFSInode *, const char *);
   int (*vfs_symlink) (VFSInode *, const char *, const char *);
@@ -177,8 +178,8 @@ int vfs_statvfs (VFSSuperblock *sb, struct statvfs *st);
 int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int vfs_create (VFSInode *dir, const char *name, mode_t mode);
-VFSInode *vfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
-		      int follow_symlinks);
+int vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
+		const char *name, int follow_symlinks);
 int vfs_link (VFSInode *old, VFSInode *dir, const char *new);
 int vfs_unlink (VFSInode *dir, const char *name);
 int vfs_symlink (VFSInode *dir, const char *old, const char *new);

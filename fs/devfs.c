@@ -112,39 +112,38 @@ devfs_free (VFSSuperblock *sb)
   vfs_unref_inode (sb->sb_root);
 }
 
-VFSInode *
-devfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
-	      int follow_symlinks)
+int
+devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
+	      const char *name, int follow_symlinks)
 {
   int i;
   if (!S_ISDIR (dir->vi_mode))
-    return NULL;
+    return -ENOTDIR;
   if (dir->vi_ino == DEVFS_ROOT_INODE)
     {
       for (i = 0; i < DEVICE_TABLE_SIZE; i++)
 	{
 	  if (strcmp (device_table[i].sd_name, name) == 0)
 	    {
-	      VFSInode *inode = vfs_alloc_inode (sb);
-	      if (unlikely (inode == NULL))
-		return NULL;
+	      *inode = vfs_alloc_inode (sb);
+	      if (unlikely (*inode == NULL))
+		return -ENOMEM;
 	      if (device_table[i].sd_type == DEVICE_TYPE_BLOCK)
-		inode->vi_mode = S_IFBLK;
+		(*inode)->vi_mode = S_IFBLK;
 	      else
-		inode->vi_mode = S_IFCHR;
-	      inode->vi_mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
-	      inode->vi_nlink = 1;
-	      inode->vi_rdev =
+		(*inode)->vi_mode = S_IFCHR;
+	      (*inode)->vi_mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	      (*inode)->vi_nlink = 1;
+	      (*inode)->vi_rdev =
 		makedev (device_table[i].sd_major, device_table[i].sd_minor);
-	      inode->vi_private = &device_table[i];
-	      return inode;
+	      (*inode)->vi_private = &device_table[i];
+	      return 0;
 	    }
 	}
-      return NULL;
+      return -ENOENT;
     }
   else if (dir->vi_ino == DEVFS_FD_INODE)
     {
-      VFSInode *inode;
       int fd = 0;
       /* Convert string to file descriptor */
       while (isdigit (*name))
@@ -154,12 +153,12 @@ devfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
 	  name++;
 	}
       if (*name != '\0')
-	return NULL;
-      inode = process_table[task_getpid ()].p_files[fd].pf_inode;
-      vfs_ref_inode (inode);
-      return inode;
+	return -ENOENT;
+      *inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+      vfs_ref_inode (*inode);
+      return 0;
     }
-  return NULL;
+  return -ENOENT;
 }
 
 int

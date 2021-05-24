@@ -99,34 +99,34 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   return ret;
 }
 
-VFSInode *
-ext2_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
-	     int follow_symlinks)
+int
+ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
+	     const char *name, int follow_symlinks)
 {
   VFSDirEntry *entry;
   VFSDirectory *d = ext2_alloc_dir (dir, sb);
   if (d == NULL)
-    return NULL;
+    return -ENOMEM;
 
   while (1)
     {
       entry = ext2_readdir (d, sb);
       if (entry == NULL)
-	return NULL;
+	return -EPERM;
       if (strcmp (entry->d_name, name) == 0)
 	{
 	  /* TODO Follow symbolic links if desired */
-	  VFSInode *inode = entry->d_inode;
+	  *inode = entry->d_inode;
 	  kfree (entry->d_name);
 	  kfree (entry);
-	  return inode;
+	  return 0;
 	}
       vfs_destroy_dir_entry (entry);
     }
 
   kfree (d->vd_buffer);
   kfree (d);
-  return NULL;
+  return -ENOENT;
 }
 
 int

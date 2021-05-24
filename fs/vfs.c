@@ -28,8 +28,9 @@ VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
 VFSMount mount_table[VFS_MOUNT_TABLE_SIZE];
 VFSInode *vfs_root_inode;
 
-static VFSInode *vfs_default_lookup (VFSInode *dir, VFSSuperblock *sb,
-				     const char *name, int follow_symlinks);
+static int vfs_default_lookup (VFSInode **inode, VFSInode *dir,
+			       VFSSuperblock *sb, const char *name,
+			       int follow_symlinks);
 static VFSDirEntry *vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb);
 
 static VFSInodeOps vfs_default_iops = {
@@ -45,27 +46,28 @@ static VFSSuperblock vfs_default_sb = {
   .sb_ops = &vfs_default_sops
 };
 
-static VFSInode *
-vfs_default_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
-		    int follow_symlinks)
+static int
+vfs_default_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
+		    const char *name, int follow_symlinks)
 {
   /* Must be root directory */
   if (dir->vi_ino != 0)
-    return NULL;
+    return -ENOENT;
   if (strcmp (name, "dev") == 0)
     {
       VFSInode *dev = kzalloc (sizeof (VFSInode));
       if (unlikely (dev == NULL))
-	return NULL;
+	return -ENOMEM;
       dev->vi_ino = 1;
       dev->vi_mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
       dev->vi_nlink = 2;
       dev->vi_ops = &vfs_default_iops;
       dev->vi_sb = sb;
       dev->vi_refcnt = 1;
-      return dev;
+      *inode = dev;
+      return 0;
     }
-  return NULL;
+  return -ENOENT;
 }
 
 static VFSDirEntry *
@@ -74,10 +76,13 @@ vfs_default_readdir (VFSDirectory *dir, VFSSuperblock *sb)
   if (dir->vd_inode->vi_ino == 0)
     {
       VFSDirEntry *entry;
+      int ret;
       if (dir->vd_count > 0)
 	return NULL;
       entry = kzalloc (sizeof (VFSDirEntry));
-      entry->d_inode = vfs_default_lookup (dir->vd_inode, sb, "dev", 0);
+      ret = vfs_default_lookup (&entry->d_inode, dir->vd_inode, sb, "dev", 0);
+      if (ret != 0)
+	return NULL;
       entry->d_name = strdup ("dev");
       return entry;
     }
@@ -256,13 +261,13 @@ vfs_create (VFSInode *dir, const char *name, mode_t mode)
   return -ENOSYS;
 }
 
-VFSInode *
-vfs_lookup (VFSInode *dir, VFSSuperblock *sb, const char *name,
-	    int follow_symlinks)
+int
+vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
+	    const char *name, int follow_symlinks)
 {
   if (dir->vi_ops->vfs_lookup != NULL)
-    return dir->vi_ops->vfs_lookup (dir, sb, name, follow_symlinks);
-  return NULL;
+    return dir->vi_ops->vfs_lookup (inode, dir, sb, name, follow_symlinks);
+  return -ENOSYS;
 }
 
 int
@@ -482,12 +487,13 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
 
       if (*ptr != '\0' && strcmp (ptr, ".") != 0)
 	{
-	  VFSInode *inode = vfs_lookup (dir, dir->vi_sb, ptr, follow_symlinks);
-	  if (inode == NULL)
+	  VFSInode *inode;
+	  int ret = vfs_lookup (&inode, dir, dir->vi_sb, ptr, follow_symlinks);
+	  if (ret != 0)
 	    {
 	      vfs_unref_inode (dir);
 	      kfree (buffer);
-	      return -ENOENT;
+	      return ret;
 	    }
 	  vfs_unref_inode (dir);
 	  dir = inode;
