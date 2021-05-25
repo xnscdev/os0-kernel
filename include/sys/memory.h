@@ -20,17 +20,14 @@
 #define _SYS_MEMORY_H
 
 #ifndef _ASM
-
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdint.h>
-
 #endif
+#include <limits.h>
 
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
-
-#define PAGE_SIZE 0x1000
 
 #define KERNEL_PADDR 0x00100000
 #define KERNEL_VADDR 0xc0100000

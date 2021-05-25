@@ -3,7 +3,9 @@ install_headers('ioctl.h',
 		'stat.h',
 		'statvfs.h',
 		'syscall.h',
+		'sysconf.h',
 		'termios.h',
+		'unistd.h',
 		'time.h',
 		'wait.h', subdir: 'bits')
 

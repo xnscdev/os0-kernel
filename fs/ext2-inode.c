@@ -124,7 +124,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	    {
 	      Process *proc = &process_table[task_getpid ()];
 	      VFSInode *cwd;
-	      char *buffer = kmalloc (256);
+	      char *buffer = kmalloc (PATH_MAX);
 	      int ret;
 	      if (buffer == NULL)
 		{
@@ -133,7 +133,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 		}
 
 	      /* Read symlink path */
-	      ret = ext2_readlink (entry->d_inode, buffer, 256);
+	      ret = ext2_readlink (entry->d_inode, buffer, PATH_MAX);
 	      vfs_destroy_dir_entry (entry);
 	      if (ret < 0)
 		{
