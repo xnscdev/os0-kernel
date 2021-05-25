@@ -20,6 +20,7 @@
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/device.h>
+#include <sys/param.h>
 #include <sys/process.h>
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
@@ -118,44 +119,71 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	return -ENOENT;
       if (strcmp (entry->d_name, name) == 0)
 	{
-	  /* TODO Return -ELOOP if the number of symlinks encountered is
-	     over MAXSYMLINKS */
-	  if (follow_symlinks && S_ISLNK (entry->d_inode->vi_mode))
+	  Process *proc;
+	  VFSInode *cwd;
+	  char *buffer;
+	  VFSInode *i = entry->d_inode;
+	  int count = 0;
+	  int ret;
+
+	  kfree (entry->d_name);
+	  kfree (entry);
+
+	  /* If not a symlink, return the inode that was found */
+	  if (!follow_symlinks || !S_ISLNK (i->vi_mode))
 	    {
-	      Process *proc = &process_table[task_getpid ()];
-	      VFSInode *cwd;
-	      char *buffer = kmalloc (PATH_MAX);
-	      int ret;
-	      if (buffer == NULL)
+	      *inode = i;
+	      return 0;
+	    }
+
+	  /* Switch working directory to path directory for relative
+	     symlinks and save the original directory */
+	  proc = &process_table[task_getpid ()];
+	  cwd = proc->p_cwd;
+	  proc->p_cwd = dir;
+
+	  buffer = kmalloc (PATH_MAX);
+	  if (buffer == NULL)
+	    {
+	      vfs_unref_inode (i);
+	      return -ENOMEM;
+	    }
+
+	  while (S_ISLNK (i->vi_mode))
+	    {
+	      VFSInode *temp;
+	      if (count > MAXSYMLINKS)
 		{
-		  vfs_destroy_dir_entry (entry);
-		  return -ENOMEM;
+		  /* Too many symbolic links, probably an infinite loop */
+		  ret = -ELOOP;
+		  goto err;
 		}
 
 	      /* Read symlink path */
-	      ret = ext2_readlink (entry->d_inode, buffer, PATH_MAX);
-	      vfs_destroy_dir_entry (entry);
+	      memset (buffer, 0, PATH_MAX);
+	      ret = ext2_readlink (i, buffer, PATH_MAX);
 	      if (ret < 0)
-		{
-		  kfree (buffer);
-		  return ret;
-		}
+	        goto err;
 
 	      /* Open symlink path */
-	      cwd = proc->p_cwd;
-	      ret = vfs_open_file (inode, buffer, 1);
-	      kfree (buffer);
+	      ret = vfs_open_file (&temp, buffer, 0);
 	      if (ret < 0)
-		return ret;
-	      proc->p_cwd = cwd;
+	        goto err;
+
+	      vfs_unref_inode (i);
+	      i = temp;
 	    }
-	  else
-	    {
-	      *inode = entry->d_inode;
-	      kfree (entry->d_name);
-	      kfree (entry);
-	    }
+
+	  kfree (buffer);
+	  proc->p_cwd = cwd;
+	  *inode = i;
 	  return 0;
+
+	err:
+	  vfs_unref_inode (i);
+	  kfree (buffer);
+	  proc->p_cwd = cwd;
+	  return ret;
 	}
       vfs_destroy_dir_entry (entry);
     }

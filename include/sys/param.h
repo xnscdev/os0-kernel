@@ -19,6 +19,7 @@
 #ifndef _SYS_PARAM_H
 #define _SYS_PARAM_H
 
+#include <sys/syslimits.h>
 #include <sys/types.h>
 #include <limits.h>
 
