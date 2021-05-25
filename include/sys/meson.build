@@ -5,6 +5,7 @@ install_headers('cdefs.h',
 		'ioctl.h',
 		'param.h',
 		'signal.h',
+		'syslimits.h',
 		'sysmacros.h',
 		'types.h',
 		'unistd.h', subdir: 'sys')

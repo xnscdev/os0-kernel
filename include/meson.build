@@ -1,5 +1,4 @@
-install_headers('elf.h',
-		'limits.h')
+install_headers('elf.h')
 
 subdir('bits')
 subdir('sys')

@@ -19,7 +19,7 @@
 #ifndef _BITS_UNISTD_H
 #define _BITS_UNISTD_H
 
-#if !defined _LIMITS_H && !defined _SYS_UNISTD_H
+#if !defined _SYS_SYSLIMITS_H && !defined _SYS_UNISTD_H
 #error  "<bits/unistd.h> should not be included directly"
 #endif
 

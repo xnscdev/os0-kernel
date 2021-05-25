@@ -19,12 +19,12 @@
 #ifndef _SYS_MEMORY_H
 #define _SYS_MEMORY_H
 
+#include <sys/syslimits.h>
 #ifndef _ASM
 #include <sys/cdefs.h>
 #include <stddef.h>
 #include <stdint.h>
 #endif
-#include <limits.h>
 
 #define MEM_MAGIC 0xefbeadde
 #define MEM_CIGAM 0xdeadbeef
