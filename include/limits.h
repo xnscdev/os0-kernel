@@ -19,8 +19,6 @@
 #ifndef _LIMITS_H
 #define _LIMITS_H
 
-#include_next <limits.h>
-
 #include <bits/unistd.h>
 
 /* POSIX Minimum limits */
