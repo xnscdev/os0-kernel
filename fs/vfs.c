@@ -494,7 +494,8 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
       if (*ptr != '\0' && strcmp (ptr, ".") != 0)
 	{
 	  VFSInode *inode;
-	  int ret = vfs_lookup (&inode, dir, dir->vi_sb, ptr, follow_symlinks);
+	  int ret = vfs_lookup (&inode, dir, dir->vi_sb, ptr,
+				end == NULL ? follow_symlinks : 1);
 	  if (ret != 0)
 	    {
 	      vfs_unref_inode (dir);

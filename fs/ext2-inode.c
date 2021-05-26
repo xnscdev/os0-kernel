@@ -217,12 +217,6 @@ ext2_unlink (VFSInode *dir, const char *name)
   if (ei == NULL)
     return -EINVAL;
 
-  if ((ei->ei_mode & 0xf000) != EXT2_TYPE_DIR)
-    {
-      kfree (ei);
-      return -ENOTDIR;
-    }
-
   esb = sb->sb_private;
   blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   buffer = kmalloc (sb->sb_blksize);
@@ -299,8 +293,6 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   size_t i;
   int ret;
 
-  if (buffer == NULL)
-    return -EINVAL;
   if (len == 0)
     return 0;
   start_block = offset / blksize;
@@ -418,8 +410,6 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 	return ret;
     }
 
-  if (buffer == NULL)
-    return -EINVAL;
   if (len == 0)
     return 0;
   start_block = offset / blksize;
