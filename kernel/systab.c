@@ -32,7 +32,7 @@ void *syscall_table[NR_syscalls] = {
   sys_unlink,
   sys_execve,
   sys_chdir,
-  NULL,
+  sys_time,
   sys_mknod,
   sys_chmod,
   sys_chown,

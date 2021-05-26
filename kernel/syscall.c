@@ -304,6 +304,12 @@ sys_chdir (const char *path)
   return 0;
 }
 
+time_t
+sys_time (time_t *t)
+{
+  return time (t);
+}
+
 int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
