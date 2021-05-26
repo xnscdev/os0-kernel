@@ -506,6 +506,13 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
 	  dir = inode;
 	  dont_unref = 1;
 
+	  if (end != NULL && !S_ISDIR (dir->vi_mode))
+	    {
+	      vfs_unref_inode (dir);
+	      kfree (buffer);
+	      return -ENOTDIR;
+	    }
+
 	  /* Check if the inode is the root of a mounted filesystem and replace
 	     it with the root inode of the mount if it is */
 	  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
