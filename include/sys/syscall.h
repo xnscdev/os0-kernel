@@ -87,7 +87,8 @@ int sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev);
 int sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags);
 int sys_unlinkat (int fd, const char *path, int flags);
 int sys_renameat (int oldfd, const char *old, int newfd, const char *new);
-int sys_linkat (int oldfd, const char *old, int newfd, const char *new);
+int sys_linkat (int oldfd, const char *old, int newfd, const char *new,
+		int flags);
 int sys_symlinkat (const char *old, int fd, const char *new);
 int sys_readlinkat (int fd, const char *__restrict path,
 		    char *__restrict buffer, size_t len);

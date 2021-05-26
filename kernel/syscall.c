@@ -127,8 +127,31 @@ sys_open (const char *path, int flags, mode_t mode)
 	{
 	  VFSInode *inode;
 	  int ret = vfs_open_file (&inode, path, 1);
+
+	  if (flags & O_CREAT)
+	    {
+	      if (flags & O_EXCL && ret == 0)
+		{
+		  /* The file already exists */
+		  vfs_unref_inode (inode);
+		  return -EEXIST;
+		}
+	      if (ret == -ENOENT)
+		{
+		  /* Try to create a new file */
+		  VFSInode *dir;
+		  char *name;
+		  ret = sys_path_sep (path, &dir, &name);
+		  if (ret != 0)
+		    return ret;
+		  ret = vfs_create (dir, name, mode);
+		  vfs_unref_inode (dir);
+		  kfree (name);
+		}
+	    }
 	  if (ret != 0)
 	    return ret;
+
 	  files[i].pf_inode = inode;
 	  switch (flags & O_ACCMODE)
 	    {
@@ -190,15 +213,7 @@ sys_waitpid (pid_t pid, int *status, int options)
 int
 sys_creat (const char *path, mode_t mode)
 {
-  VFSInode *dir;
-  char *name;
-  int ret = sys_path_sep (path, &dir, &name);
-  if (ret != 0)
-    return ret;
-  ret = vfs_create (dir, name, mode);
-  vfs_unref_inode (dir);
-  kfree (name);
-  return ret;
+  return sys_open (path, O_CREAT | O_TRUNC | O_WRONLY, mode);
 }
 
 int
@@ -206,6 +221,7 @@ sys_link (const char *old, const char *new)
 {
   VFSInode *old_inode;
   VFSInode *new_inode;
+  VFSInode *temp;
   char *name;
   int ret = sys_path_sep (new, &new_inode, &name);
   if (ret != 0)
@@ -216,6 +232,17 @@ sys_link (const char *old, const char *new)
       vfs_unref_inode (new_inode);
       return ret;
     }
+
+  ret = vfs_lookup (&temp, new_inode, new_inode->vi_sb, name, 0);
+  if (ret == 0)
+    {
+      vfs_unref_inode (old_inode);
+      vfs_unref_inode (new_inode);
+      kfree (name);
+      vfs_unref_inode (temp);
+      return -EEXIST;
+    }
+
   ret = vfs_link (old_inode, new_inode, name);
   vfs_unref_inode (old_inode);
   vfs_unref_inode (new_inode);
@@ -269,10 +296,21 @@ int
 sys_mknod (const char *path, mode_t mode, dev_t dev)
 {
   VFSInode *dir;
+  VFSInode *temp;
   char *name;
   int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
+
+  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
+  if (ret == 0)
+    {
+      vfs_unref_inode (dir);
+      kfree (name);
+      vfs_unref_inode (temp);
+      return -EEXIST;
+    }
+
   ret = vfs_mknod (dir, name, mode, dev);
   vfs_unref_inode (dir);
   kfree (name);
@@ -428,6 +466,7 @@ sys_rename (const char *old, const char *new)
       kfree (old_name);
       return ret;
     }
+
   ret = vfs_rename (old_inode, old_name, new_inode, new_name);
   vfs_unref_inode (old_inode);
   kfree (old_name);
@@ -440,10 +479,21 @@ int
 sys_mkdir (const char *path, mode_t mode)
 {
   VFSInode *dir;
+  VFSInode *temp;
   char *name;
   int ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
+
+  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
+  if (ret == 0)
+    {
+      vfs_unref_inode (dir);
+      kfree (name);
+      vfs_unref_inode (temp);
+      return -EEXIST;
+    }
+
   ret = vfs_mkdir (dir, name, mode);
   vfs_unref_inode (dir);
   kfree (name);
@@ -544,10 +594,21 @@ int
 sys_symlink (const char *old, const char *new)
 {
   VFSInode *dir;
+  VFSInode *temp;
   char *name;
   int ret = sys_path_sep (new, &dir, &name);
   if (ret != 0)
     return ret;
+
+  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
+  if (ret == 0)
+    {
+      vfs_unref_inode (dir);
+      kfree (name);
+      vfs_unref_inode (temp);
+      return -EEXIST;
+    }
+
   ret = vfs_symlink (dir, old, name);
   vfs_unref_inode (dir);
   kfree (name);
@@ -561,6 +622,11 @@ sys_readlink (const char *path, char *buffer, size_t len)
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
+  if (!S_ISLNK (inode->vi_mode))
+    {
+      vfs_unref_inode (inode);
+      return -EINVAL;
+    }
   ret = vfs_readlink (inode, buffer, len);
   vfs_unref_inode (inode);
   return ret;
@@ -776,6 +842,7 @@ sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
+  VFSInode *inode;
   int ret;
   if (fd != AT_FDCWD)
     {
@@ -784,7 +851,12 @@ sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags)
 	return -EBADF;
       proc->p_cwd = proc->p_files[fd].pf_inode;
     }
-  ret = sys_chown (path, uid, gid);
+
+  ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
+  if (ret != 0)
+    return ret;
+  ret = vfs_chown (inode, uid, gid);
+  vfs_unref_inode (inode);
   proc->p_cwd = cwd;
   return ret;
 }
@@ -802,7 +874,10 @@ sys_unlinkat (int fd, const char *path, int flags)
 	return -EBADF;
       proc->p_cwd = proc->p_files[fd].pf_inode;
     }
-  ret = sys_unlink (path);
+  if (flags & AT_REMOVEDIR)
+    ret = sys_rmdir (path);
+  else
+    ret = sys_unlink (path);
   proc->p_cwd = cwd;
   return ret;
 }
@@ -863,12 +938,13 @@ sys_renameat (int oldfd, const char *old, int newfd, const char *new)
 }
 
 int
-sys_linkat (int oldfd, const char *old, int newfd, const char *new)
+sys_linkat (int oldfd, const char *old, int newfd, const char *new, int flags)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
   VFSInode *old_inode;
   VFSInode *new_inode;
+  VFSInode *temp;
   char *name;
   int ret;
 
@@ -879,7 +955,7 @@ sys_linkat (int oldfd, const char *old, int newfd, const char *new)
 	return -EBADF;
       proc->p_cwd = proc->p_files[oldfd].pf_inode;
     }
-  ret = vfs_open_file (&old_inode, old, 1);
+  ret = vfs_open_file (&old_inode, old, flags & AT_SYMLINK_FOLLOW ? 1 : 0);
   if (ret != 0)
     {
       proc->p_cwd = cwd;
@@ -903,6 +979,16 @@ sys_linkat (int oldfd, const char *old, int newfd, const char *new)
       vfs_unref_inode (old_inode);
       proc->p_cwd = cwd;
       return ret;
+    }
+
+  ret = vfs_lookup (&temp, new_inode, new_inode->vi_sb, name, 0);
+  if (ret == 0)
+    {
+      vfs_unref_inode (old_inode);
+      vfs_unref_inode (new_inode);
+      kfree (name);
+      vfs_unref_inode (temp);
+      return -EEXIST;
     }
 
   ret = vfs_link (old_inode, new_inode, name);
@@ -955,6 +1041,7 @@ sys_fchmodat (int fd, const char *path, mode_t mode, int flags)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
+  VFSInode *inode;
   int ret;
   if (fd != AT_FDCWD)
     {
@@ -963,7 +1050,12 @@ sys_fchmodat (int fd, const char *path, mode_t mode, int flags)
 	return -EBADF;
       proc->p_cwd = proc->p_files[fd].pf_inode;
     }
-  ret = sys_chmod (path, mode);
+
+  ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
+  if (ret != 0)
+    return ret;
+  ret = vfs_chmod (inode, mode);
+  vfs_unref_inode (inode);
   proc->p_cwd = cwd;
   return ret;
 }
@@ -973,6 +1065,7 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
+  VFSInode *inode;
   int ret;
   if (fd != AT_FDCWD)
     {
@@ -981,7 +1074,23 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
 	return -EBADF;
       proc->p_cwd = proc->p_files[fd].pf_inode;
     }
-  ret = sys_access (path, mode);
+
+  ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
+  if (ret != 0)
+    return ret;
+  switch (mode)
+    {
+    case F_OK:
+      break; /* The file exists at this point */
+    case X_OK:
+    case R_OK:
+    case W_OK:
+      ret = -ENOSYS; /* TODO Implement */
+      break;
+    default:
+      ret = -EINVAL;
+    }
+  vfs_unref_inode (inode);
   proc->p_cwd = cwd;
   return ret;
 }
