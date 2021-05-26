@@ -203,23 +203,13 @@ int
 ext2_unlink (VFSInode *dir, const char *name)
 {
   VFSSuperblock *sb = dir->vi_sb;
-  Ext2Superblock *esb;
-  Ext2Inode *ei;
-  void *buffer;
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2Inode *ei = dir->vi_private;
+  void *buffer = kmalloc (sb->sb_blksize);
+  int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   char *guessname;
-  int blocks;
   int ret;
   int i;
-
-  if (dir->vi_ino == 0)
-    return -EINVAL;
-  ei = ext2_read_inode (sb, dir->vi_ino);
-  if (ei == NULL)
-    return -EINVAL;
-
-  esb = sb->sb_private;
-  blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
-  buffer = kmalloc (sb->sb_blksize);
 
   for (i = 0; i < blocks; i++)
     {
