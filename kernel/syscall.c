@@ -49,12 +49,14 @@ sys_path_sep (const char *path, VFSInode **dir, char **name)
       /* Direct child of root directory */
       *dir = vfs_root_inode;
       vfs_ref_inode (*dir);
+      *name = strdup (sep + 1);
     }
   else if (sep == NULL)
     {
       /* File in current directory */
       *dir = process_table[task_getpid ()].p_cwd;
       vfs_ref_inode (*dir);
+      *name = strdup (buffer);
     }
   else
     {
@@ -66,6 +68,7 @@ sys_path_sep (const char *path, VFSInode **dir, char **name)
 	  kfree (buffer);
 	  return ret;
 	}
+      *name = strdup (sep + 1);
     }
   return 0;
 }
@@ -145,6 +148,15 @@ sys_open (const char *path, int flags, mode_t mode)
 		  if (ret != 0)
 		    return ret;
 		  ret = vfs_create (dir, name, mode);
+		  if (ret != 0)
+		    {
+		      vfs_unref_inode (dir);
+		      kfree (name);
+		      return ret;
+		    }
+
+		  /* Try to open the file again */
+		  ret = vfs_lookup (&inode, dir, dir->vi_sb, name, 1);
 		  vfs_unref_inode (dir);
 		  kfree (name);
 		}
