@@ -114,9 +114,15 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
     {
       int ret = ext2_readdir (&entry, d, sb);
       if (ret < 0)
-	return ret;
+	{
+	  ext2_free_dir (d);
+	  return ret;
+	}
       else if (ret == 1)
-	return -ENOENT;
+	{
+	  ext2_free_dir (d);
+	  return -ENOENT;
+	}
       if (strcmp (entry->d_name, name) == 0)
 	{
 	  Process *proc;
@@ -133,6 +139,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  if (!follow_symlinks || !S_ISLNK (i->vi_mode))
 	    {
 	      *inode = i;
+	      ext2_free_dir (d);
 	      return 0;
 	    }
 
@@ -146,6 +153,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  if (buffer == NULL)
 	    {
 	      vfs_unref_inode (i);
+	      ext2_free_dir (d);
 	      return -ENOMEM;
 	    }
 
@@ -175,6 +183,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	    }
 
 	  kfree (buffer);
+	  ext2_free_dir (d);
 	  proc->p_cwd = cwd;
 	  *inode = i;
 	  return 0;
@@ -182,14 +191,14 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	err:
 	  vfs_unref_inode (i);
 	  kfree (buffer);
+	  ext2_free_dir (d);
 	  proc->p_cwd = cwd;
 	  return ret;
 	}
       vfs_destroy_dir_entry (entry);
     }
 
-  kfree (d->vd_buffer);
-  kfree (d);
+  ext2_free_dir (d);
   return -ENOENT;
 }
 
@@ -205,11 +214,24 @@ ext2_unlink (VFSInode *dir, const char *name)
   VFSSuperblock *sb = dir->vi_sb;
   Ext2Superblock *esb = sb->sb_private;
   Ext2Inode *ei = dir->vi_private;
-  void *buffer = kmalloc (sb->sb_blksize);
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
+  void *buffer;
   char *guessname;
+  VFSInode *temp;
   int ret;
   int i;
+
+  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
+  if (ret != 0)
+    return ret;
+  if (S_ISDIR (temp->vi_mode))
+    {
+      /* Unlinking a directory requires root */
+      vfs_unref_inode (temp);
+      return -EPERM;
+    }
+  vfs_unref_inode (temp);
+  buffer = kmalloc (sb->sb_blksize);
 
   for (i = 0; i < blocks; i++)
     {
@@ -711,7 +733,100 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 int
 ext2_rmdir (VFSInode *dir, const char *name)
 {
-  return -ENOSYS;
+  VFSSuperblock *sb = dir->vi_sb;
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2Inode *ei = dir->vi_private;
+  int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
+  void *buffer;
+  char *guessname;
+  VFSInode *temp;
+  VFSDirectory *d;
+  int ret;
+  int i = 0;
+
+  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
+  if (ret != 0)
+    return ret;
+  if (!S_ISDIR (temp->vi_mode))
+    {
+      vfs_unref_inode (temp);
+      return -ENOTDIR;
+    }
+  vfs_unref_inode (temp);
+
+  /* Make sure the directory is empty */
+  d = ext2_alloc_dir (dir, sb);
+  if (d == NULL)
+    return -ENOMEM;
+
+  while (1)
+    {
+      VFSDirEntry *entry;
+      ret = ext2_readdir (&entry, d, sb);
+      if (ret == 1)
+	break;
+      else if (ret < 0)
+	{
+	  ext2_free_dir (d);
+	  return ret;
+	}
+      i++;
+      vfs_destroy_dir_entry (entry);
+    }
+  ext2_free_dir (d);
+  if (i > 2)
+    return -ENOTEMPTY; /* Empty directory should only have 2 entries */
+  buffer = kmalloc (sb->sb_blksize);
+
+  for (i = 0; i < blocks; i++)
+    {
+      int bytes = 0;
+      loff_t block = ext2_data_block (ei, sb, i);
+      Ext2DirEntry *last = NULL;
+      if (ext2_read_blocks (buffer, sb, block, 1) != 0)
+	{
+	  kfree (buffer);
+	  kfree (ei);
+	  return -EIO;
+	}
+      while (bytes < sb->sb_blksize)
+	{
+	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
+	  uint16_t namelen;
+	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	    {
+	      bytes += 4;
+	      continue;
+	    }
+
+	  namelen = guess->ed_namelenl;
+	  if ((esb->esb_reqft & EXT2_FT_REQ_DIRTYPE) == 0)
+	    namelen |= guess->ed_namelenh << 8;
+
+	  guessname = (char *) guess + sizeof (Ext2DirEntry);
+	  if (strlen (name) == namelen
+	      && strncmp (guessname, name, namelen) == 0)
+	    {
+	      ino_t temp = guess->ed_inode;
+	      kfree (ei);
+	      if (last != NULL)
+	        last->ed_size += guess->ed_size;
+	      memset (guess, 0, sizeof (Ext2DirEntry));
+	      ret = ext2_write_blocks (buffer, sb, block, 1);
+	      kfree (buffer);
+	      if (ret != 0)
+		return ret;
+	      return ext2_unref_inode (sb, temp);
+	    }
+
+	  bytes += guess->ed_size;
+	  last = guess;
+	}
+    }
+
+  kfree (buffer);
+  kfree (ei);
+  return -ENOENT;
 }
 
 int

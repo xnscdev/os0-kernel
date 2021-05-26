@@ -965,7 +965,15 @@ ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
   return d;
 
  err:
-  kfree (d->vd_buffer);
-  kfree (d);
+  ext2_free_dir (d);
   return NULL;
+}
+
+void
+ext2_free_dir (VFSDirectory *dir)
+{
+  if (dir == NULL)
+    return;
+  kfree (dir->vd_buffer);
+  kfree (dir);
 }
