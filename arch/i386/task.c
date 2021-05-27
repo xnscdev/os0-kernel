@@ -34,8 +34,10 @@ pid_t next_pid;
 void
 scheduler_init (void)
 {
+  ProcessEnv *env;
   __asm__ volatile ("cli");
   task_current = kmalloc (sizeof (ProcessTask));
+  assert (task_current != NULL);
   task_current->t_pid = next_pid++;
   task_current->t_ppid = 0;
   task_current->t_esp = 0;
@@ -46,6 +48,17 @@ scheduler_init (void)
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
+
+  env = &process_table[0].p_env;
+  env->pe_vars = kmalloc (sizeof (char *));
+  assert (env->pe_vars != NULL);
+  env->pe_values = kmalloc (sizeof (char *));
+  assert (env->pe_values != NULL);
+  env->pe_size = 1;
+  env->pe_vars[0] = strdup ("PATH");
+  assert (env->pe_vars[0] != NULL);
+  env->pe_values[0] = strdup ("/usr/bin:/usr/sbin:/bin:/sbin");
+  assert (env->pe_values[0] != NULL);
   __asm__ volatile ("sti");
 }
 

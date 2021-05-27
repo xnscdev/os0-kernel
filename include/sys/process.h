@@ -53,6 +53,13 @@ typedef struct
 
 typedef struct
 {
+  char **pe_vars;
+  char **pe_values;
+  size_t pe_size;
+} ProcessEnv;
+
+typedef struct
+{
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   ProcessSignal p_signals[NR_signals];
   volatile ProcessTask *p_task;
@@ -63,6 +70,7 @@ typedef struct
   int p_term;
   int p_waitstat;
   volatile unsigned int p_refcnt;
+  ProcessEnv p_env;
 } Process;
 
 __BEGIN_DECLS
