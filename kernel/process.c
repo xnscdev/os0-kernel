@@ -312,3 +312,13 @@ process_set_break (uint32_t addr)
   proc->p_break = addr;
   return proc->p_break;
 }
+
+void
+process_env_free (ProcessEnv *env)
+{
+  int i;
+  for (i = 0; i < env->pe_size; i++)
+    kfree (env->pe_vars[i]);
+  kfree (env->pe_vars);
+  env->pe_size = 0;
+}

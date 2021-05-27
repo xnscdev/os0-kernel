@@ -54,7 +54,6 @@ typedef struct
 typedef struct
 {
   char **pe_vars;
-  char **pe_values;
   size_t pe_size;
 } ProcessEnv;
 
@@ -81,6 +80,7 @@ int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
+void process_env_free (ProcessEnv *env);
 
 __END_DECLS
 
