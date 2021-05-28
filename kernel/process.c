@@ -208,13 +208,46 @@ void
 process_free (pid_t pid)
 {
   Process *proc;
-   int i;
+  struct rusage *prusage;
+  pid_t ppid;
+  int i;
   if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
     return;
   proc = &process_table[pid];
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
+  ppid = proc->p_task->t_ppid;
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
+
+  /* Add self rusage values to parent's child rusage */
+  prusage = &process_table[ppid].p_cusage;
+  prusage->ru_utime.tv_sec += proc->p_rusage.ru_utime.tv_sec +
+    proc->p_cusage.ru_utime.tv_sec;
+  prusage->ru_utime.tv_usec += proc->p_rusage.ru_utime.tv_usec +
+    proc->p_cusage.ru_utime.tv_usec;
+  prusage->ru_utime.tv_sec += prusage->ru_utime.tv_usec / 1000000;
+  prusage->ru_utime.tv_usec %= 1000000;
+  prusage->ru_stime.tv_sec += proc->p_rusage.ru_stime.tv_sec +
+    proc->p_cusage.ru_stime.tv_sec;
+  prusage->ru_stime.tv_usec += proc->p_rusage.ru_stime.tv_usec +
+    proc->p_cusage.ru_stime.tv_usec;
+  prusage->ru_stime.tv_sec += prusage->ru_stime.tv_usec / 1000000;
+  prusage->ru_stime.tv_usec %= 1000000;
+  prusage->ru_maxrss += proc->p_rusage.ru_maxrss + proc->p_cusage.ru_maxrss;
+  prusage->ru_ixrss += proc->p_rusage.ru_ixrss + proc->p_cusage.ru_ixrss;
+  prusage->ru_idrss += proc->p_rusage.ru_idrss + proc->p_cusage.ru_idrss;
+  prusage->ru_isrss += proc->p_rusage.ru_isrss + proc->p_cusage.ru_isrss;
+  prusage->ru_minflt += proc->p_rusage.ru_minflt + proc->p_cusage.ru_minflt;
+  prusage->ru_majflt += proc->p_rusage.ru_majflt + proc->p_cusage.ru_majflt;
+  prusage->ru_nswap += proc->p_rusage.ru_nswap + proc->p_cusage.ru_nswap;
+  prusage->ru_inblock += proc->p_rusage.ru_inblock + proc->p_cusage.ru_inblock;
+  prusage->ru_oublock += proc->p_rusage.ru_oublock + proc->p_cusage.ru_oublock;
+  prusage->ru_msgsnd += proc->p_rusage.ru_msgsnd + proc->p_cusage.ru_msgsnd;
+  prusage->ru_msgrcv += proc->p_rusage.ru_msgrcv + proc->p_cusage.ru_msgrcv;
+  prusage->ru_nsignals += proc->p_rusage.ru_nsignals +
+    proc->p_cusage.ru_nsignals;
+  prusage->ru_nvcsw += proc->p_rusage.ru_nvcsw + proc->p_cusage.ru_nvcsw;
+  prusage->ru_nivcsw += proc->p_rusage.ru_nivcsw + proc->p_cusage.ru_nivcsw;
 
   /* Reset process data */
   vfs_unref_inode (proc->p_cwd);
@@ -223,6 +256,7 @@ process_free (pid_t pid)
   proc->p_term = 0;
   proc->p_waitstat = 0;
   memset (&proc->p_rusage, 0, sizeof (struct rusage));
+  memset (&proc->p_cusage, 0, sizeof (struct rusage));
 
   /* Clear all open file descriptors */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)

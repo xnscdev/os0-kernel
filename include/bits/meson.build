@@ -7,6 +7,7 @@ install_headers('ioctl.h',
 		'termios.h',
 		'unistd.h',
 		'time.h',
+		'times.h',
 		'wait.h', subdir: 'bits')
 
 subdir('types')

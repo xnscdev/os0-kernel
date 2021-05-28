@@ -18,7 +18,7 @@
 
 #include <i386/timer.h>
 #include <sys/io.h>
-#include <sys/task.h>
+#include <sys/process.h>
 #include <sys/timer.h>
 #include <sys/types.h>
 
@@ -33,6 +33,7 @@ timer_tick (void)
   tick++;
   if (tick % timer_freq == 0)
     rtc_time++;
+  task_timer_tick ();
 }
 
 void

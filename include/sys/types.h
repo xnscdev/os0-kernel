@@ -25,7 +25,7 @@
 
 typedef int32_t blkcnt_t;
 typedef int32_t blksize_t;
-typedef int32_t clock_t;
+typedef int64_t clock_t;
 typedef int32_t clockid_t;
 typedef uint16_t dev_t;
 typedef uint32_t fsblkcnt_t;
@@ -41,7 +41,7 @@ typedef int64_t loff_t;
 typedef int16_t pid_t;
 typedef int32_t ssize_t;
 typedef uint32_t suseconds_t;
-typedef int32_t time_t; /* Year 2038 problem */
+typedef int64_t time_t;
 typedef int32_t timer_t;
 typedef uint16_t uid_t;
 typedef uint32_t useconds_t;

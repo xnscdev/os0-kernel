@@ -66,6 +66,7 @@ typedef struct
   VFSInode *p_cwd;
   uint32_t p_break;
   struct rusage p_rusage;
+  struct rusage p_cusage;
   int p_term;
   int p_waitstat;
   volatile unsigned int p_refcnt;

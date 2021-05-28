@@ -1,5 +1,5 @@
 /*************************************************************************
- * time.h -- This file is part of OS/0.                                  *
+ * times.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,46 +16,21 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _BITS_TIME_H
-#define _BITS_TIME_H
+#ifndef _BITS_TIMES_H
+#define _BITS_TIMES_H
 
 #include <sys/types.h>
 
-#ifndef _SYS_TIME_H
-#error  "<bits/time.h> should not be included directly"
+#ifndef _SYS_TIMES_H
+#error  "<bits/times.h> should not be included directly"
 #endif
 
-#define CLOCKS_PER_SEC 1000
-#define CLK_TCK        CLOCKS_PER_SEC
-
-struct timespec
+struct tms
 {
-  time_t tv_sec;
-  long tv_nsec;
-};
-
-struct itimerspec
-{
-  struct timespec it_interval;
-  struct timespec it_value;
-};
-
-struct timeval
-{
-  time_t tv_sec;
-  suseconds_t tv_usec;
-};
-
-struct itimerval
-{
-  struct timeval it_interval;
-  struct timeval it_value;
-};
-
-struct timezone
-{
-  int tz_minuteswest;
-  int tz_dsttime;
+  clock_t tms_utime;
+  clock_t tms_stime;
+  clock_t tms_cutime;
+  clock_t tms_cstime;
 };
 
 #endif

@@ -58,6 +58,26 @@ scheduler_init (void)
 }
 
 void
+task_timer_tick (void)
+{
+  uint32_t esp;
+  struct timeval *tp;
+  if (task_current == NULL)
+    return;
+  __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
+  if (esp > SYSCALL_STACK_ADDR)
+    tp = &process_table[task_getpid ()].p_rusage.ru_utime;
+  else
+    tp = &process_table[task_getpid ()].p_rusage.ru_stime;
+  tp->tv_usec += 1000000;
+  if (tp->tv_usec >= 1000000)
+    {
+      tp->tv_sec++;
+      tp->tv_usec -= 1000000;
+    }
+}
+
+void
 task_free (ProcessTask *task)
 {
   uint32_t i;

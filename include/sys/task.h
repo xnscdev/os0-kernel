@@ -49,7 +49,7 @@ typedef struct _ProcessTask
 __BEGIN_DECLS
 
 void scheduler_init (void);
-void task_tick (void);
+void task_timer_tick (void);
 int task_fork (void);
 void task_yield (void);
 int task_new (uint32_t eip);

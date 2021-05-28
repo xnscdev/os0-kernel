@@ -22,6 +22,7 @@
 #include <bits/syscall.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
+#include <sys/times.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
@@ -57,6 +58,7 @@ int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
+clock_t sys_times (struct tms *tms);
 int sys_brk (void *ptr);
 sighandler_t sys_signal (int sig, sighandler_t func);
 int sys_ioctl (int fd, unsigned long req, void *data);
@@ -64,6 +66,7 @@ int sys_fcntl (int fd, int cmd, int arg);
 pid_t sys_getppid (void);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,
 		   struct sigaction *__restrict old);
+int sys_getrusage (int who, struct rusage *usage);
 int sys_gettimeofday (struct timeval *__restrict tv,
 		      struct timezone *__restrict tz);
 int sys_symlink (const char *old, const char *new);
