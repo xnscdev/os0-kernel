@@ -38,7 +38,7 @@
 #define SYS_time          13
 #define SYS_mknod         14
 #define SYS_chmod         15
-#define SYS_chown         16
+#define SYS_lchown        16
 #define SYS_lseek         19
 #define SYS_getpid        20
 #define SYS_mount         21
@@ -97,6 +97,7 @@
 #define SYS_setitimer     104
 #define SYS_getitimer     105
 #define SYS_stat          106
+#define SYS_lstat         107
 #define SYS_fstat         108
 #define SYS_wait4         114
 #define SYS_swapoff       115
@@ -115,11 +116,20 @@
 #define SYS_getsid        147
 #define SYS_fdatasync     148
 #define SYS_nanosleep     162
+#define SYS_chown         182
 #define SYS_getcwd        183
 #define SYS_setxattr      226
+#define SYS_lsetxattr     227
+#define SYS_fsetxattr     228
 #define SYS_getxattr      229
+#define SYS_lgetxattr     230
+#define SYS_fgetxattr     231
 #define SYS_listxattr     232
+#define SYS_llistxattr    233
+#define SYS_flistxattr    234
 #define SYS_removexattr   235
+#define SYS_lremovexattr  236
+#define SYS_fremovexattr  237
 #define SYS_openat        295
 #define SYS_mkdirat       296
 #define SYS_mknodat       297

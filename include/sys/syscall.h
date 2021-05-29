@@ -92,8 +92,14 @@ int sys_lsetxattr (const char *path, const char *name, const void *value,
 int sys_fsetxattr (int fd, const char *name, const void *value, size_t len,
 		   int flags);
 int sys_getxattr (const char *path, const char *name, void *value, size_t len);
+int sys_lgetxattr (const char *path, const char *name, void *value, size_t len);
+int sys_fgetxattr (int fd, const char *name, void *value, size_t len);
 int sys_listxattr (const char *path, char *buffer, size_t len);
+int sys_llistxattr (const char *path, char *buffer, size_t len);
+int sys_flistxattr (int fd, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
+int sys_lremovexattr (const char *path, const char *name);
+int sys_fremovexattr (int fd, const char *name);
 int sys_openat (int fd, const char *path, int flags, mode_t mode);
 int sys_mkdirat (int fd, const char *path, mode_t mode);
 int sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev);

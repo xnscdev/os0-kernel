@@ -19,6 +19,7 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <vm/heap.h>
 
 int
 sys_path_sep (const char *path, VFSInode **dir, char **name)

@@ -19,6 +19,7 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <vm/heap.h>
 
 int
 sys_read (int fd, void *buffer, size_t len)
