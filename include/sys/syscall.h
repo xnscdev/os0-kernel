@@ -20,6 +20,7 @@
 #define _SYS_SYSCALL_H
 
 #include <bits/syscall.h>
+#include <fs/vfs.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
 #include <sys/times.h>
@@ -47,7 +48,7 @@ int sys_chdir (const char *path);
 time_t sys_time (time_t *t);
 int sys_mknod (const char *path, mode_t mode, dev_t dev);
 int sys_chmod (const char *path, mode_t mode);
-int sys_chown (const char *path, uid_t uid, gid_t gid);
+int sys_lchown (const char *path, uid_t uid, gid_t gid);
 off_t sys_lseek (int fd, off_t offset, int whence);
 pid_t sys_getpid (void);
 int sys_mount (const char *src, const char *dir, const char *type, int flags,
@@ -79,11 +80,17 @@ int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);
 int sys_stat (const char *path, struct stat *st);
+int sys_lstat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);
 pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
 int sys_fchdir (int fd);
+int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_setxattr (const char *path, const char *name, const void *value,
 		  size_t len, int flags);
+int sys_lsetxattr (const char *path, const char *name, const void *value,
+		   size_t len, int flags);
+int sys_fsetxattr (int fd, const char *name, const void *value, size_t len,
+		   int flags);
 int sys_getxattr (const char *path, const char *name, void *value, size_t len);
 int sys_listxattr (const char *path, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
@@ -100,6 +107,11 @@ int sys_readlinkat (int fd, const char *__restrict path,
 		    char *__restrict buffer, size_t len);
 int sys_fchmodat (int fd, const char *path, mode_t mode, int flags);
 int sys_faccessat (int fd, const char *path, int mode, int flags);
+
+/* Utility functions */
+
+int sys_path_sep (const char *path, VFSInode **dir, char **name);
+VFSInode *inode_from_fd (int fd);
 
 __END_DECLS
 

@@ -37,6 +37,7 @@ configure_file(input: 'kconfig.h.in', output: 'kconfig.h',
 subdir('drivers')
 subdir('fs')
 subdir('libk')
+subdir('syscall')
 
 subdir('kernel')
 subdir('include')

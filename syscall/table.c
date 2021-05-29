@@ -1,5 +1,5 @@
 /*************************************************************************
- * systab.c -- This file is part of OS/0.                                *
+ * table.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -35,7 +35,7 @@ void *syscall_table[NR_syscalls] = {
   sys_time,
   sys_mknod,
   sys_chmod,
-  sys_chown,
+  sys_lchown,
   NULL,
   NULL,
   sys_lseek,
@@ -126,7 +126,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   sys_stat,
-  NULL,
+  sys_lstat,
   sys_fstat,
   NULL,
   NULL,
@@ -201,7 +201,7 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  sys_chown,
   NULL,
   NULL,
   NULL,
@@ -246,8 +246,8 @@ void *syscall_table[NR_syscalls] = {
   NULL,
   NULL,
   sys_setxattr,
-  NULL,
-  NULL,
+  sys_lsetxattr,
+  sys_fsetxattr,
   sys_getxattr,
   NULL,
   NULL,

@@ -7,8 +7,6 @@ kernel_src = [
   'main.c',
   'memory.c',
   'process.c',
-  'syscall.c',
-  'systab.c',
   'wait.c'
 ]
 
@@ -17,7 +15,7 @@ kernel = executable('kernel', kernel_src, link_args: [
 		      meson.current_source_dir() / 'linker.ld',
 		      '-nostdlib',
 		      '-lgcc',
-		    ], link_with: [arch, drivers, fs, libk],
+		    ], link_with: [arch, drivers, fs, libk, syscall],
 		    include_directories: includedir, install_dir: '/boot',
 		    link_depends: files('linker.ld'), install: true)
 
