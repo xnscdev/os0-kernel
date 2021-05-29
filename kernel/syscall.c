@@ -532,6 +532,12 @@ sys_rmdir (const char *path)
   return ret;
 }
 
+int
+sys_dup (int fd)
+{
+  return fcntl (fd, F_DUPFD, 0);
+}
+
 clock_t
 sys_times (struct tms *tms)
 {
@@ -581,6 +587,13 @@ int
 sys_fcntl (int fd, int cmd, int arg)
 {
   return fcntl (fd, cmd, arg);
+}
+
+int
+sys_dup2 (int fd1, int fd2)
+{
+  sys_close (fd2);
+  return fcntl (fd1, F_DUPFD, fd2);
 }
 
 pid_t

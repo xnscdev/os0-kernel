@@ -58,11 +58,13 @@ int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
+int sys_dup (int fd);
 clock_t sys_times (struct tms *tms);
 int sys_brk (void *ptr);
 sighandler_t sys_signal (int sig, sighandler_t func);
 int sys_ioctl (int fd, unsigned long req, void *data);
 int sys_fcntl (int fd, int cmd, int arg);
+int sys_dup2 (int fd1, int fd2);
 pid_t sys_getppid (void);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,
 		   struct sigaction *__restrict old);
