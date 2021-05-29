@@ -21,6 +21,18 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
+static int
+__sys_xchown (const char *path, uid_t uid, gid_t gid, int follow_symlinks)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, follow_symlinks);
+  if (ret != 0)
+    return ret;
+  ret = vfs_chown (inode, uid, gid);
+  vfs_unref_inode (inode);
+  return ret;
+}
+
 int
 sys_read (int fd, void *buffer, size_t len)
 {
@@ -259,13 +271,7 @@ sys_chmod (const char *path, mode_t mode)
 int
 sys_lchown (const char *path, uid_t uid, gid_t gid)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 0);
-  if (ret != 0)
-    return ret;
-  ret = vfs_chown (inode, uid, gid);
-  vfs_unref_inode (inode);
-  return ret;
+  return __sys_xchown (path, uid, gid, 0);
 }
 
 off_t
@@ -457,10 +463,7 @@ sys_truncate (const char *path, off_t len)
 int
 sys_ftruncate (int fd, off_t len)
 {
-  VFSInode *inode;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
-    return -EBADF;
-  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
   inode->vi_size = len;
@@ -470,10 +473,7 @@ sys_ftruncate (int fd, off_t len)
 int
 sys_fchmod (int fd, mode_t mode)
 {
-  VFSInode *inode;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
-    return -EBADF;
-  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
   return vfs_chmod (inode, mode);
@@ -482,10 +482,7 @@ sys_fchmod (int fd, mode_t mode)
 int
 sys_fchown (int fd, uid_t uid, gid_t gid)
 {
-  VFSInode *inode;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
-    return -EBADF;
-  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
   return vfs_chown (inode, uid, gid);
@@ -530,10 +527,7 @@ sys_lstat (const char *path, struct stat *st)
 int
 sys_fstat (int fd, struct stat *st)
 {
-  VFSInode *inode;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
-    return -EBADF;
-  inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+  VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
   return vfs_getattr (inode, st);
@@ -552,11 +546,5 @@ sys_fchdir (int fd)
 int
 sys_chown (const char *path, uid_t uid, gid_t gid)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 1);
-  if (ret != 0)
-    return ret;
-  ret = vfs_chown (inode, uid, gid);
-  vfs_unref_inode (inode);
-  return ret;
+  return __sys_xchown (path, uid, gid, 1);
 }

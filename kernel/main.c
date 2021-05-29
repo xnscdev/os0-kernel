@@ -35,9 +35,16 @@
 
 BootOptions boot_options;
 
-static char *init_argv[] __attribute__ ((aligned (PAGE_SIZE))) =
-  {"/sbin/init", NULL};
-static char *init_envp[] __attribute__ ((aligned (PAGE_SIZE))) = {NULL};
+static char *init_argv[] __attribute__ ((aligned (PAGE_SIZE))) = {
+  "/sbin/init",
+  NULL
+};
+
+static char *init_envp[] __attribute__ ((aligned (PAGE_SIZE))) = {
+  "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+  "PWD=/",
+  NULL
+};
 
 static struct
 {

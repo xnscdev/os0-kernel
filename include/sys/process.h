@@ -53,12 +53,6 @@ typedef struct
 
 typedef struct
 {
-  char **pe_vars;
-  size_t pe_size;
-} ProcessEnv;
-
-typedef struct
-{
   ProcessFile p_files[PROCESS_FILE_LIMIT];
   ProcessSignal p_signals[NR_signals];
   volatile ProcessTask *p_task;
@@ -70,7 +64,6 @@ typedef struct
   int p_term;
   int p_waitstat;
   volatile unsigned int p_refcnt;
-  ProcessEnv p_env;
 } Process;
 
 __BEGIN_DECLS
@@ -81,7 +74,6 @@ int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
-void process_env_free (ProcessEnv *env);
 
 __END_DECLS
 

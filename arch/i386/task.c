@@ -33,7 +33,6 @@ volatile ProcessTask *task_queue;
 void
 scheduler_init (void)
 {
-  ProcessEnv *env;
   __asm__ volatile ("cli");
   task_current = kmalloc (sizeof (ProcessTask));
   assert (task_current != NULL);
@@ -47,13 +46,6 @@ scheduler_init (void)
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
-
-  env = &process_table[0].p_env;
-  env->pe_vars = kmalloc (sizeof (char *));
-  assert (env->pe_vars != NULL);
-  env->pe_size = 1;
-  env->pe_vars[0] = strdup ("PATH=/usr/bin:/usr/sbin:/bin:/sbin");
-  assert (env->pe_vars[0] != NULL);
   __asm__ volatile ("sti");
 }
 
@@ -117,8 +109,6 @@ _task_fork (void)
 {
   volatile ProcessTask *temp;
   ProcessTask *task;
-  ProcessEnv *env;
-  Process *proc;
   uint32_t *dir;
   uint32_t paddr;
   uint32_t i;
@@ -135,7 +125,6 @@ _task_fork (void)
   dir = page_dir_clone (task_current->t_pgdir);
   if (dir == NULL)
     return NULL;
-  proc = &process_table[task_getpid ()];
 
   /* Allocate and copy the stack */
   for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
@@ -172,28 +161,18 @@ _task_fork (void)
   map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
 	    PAGE_FLAG_USER);
 
-  env = &process_table[pid].p_env;
-  env->pe_vars = kmalloc (sizeof (char *) * proc->p_env.pe_size);
-  if (env->pe_vars == NULL)
-    goto err;
-  for (i = 0; i < proc->p_env.pe_size; i++)
-    {
-      env->pe_vars[i] = strdup (proc->p_env.pe_vars[i]);
-      if (env->pe_vars[i] == NULL)
-	{
-	  int j;
-	  for (j = 0; j < i; j++)
-	    kfree (env->pe_vars[j]);
-	  kfree (env->pe_vars);
-	  goto err;
-	}
-    }
-
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
     {
-      process_env_free (env);
-      goto err;
+      for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
+	{
+	  uint32_t paddr =
+	    get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
+	  if (paddr != 0)
+	    free_page (paddr);
+	}
+      page_dir_free (dir);
+      return NULL;
     }
   task->t_pid = pid;
   task->t_ppid = task_getpid ();
@@ -213,15 +192,4 @@ _task_fork (void)
   memset (process_table[pid].p_files, 0,
 	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
   return task;
-
- err:
-  for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
-    {
-      uint32_t paddr =
-	get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
-      if (paddr != 0)
-	free_page (paddr);
-    }
-  page_dir_free (dir);
-  return NULL;
 }
