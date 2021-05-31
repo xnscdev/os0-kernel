@@ -22,6 +22,8 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
+#define STDIN_BUFSIZ 1024
+
 static unsigned char mbr_buffer[512];
 
 SpecDevice device_table[DEVICE_TABLE_SIZE];

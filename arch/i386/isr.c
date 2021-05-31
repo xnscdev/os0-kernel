@@ -21,6 +21,7 @@
 #include <i386/timer.h>
 #include <sys/ata.h>
 #include <sys/io.h>
+#include <sys/kbd.h>
 #include <stdlib.h>
 
 void
@@ -169,6 +170,7 @@ irq0_handler (void)
 void
 irq1_handler (void)
 {
+  kbd_handle (inb (KBD_PORT_DATA));
   outb (PIC_EOI, PIC_MASTER_COMMAND);
 }
 

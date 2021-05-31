@@ -1,5 +1,5 @@
 /*************************************************************************
- * vga-dev.c -- This file is part of OS/0.                               *
+ * kbd.c -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,57 +16,52 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <sys/process.h>
 #include <sys/kbd.h>
 #include <video/vga.h>
-#include <vm/heap.h>
+#include <unistd.h>
 
-static const VFSInodeOps vga_tty_iops = {
-  .vfs_read = vga_tty_read,
-  .vfs_write = vga_tty_write
+static int kbd_press_map[128];
+
+char kbd_buffer[KBD_BUFSIZ];
+size_t kbd_bufpos;
+
+/* US QWERTY keyboard layout */
+
+static char kbd_print_chars[128] = {
+  0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
+  0, 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']',
+  '\n', 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`',
+  0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' ',
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.'
 };
 
-static VFSInode *
-vga_tty_alloc_inode (VFSSuperblock *sb)
+void
+kbd_handle (int scancode)
 {
-  VFSInode *inode = kzalloc (sizeof (VFSInode));
-  if (inode == NULL)
-    return NULL;
-  inode->vi_ops = &vga_tty_iops;
-  inode->vi_sb = &vga_tty_sb;
-  return inode;
+  if (scancode > 0x80)
+    {
+      kbd_press_map[scancode - 0x80] = 0;
+      return;
+    }
+
+  if (kbd_print_chars[scancode] != 0)
+    {
+      struct termios *term;
+      if (kbd_bufpos == KBD_BUFSIZ)
+	return;
+      term = process_table[task_getpid ()].p_files[STDIN_FILENO].pf_termios;
+      kbd_buffer[kbd_bufpos++] = kbd_print_chars[scancode];
+      if (term != NULL && term->c_lflag & ECHO)
+	vga_putchar (kbd_print_chars[scancode]);
+    }
+  kbd_press_map[scancode] = 1;
 }
 
-static const VFSSuperblockOps vga_tty_sb_ops = {
-  .sb_alloc_inode = vga_tty_alloc_inode,
-  .sb_destroy_inode = (void (*) (VFSInode *)) kfree
-};
-
-VFSSuperblock vga_tty_sb = {
-  .sb_ops = &vga_tty_sb_ops
-};
-
-int
-vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
+void
+kbd_await_press (int key)
 {
-  while (1)
+  while (!kbd_press_map[key])
     ;
-}
-
-int
-vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
-{
-  vga_write (buffer, len);
-  return 0;
-}
-
-int
-vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
-{
-  return vga_dev_read (inode->vi_private, buffer, len, offset);
-}
-
-int
-vga_tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
-{
-  return vga_dev_write (inode->vi_private, buffer, len, offset);
 }

@@ -1,5 +1,5 @@
 /*************************************************************************
- * ioctl.c -- This file is part of OS/0.                                 *
+ * kbd.h -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,28 +16,35 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/libk.h>
-#include <sys/process.h>
+#ifndef _SYS_KBD_H
+#define _SYS_KBD_H
 
-static int
-ioctl_tcgets (Process *proc, int fd, struct termios *data)
-{
-  if (proc->p_files[fd].pf_termios == NULL)
-    return -ENOTTY;
-  memcpy (data, proc->p_files[fd].pf_termios, sizeof (struct termios));
-  return 0;
-}
+#include <sys/cdefs.h>
+#include <stddef.h>
 
-int
-ioctl (int fd, unsigned long req, void *data)
-{
-  Process *proc = &process_table[task_getpid ()];
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd].pf_inode == NULL)
-    return -EBADF;
-  switch (req)
-    {
-    case TCGETS:
-      return ioctl_tcgets (proc, fd, data);
-    }
-  return -EINVAL;
-}
+#define KBD_PORT_DATA    0x60
+#define KBD_PORT_STATUS  0x64
+#define KBD_PORT_COMMAND 0x64
+
+#define KBD_BUFSIZ 1024
+
+#define KEY_ENTER    0x1c
+#define KEY_LCTRL    0x1d
+#define KEY_LSHIFT   0x2a
+#define KEY_RSHIFT   0x36
+#define KEY_LALT     0x38
+#define KEY_CAPSLOCK 0x3a
+#define KEY_NUMLOCK  0x45
+#define KEY_SCRLLOCK 0x46
+
+__BEGIN_DECLS
+
+extern char kbd_buffer[KBD_BUFSIZ];
+extern size_t kbd_bufpos;
+
+void kbd_handle (int scancode);
+void kbd_await_press (int key);
+
+__END_DECLS
+
+#endif
