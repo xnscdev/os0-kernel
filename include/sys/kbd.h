@@ -44,6 +44,7 @@ extern size_t kbd_bufpos;
 
 void kbd_handle (int scancode);
 void kbd_await_press (int key);
+int kbd_key_pressed (int key);
 
 __END_DECLS
 

@@ -19,9 +19,10 @@
 #include <sys/process.h>
 #include <sys/kbd.h>
 #include <video/vga.h>
+#include <ctype.h>
 #include <unistd.h>
 
-static int kbd_press_map[128];
+static char kbd_press_map[128];
 
 char kbd_buffer[KBD_BUFSIZ];
 size_t kbd_bufpos;
@@ -46,22 +47,31 @@ kbd_handle (int scancode)
       return;
     }
 
+  kbd_press_map[scancode] = 1;
   if (kbd_print_chars[scancode] != 0)
     {
       struct termios *term;
+      char c = kbd_print_chars[scancode];
       if (kbd_bufpos == KBD_BUFSIZ)
 	return;
+      if (kbd_key_pressed (KEY_LSHIFT) || kbd_key_pressed (KEY_RSHIFT))
+	c = toupper (c);
       term = process_table[task_getpid ()].p_files[STDIN_FILENO].pf_termios;
-      kbd_buffer[kbd_bufpos++] = kbd_print_chars[scancode];
+      kbd_buffer[kbd_bufpos++] = c;
       if (term != NULL && term->c_lflag & ECHO)
-	vga_putchar (kbd_print_chars[scancode]);
+	vga_putchar (c);
     }
-  kbd_press_map[scancode] = 1;
 }
 
 void
 kbd_await_press (int key)
 {
-  while (!kbd_press_map[key])
+  while (!kbd_key_pressed (key))
     ;
+}
+
+int
+kbd_key_pressed (int key)
+{
+  return kbd_press_map[key];
 }
