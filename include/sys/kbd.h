@@ -37,6 +37,8 @@
 #define KEY_NUMLOCK  0x45
 #define KEY_SCRLLOCK 0x46
 
+#define KEY_EXTENDED 0xe0
+
 __BEGIN_DECLS
 
 extern char kbd_buffer[KBD_BUFSIZ];

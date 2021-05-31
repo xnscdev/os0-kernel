@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 static char kbd_press_map[128];
+static int modifies; /* If 0xe0 was seen previously */
 
 char kbd_buffer[KBD_BUFSIZ];
 size_t kbd_bufpos;
@@ -38,9 +39,38 @@ static char kbd_print_chars[128] = {
   '7', '8', '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.'
 };
 
+static char kbd_shift_chars[128] = {
+  ['-'] = '_',
+  ['='] = '+',
+  [','] = '<',
+  ['.'] = '>',
+  ['/'] = '?',
+  [';'] = ':',
+  ['\''] = '"',
+  ['['] = '{',
+  [']'] = '}',
+  ['\\'] = '|',
+  ['`'] = '~',
+  ['0'] = ')', '!', '@', '#', '$', '%', '^', '&', '*', '(',
+  ['a'] = 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+  'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+};
+
 void
 kbd_handle (int scancode)
 {
+  /* Ignore modified keys */
+  if (modifies)
+    {
+      modifies = 0;
+      return;
+    }
+
+  if (scancode == KEY_EXTENDED)
+    {
+      modifies = 1;
+      return;
+    }
   if (scancode > 0x80)
     {
       kbd_press_map[scancode - 0x80] = 0;
@@ -51,11 +81,12 @@ kbd_handle (int scancode)
   if (kbd_print_chars[scancode] != 0)
     {
       struct termios *term;
-      char c = kbd_print_chars[scancode];
+      unsigned char c = kbd_print_chars[scancode];
       if (kbd_bufpos == KBD_BUFSIZ)
 	return;
-      if (kbd_key_pressed (KEY_LSHIFT) || kbd_key_pressed (KEY_RSHIFT))
-	c = toupper (c);
+      if ((kbd_key_pressed (KEY_LSHIFT) || kbd_key_pressed (KEY_RSHIFT))
+	  && kbd_shift_chars[c] != '\0')
+	c = kbd_shift_chars[c];
       term = process_table[task_getpid ()].p_files[STDIN_FILENO].pf_termios;
       kbd_buffer[kbd_bufpos++] = c;
       if (term != NULL && term->c_lflag & ECHO)
