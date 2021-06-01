@@ -63,6 +63,7 @@ unsigned char vga_getcolor (void);
 void vga_setcolor (unsigned char color);
 void vga_putentry (char c, size_t x, size_t y);
 void vga_putchar (char c);
+void vga_delchar (void);
 void vga_write (const char *s, size_t size);
 void vga_puts (const char *s);
 void vga_setcurs (size_t x, size_t y);

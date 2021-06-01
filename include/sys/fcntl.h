@@ -55,10 +55,10 @@
 
 #define FD_CLOEXEC 1
 
-#define AT_FDCWD            0x100
-#define AT_SYMLINK_FOLLOW   0x200
-#define AT_SYMLINK_NOFOLLOW 0x400
-#define AT_EACCESS          0x800
+#define AT_FDCWD            0x0100
+#define AT_SYMLINK_FOLLOW   0x0200
+#define AT_SYMLINK_NOFOLLOW 0x0400
+#define AT_EACCESS          0x0800
 #define AT_REMOVEDIR        0x1000
 
 #endif

@@ -394,7 +394,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
     }
 
   kfree (temp);
-  return 0;
+  return len;
 }
 
 int
@@ -524,7 +524,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
     }
 
   kfree (temp);
-  return 0;
+  return len;
 }
 
 int

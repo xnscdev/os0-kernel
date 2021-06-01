@@ -87,6 +87,17 @@ vga_putchar (char c)
 }
 
 void
+vga_delchar (void)
+{
+  if (vga_column > 0)
+    {
+      vga_column--;
+      vga_putentry (' ', vga_column, vga_row);
+      vga_setcurs (vga_column, vga_row);
+    }
+}
+
+void
 vga_write (const char *s, size_t size)
 {
   int i;

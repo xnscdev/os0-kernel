@@ -16,7 +16,9 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <libk/libk.h>
 #include <sys/kbd.h>
+#include <sys/process.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 
@@ -48,8 +50,10 @@ VFSSuperblock vga_tty_sb = {
 int
 vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 {
-  while (1)
-    ;
+  int nonblock =
+    process_table[task_getpid ()].p_files[STDIN_FILENO].pf_flags & O_NONBLOCK;
+  int ret = kbd_get_input (buffer, len, !nonblock);
+  return ret < 0 ? ret : len;
 }
 
 int

@@ -44,10 +44,10 @@ sys_read (int fd, void *buffer, size_t len)
   if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
     return -EBADF;
   ret = vfs_read (file->pf_inode, buffer, len, file->pf_offset);
-  if (ret != 0)
+  if (ret < 0)
     return ret;
   file->pf_offset += len;
-  return 0;
+  return ret;
 }
 
 int
@@ -61,10 +61,10 @@ sys_write (int fd, void *buffer, size_t len)
   if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
     return -EBADF;
   ret = vfs_write (file->pf_inode, buffer, len, file->pf_offset);
-  if (ret != 0)
+  if (ret < 0)
     return ret;
   file->pf_offset += len;
-  return 0;
+  return ret;
 }
 
 int

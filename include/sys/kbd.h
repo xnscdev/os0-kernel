@@ -28,6 +28,7 @@
 
 #define KBD_BUFSIZ 1024
 
+#define KEY_BACKSP   0x0e
 #define KEY_ENTER    0x1c
 #define KEY_LCTRL    0x1d
 #define KEY_LSHIFT   0x2a
@@ -47,6 +48,7 @@ extern size_t kbd_bufpos;
 void kbd_handle (int scancode);
 void kbd_await_press (int key);
 int kbd_key_pressed (int key);
+int kbd_get_input (void *buffer, size_t len, int block);
 
 __END_DECLS
 
