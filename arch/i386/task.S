@@ -231,6 +231,10 @@ task_exec:
 	jmp	irq8
 
 1:
+	cmp	$SYSCALL_STACK_ADDR, %esp
+	ja	2f
+
+	/* Switch to user mode and reenable interrupts */
 	mov	$0x23, %ax
 	mov	%ax, %ds
 	mov	%ax, %es
@@ -246,3 +250,6 @@ task_exec:
 	pushl	$0x1b
 	push	%ecx
 	iret
+
+2:
+	jmp	*%ecx
