@@ -25,8 +25,34 @@
 #include <sys/task.h>
 #include <errno.h>
 
+	.section .data
+	.align PAGE_SIZE
+	.global init_argv
+	.type init_argv, @object
+init_argv:
+	.long .argv
+.argv:
+	.long .arg0
+	.long 0
+.arg0:
+	.asciz "/sbin/init"
+
+	.align PAGE_SIZE
+	.global init_envp
+	.type init_envp, @object
+init_envp:
+	.long .envp
+.envp:
+	.long .env_path
+	.long .env_pwd
+	.long 0
+.env_path:
+	.asciz "PATH=/usr/bin:/bin:/usr/sbin:/sbin"
+.env_pwd:
+	.asciz "PWD=/"
+
 	.section .text
-	.align 16
+	.align PAGE_SIZE
 	.global irq8
 	.type irq8, @function
 irq8:

@@ -25,6 +25,13 @@
 #include <vm/paging.h>
 #include <elf.h>
 
+/* Macros for determining valid ELF header machine type */
+#ifdef  ARCH_I386
+#define MACHTYPE EM_386
+#else
+#error "No ELF machine type supported for architecture"
+#endif
+
 Process process_table[PROCESS_LIMIT];
 int exit_task;
 
@@ -37,7 +44,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
   for (addr = phdr->p_vaddr & 0xfffff000; addr < phdr->p_vaddr + phdr->p_memsz;
        addr += PAGE_SIZE)
     {
-      uint32_t paddr = (uint32_t) alloc_page ();
+      uint32_t paddr = alloc_page ();
       if (unlikely (paddr == 0))
 	return -ENOMEM;
       map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
@@ -160,10 +167,10 @@ process_exec (VFSInode *inode, uint32_t *entry)
       goto end;
     }
 
-  /* Check for Intel 32-bit little-endian ELF executable */
+  /* Check for 32-bit little-endian ELF executable for correct machine */
   if (ehdr->e_ident[EI_CLASS] != ELFCLASS32
       || ehdr->e_ident[EI_DATA] != ELFDATA2LSB || ehdr->e_type != ET_EXEC
-      || ehdr->e_machine != EM_386)
+      || ehdr->e_machine != MACHTYPE)
     {
       ret = -ENOEXEC;
       goto end;
@@ -359,7 +366,7 @@ process_set_break (uint32_t addr)
   /* Map pages until the new program break is reached */
   for (; i <= addr; i += PAGE_SIZE)
     {
-      uint32_t paddr = (uint32_t) alloc_page ();
+      uint32_t paddr = alloc_page ();
       if (paddr == 0)
 	return proc->p_break;
       map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
