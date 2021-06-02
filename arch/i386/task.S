@@ -93,7 +93,7 @@ irq8:
 	/* If this process is terminated, skip it */
 	mov	(%edi), %ax
 	cwtl
-	mov	$2628, %ecx
+	mov	$2632, %ecx
 	mul	%ecx
 	mov	process_table+2608(%eax), %ecx
 	test	%ecx, %ecx

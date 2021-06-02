@@ -60,21 +60,25 @@ typedef struct
 
 typedef struct
 {
-  ProcessFile p_files[PROCESS_FILE_LIMIT];
-  ProcessSignal p_signals[NR_signals];
-  volatile ProcessTask *p_task;
-  Array *p_segments;
-  VFSInode *p_cwd;
-  uint32_t p_break;
-  struct rusage p_rusage;
-  struct rusage p_cusage;
-  int p_term;
-  int p_waitstat;
-  uid_t p_uid;
-  uid_t p_euid;
-  gid_t p_gid;
-  gid_t p_egid;
-  volatile unsigned int p_refcnt;
+  ProcessFile p_files[PROCESS_FILE_LIMIT]; /* File descriptor table */
+  ProcessSignal p_signals[NR_signals];     /* Signal handler table */
+  volatile ProcessTask *p_task;            /* Scheduler task */
+  Array *p_segments;                       /* List of segments in memory */
+  VFSInode *p_cwd;                         /* Working directory */
+  uint32_t p_break;                        /* Location of program break */
+  struct rusage p_rusage;                  /* Resource usage */
+  struct rusage p_cusage;                  /* Resourge usage of child
+					      processes */
+  int p_term;                              /* If process is terminated */
+  int p_waitstat;                          /* Value to set wait status to */
+  uid_t p_uid;                             /* Real user id */
+  uid_t p_euid;                            /* Effective user id */
+  uid_t p_suid;                            /* Saved set-user-id */
+  gid_t p_gid;                             /* Real group id */
+  gid_t p_egid;                            /* Effective group id */
+  gid_t p_sgid;                            /* Saved set-group-id */
+  volatile unsigned int p_refcnt;          /* Reference count, used by wait to 
+					      postpone freeing a process */
 } Process;
 
 __BEGIN_DECLS

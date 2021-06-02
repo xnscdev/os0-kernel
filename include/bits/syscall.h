@@ -120,6 +120,10 @@
 #define SYS_getsid        147
 #define SYS_fdatasync     148
 #define SYS_nanosleep     162
+#define SYS_setresuid     164
+#define SYS_getresuid     165
+#define SYS_setresgid     170
+#define SYS_getresgid     171
 #define SYS_chown         182
 #define SYS_getcwd        183
 #define SYS_setxattr      226

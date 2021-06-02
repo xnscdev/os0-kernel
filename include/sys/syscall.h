@@ -92,6 +92,10 @@ int sys_lstat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);
 pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
 int sys_fchdir (int fd);
+int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
+int sys_getresuid (uid_t *ruid, uid_t *euid, uid_t *suid);
+int sys_setresgid (gid_t rgid, gid_t egid, gid_t sgid);
+int sys_getresgid (gid_t *rgid, gid_t *egid, gid_t *sgid);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_setxattr (const char *path, const char *name, const void *value,
 		  size_t len, int flags);
