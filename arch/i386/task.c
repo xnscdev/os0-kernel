@@ -193,12 +193,14 @@ _task_fork (void)
   proc->p_task = task;
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
-  /* Inherit parent working directory, real/effective UID/GID */
+  /* Inherit parent working directory, real/effective/saved UID/GID */
   proc->p_cwd = parent->p_cwd;
   vfs_ref_inode (proc->p_cwd);
   proc->p_uid = parent->p_uid;
   proc->p_euid = parent->p_euid;
+  proc->p_suid = parent->p_suid;
   proc->p_gid = parent->p_gid;
   proc->p_egid = parent->p_egid;
+  proc->p_sgid = parent->p_sgid;
   return task;
 }
