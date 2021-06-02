@@ -262,6 +262,10 @@ process_free (pid_t pid)
   proc->p_break = 0;
   proc->p_term = 0;
   proc->p_waitstat = 0;
+  proc->p_uid = 0;
+  proc->p_euid = 0;
+  proc->p_gid = 0;
+  proc->p_egid = 0;
   memset (&proc->p_rusage, 0, sizeof (struct rusage));
   memset (&proc->p_cusage, 0, sizeof (struct rusage));
 

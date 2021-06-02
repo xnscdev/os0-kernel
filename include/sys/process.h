@@ -70,6 +70,10 @@ typedef struct
   struct rusage p_cusage;
   int p_term;
   int p_waitstat;
+  uid_t p_uid;
+  uid_t p_euid;
+  gid_t p_gid;
+  gid_t p_egid;
   volatile unsigned int p_refcnt;
 } Process;
 

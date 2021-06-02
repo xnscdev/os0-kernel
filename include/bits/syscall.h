@@ -63,6 +63,8 @@
 #define SYS_setgid        46
 #define SYS_getgid        47
 #define SYS_signal        48
+#define SYS_geteuid       49
+#define SYS_getegid       50
 #define SYS_ioctl         54
 #define SYS_fcntl         55
 #define SYS_umask         60
@@ -70,6 +72,8 @@
 #define SYS_dup2          63
 #define SYS_getppid       64
 #define SYS_sigaction     67
+#define SYS_setreuid      70
+#define SYS_setregid      71
 #define SYS_sigsuspend    72
 #define SYS_sigpending    73
 #define SYS_sethostname   74

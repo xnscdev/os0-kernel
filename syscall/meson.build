@@ -1,4 +1,5 @@
 syscall_src = [
+  'id.c',
   'misc.c',
   'relvfs.c',
   'table.c',

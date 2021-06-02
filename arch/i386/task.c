@@ -109,6 +109,8 @@ _task_fork (void)
 {
   volatile ProcessTask *temp;
   ProcessTask *task;
+  Process *proc;
+  Process *parent;
   uint32_t *dir;
   uint32_t paddr;
   uint32_t i;
@@ -186,10 +188,17 @@ _task_fork (void)
   temp->t_next = task;
   task_queue->t_prev = task;
 
-  process_table[pid].p_task = task;
-  process_table[pid].p_cwd = process_table[task_getpid ()].p_cwd;
-  vfs_ref_inode (process_table[pid].p_cwd);
-  memset (process_table[pid].p_files, 0,
-	  sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+  proc = &process_table[pid];
+  parent = &process_table[task_getpid ()];
+  proc->p_task = task;
+  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+
+  /* Inherit parent working directory, real/effective UID/GID */
+  proc->p_cwd = parent->p_cwd;
+  vfs_ref_inode (proc->p_cwd);
+  proc->p_uid = parent->p_uid;
+  proc->p_euid = parent->p_euid;
+  proc->p_gid = parent->p_gid;
+  proc->p_egid = parent->p_egid;
   return task;
 }

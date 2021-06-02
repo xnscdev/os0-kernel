@@ -64,12 +64,6 @@ sys_time (time_t *t)
   return time (t);
 }
 
-pid_t
-sys_getpid (void)
-{
-  return task_getpid ();
-}
-
 int
 sys_kill (pid_t pid, int sig)
 {
@@ -168,12 +162,6 @@ sys_dup2 (int fd1, int fd2)
 {
   sys_close (fd2);
   return fcntl (fd1, F_DUPFD, fd2);
-}
-
-pid_t
-sys_getppid (void)
-{
-  return task_getppid ();
 }
 
 int
