@@ -91,12 +91,11 @@ irq8:
 
 2:
 	/* If this process is terminated, skip it */
-	mov	(%edi), %ax
-	cwtl
-	mov	$2632, %ecx
-	mul	%ecx
-	mov	process_table+2608(%eax), %ecx
-	test	%ecx, %ecx
+	movzw	(%edi), %eax
+	push	%eax
+	call	process_terminated
+	add	$4, %esp
+	test	%eax, %eax
 	jnz	1b
 
 	mov	%edi, task_current

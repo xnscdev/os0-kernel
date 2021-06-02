@@ -19,11 +19,9 @@
 #include <kconfig.h>
 
 #include <fs/devfs.h>
-#include <fs/vfs.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/cmdline.h>
-#include <sys/device.h>
 #include <sys/multiboot.h>
 #include <sys/process.h>
 #include <sys/syscall.h>

@@ -758,7 +758,6 @@ ext2_rmdir (VFSInode *dir, const char *name)
   d = ext2_alloc_dir (dir, sb);
   if (d == NULL)
     return -ENOMEM;
-
   while (1)
     {
       VFSDirEntry *entry;
@@ -776,8 +775,8 @@ ext2_rmdir (VFSInode *dir, const char *name)
   ext2_free_dir (d);
   if (i > 2)
     return -ENOTEMPTY; /* Empty directory should only have 2 entries */
-  buffer = kmalloc (sb->sb_blksize);
 
+  buffer = kmalloc (sb->sb_blksize);
   for (i = 0; i < blocks; i++)
     {
       int bytes = 0;

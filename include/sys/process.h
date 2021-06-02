@@ -19,6 +19,8 @@
 #ifndef _SYS_PROCESS_H
 #define _SYS_PROCESS_H
 
+#include <kconfig.h> /* Define process limit macros */
+
 #include <fs/vfs.h>
 #include <libk/array.h>
 #include <sys/resource.h>
@@ -26,9 +28,6 @@
 #include <sys/task.h>
 #include <termios.h>
 
-#define PROCESS_LIMIT         256
-#define PROCESS_FILE_LIMIT    64
-#define PROCESS_SEGMENT_LIMIT 32
 #define PROCESS_BREAK_LIMIT   0xb0000000
 
 #define DEFAULT_IFLAG (BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY)
@@ -89,6 +88,7 @@ int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
+int process_terminated (pid_t pid);
 
 __END_DECLS
 

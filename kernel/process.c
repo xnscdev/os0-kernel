@@ -388,3 +388,9 @@ process_set_break (uint32_t addr)
   proc->p_break = addr;
   return proc->p_break;
 }
+
+int
+process_terminated (pid_t pid)
+{
+  return process_table[pid].p_term;
+}
