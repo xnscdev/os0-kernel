@@ -74,6 +74,8 @@
 #define _XOPEN_PATH_MAX                     1024
 #define _POSIX_CLOCKRES_MIN                 20000000
 
+/* System limits */
+
 #define AIO_LISTIO_MAX                _POSIX_AIO_LISTIO_MAX
 #define AIO_MAX                       _POSIX_AIO_MAX
 #define AIO_PRIO_DELTA_MAX            0
@@ -83,7 +85,7 @@
 #define DELAYTIMER_MAX                _POSIX_DELAYTIMER_MAX
 #define HOST_NAME_MAX                 _POSIX_HOST_NAME_MAX
 #define IOV_MAX                       _XOPEN_IOV_MAX
-#define LOGIN_NAME_MAX                _POSIX_LOGIN_NAME_MAX
+#define LOGIN_NAME_MAX                64
 #define MQ_OPEN_MAX                   _POSIX_MQ_OPEN_MAX
 #define MQ_PRIO_MAX                   _POSIX_MQ_PRIO_MAX
 #define OPEN_MAX                      64
