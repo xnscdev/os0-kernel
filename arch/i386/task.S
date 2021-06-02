@@ -37,20 +37,6 @@ init_argv:
 .arg0:
 	.asciz "/sbin/init"
 
-	.align PAGE_SIZE
-	.global init_envp
-	.type init_envp, @object
-init_envp:
-	.long .envp
-.envp:
-	.long .env_path
-	.long .env_pwd
-	.long 0
-.env_path:
-	.asciz "PATH=/usr/bin:/bin:/usr/sbin:/sbin"
-.env_pwd:
-	.asciz "PWD=/"
-
 	.section .text
 	.align PAGE_SIZE
 	.global irq8

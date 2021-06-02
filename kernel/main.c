@@ -34,7 +34,6 @@
 BootOptions boot_options;
 
 extern char **init_argv __attribute__ ((aligned (PAGE_SIZE)));
-extern char **init_envp __attribute__ ((aligned (PAGE_SIZE)));
 
 static struct
 {
@@ -147,18 +146,14 @@ init (void)
     {
       int ret;
       uint32_t argv = get_paddr (curr_page_dir, init_argv);
-      uint32_t envp = get_paddr (curr_page_dir, init_envp);
       map_page (curr_page_dir, argv, (uint32_t) init_argv,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-      map_page (curr_page_dir, envp, (uint32_t) init_envp,
 		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (argv);
-      vm_page_inval (envp);
 #else
       vm_tlb_reset ();
 #endif
-      ret = sys_execve ("/sbin/init", init_argv, init_envp);
+      ret = sys_execve ("/sbin/init", init_argv, NULL);
       panic ("Failed to execute /sbin/init: %s", strerror (ret));
     }
 }
