@@ -110,6 +110,7 @@
 #define SYS_clone         120
 #define SYS_setdomainname 121
 #define SYS_uname         122
+#define SYS_sigprocmask   126
 #define SYS_quotactl      131
 #define SYS_getpgid       132
 #define SYS_fchdir        133

@@ -65,42 +65,6 @@ sys_time (time_t *t)
 }
 
 int
-sys_kill (pid_t pid, int sig)
-{
-  int exit = sig == SIGKILL;
-  ProcessSignal *signal;
-  if (pid == 0 || pid == -1)
-    return -ENOSYS;
-  if (pid < 0)
-    pid = -pid;
-  if (pid >= PROCESS_LIMIT)
-    return -EINVAL;
-  if (sig < 0 || sig >= NR_signals)
-    return -EINVAL;
-  signal = &process_table[pid].p_signals[sig];
-
-  if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
-      || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
-    {
-      if (!signal->ps_enabled || (!(signal->ps_act.sa_flags & SA_SIGINFO)
-				  && signal->ps_act.sa_handler == SIG_DFL))
-	exit = 1; /* Default action is to terminate process */
-    }
-
-  if (exit)
-    {
-      process_table[pid].p_term = 1;
-      process_table[pid].p_waitstat = sig;
-    }
-
-  if (signal->ps_act.sa_flags & SA_SIGINFO)
-    ; /* TODO Call signal->ps_act.sa_sigaction */
-  else
-    signal->ps_act.sa_handler (sig);
-  return 0;
-}
-
-int
 sys_dup (int fd)
 {
   return fcntl (fd, F_DUPFD, 0);
@@ -129,22 +93,6 @@ sys_brk (void *ptr)
   return process_set_break ((uint32_t) ptr);
 }
 
-sighandler_t
-sys_signal (int sig, sighandler_t func)
-{
-  struct sigaction old;
-  struct sigaction act;
-  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
-    return SIG_ERR;
-  act.sa_handler = func;
-  act.sa_sigaction = NULL;
-  act.sa_flags = 0;
-  memset (&act.sa_mask, 0, sizeof (sigset_t));
-  if (sys_sigaction (sig, &act, &old) == -1)
-    return SIG_ERR;
-  return old.sa_handler;
-}
-
 int
 sys_ioctl (int fd, unsigned long req, void *data)
 {
@@ -162,24 +110,6 @@ sys_dup2 (int fd1, int fd2)
 {
   sys_close (fd2);
   return fcntl (fd1, F_DUPFD, fd2);
-}
-
-int
-sys_sigaction (int sig, const struct sigaction *__restrict act,
-	       struct sigaction *__restrict old)
-{
-  Process *proc;
-  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
-    return -EINVAL;
-  proc = &process_table[task_getpid ()];
-  if (old != NULL)
-    memcpy (old, &proc->p_signals[sig].ps_act, sizeof (struct sigaction));
-  if (act != NULL)
-    {
-      memcpy (&proc->p_signals[sig].ps_act, act, sizeof (struct sigaction));
-      proc->p_signals[sig].ps_enabled = 1;
-    }
-  return 0;
 }
 
 int

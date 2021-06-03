@@ -91,6 +91,8 @@ int sys_stat (const char *path, struct stat *st);
 int sys_lstat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);
 pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
+int sys_sigprocmask (int how, const sigset_t *__restrict set,
+		     sigset_t *__restrict old);
 int sys_fchdir (int fd);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
 int sys_getresuid (uid_t *ruid, uid_t *euid, uid_t *suid);

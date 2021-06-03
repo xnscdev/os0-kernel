@@ -33,6 +33,7 @@ volatile ProcessTask *task_queue;
 void
 scheduler_init (void)
 {
+  int i;
   __asm__ volatile ("cli");
   task_current = kmalloc (sizeof (ProcessTask));
   assert (task_current != NULL);
@@ -46,6 +47,8 @@ scheduler_init (void)
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
+  for (i = 0; i < NR_signals; i++)
+    process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
   __asm__ volatile ("sti");
 }
 
