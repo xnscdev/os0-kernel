@@ -94,6 +94,7 @@ pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
 int sys_sigprocmask (int how, const sigset_t *__restrict set,
 		     sigset_t *__restrict old);
 int sys_fchdir (int fd);
+int sys_nanosleep (const struct timespec *req, struct timespec *rem);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
 int sys_getresuid (uid_t *ruid, uid_t *euid, uid_t *suid);
 int sys_setresgid (gid_t rgid, gid_t egid, gid_t sgid);

@@ -19,6 +19,7 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
+#include <sys/timer.h>
 #include <sys/wait.h>
 #include <video/vga.h>
 #include <vm/heap.h>
@@ -182,4 +183,11 @@ pid_t
 sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 {
   return wait4 (pid, status, options, usage);
+}
+
+int
+sys_nanosleep (const struct timespec *req, struct timespec *rem)
+{
+  msleep (req->tv_sec * 1000 + req->tv_nsec / 1000000);
+  return 0;
 }
