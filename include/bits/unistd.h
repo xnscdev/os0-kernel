@@ -23,6 +23,8 @@
 #error  "<bits/unistd.h> should not be included directly"
 #endif
 
+#define _POSIX_VERSION 200112L
+
 #define _POSIX_ADVISORY_INFO              -1
 #define _POSIX_ASYNCHRONOUS_IO            -1
 #define _POSIX_BARRIERS                   -1
