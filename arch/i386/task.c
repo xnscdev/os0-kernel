@@ -22,6 +22,7 @@
 #include <i386/tss.h>
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <sys/syscall.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 
@@ -57,18 +58,48 @@ task_timer_tick (void)
 {
   uint32_t esp;
   struct timeval *tp;
+  Process *proc;
   if (task_current == NULL)
     return;
+  proc = &process_table[task_getpid ()];
+
+  /* Update process execution time */
   __asm__ volatile ("mov %%esp, %0" : "=r" (esp));
+  /* If the current stack pointer is in the user mode interrupt stack, the
+     process is a user mode process so the user time should be updated,
+     otherwise update system time */
   if (esp > SYSCALL_STACK_ADDR)
-    tp = &process_table[task_getpid ()].p_rusage.ru_utime;
+    tp = &proc->p_rusage.ru_utime;
   else
-    tp = &process_table[task_getpid ()].p_rusage.ru_stime;
-  tp->tv_usec += 1000000;
+    tp = &proc->p_rusage.ru_stime;
+  tp->tv_usec += 1000; /* Timer tick happens every millisecond */
   if (tp->tv_usec >= 1000000)
     {
       tp->tv_sec++;
       tp->tv_usec -= 1000000;
+    }
+
+  /* Update process interval timers */
+  tp = &proc->p_itimers[ITIMER_REAL].it_value;
+  if (tp->tv_sec != 0 || tp->tv_usec != 0)
+    {
+      if (tp->tv_usec >= 1000)
+	tp->tv_usec -= 1000;
+      else
+	{
+	  if (tp->tv_sec > 0)
+	    {
+	      tp->tv_sec--;
+	      tp->tv_usec = 1000000 - tp->tv_usec;
+	    }
+	  else
+	    {
+	      /* Reset the timer and send a signal */
+	      tp->tv_sec = proc->p_itimers[ITIMER_REAL].it_interval.tv_sec;
+	      tp->tv_usec = proc->p_itimers[ITIMER_REAL].it_interval.tv_usec;
+	      sys_kill (task_getpid (), SIGALRM);
+	    }
+	}
     }
 }
 

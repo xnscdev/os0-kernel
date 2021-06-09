@@ -27,8 +27,6 @@ extern time_t rtc_time;
 static long tick;
 static uint32_t timer_freq;
 
-struct itimerval itimers[__NR_itimers];
-
 void
 timer_tick (void)
 {

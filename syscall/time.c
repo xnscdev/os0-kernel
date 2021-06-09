@@ -74,20 +74,22 @@ int
 sys_setitimer (int which, const struct itimerval *__restrict new,
 	       struct itimerval *__restrict old)
 {
+  Process *proc = &process_table[task_getpid ()];
   if (which < 0 || which >= __NR_itimers)
     return -EINVAL;
   if (old != NULL)
-    memcpy (old, &itimers[which], sizeof (struct itimerval));
-  memcpy (&itimers[which], new, sizeof (struct itimerval));
+    memcpy (old, &proc->p_itimers[which], sizeof (struct itimerval));
+  memcpy (&proc->p_itimers[which], new, sizeof (struct itimerval));
   return 0;
 }
 
 int
 sys_getitimer (int which, struct itimerval *curr)
 {
+  Process *proc = &process_table[task_getpid ()];
   if (which < 0 || which >= __NR_itimers)
     return -EINVAL;
-  memcpy (curr, &itimers[which], sizeof (struct itimerval));
+  memcpy (curr, &proc->p_itimers[which], sizeof (struct itimerval));
   return 0;
 }
 
