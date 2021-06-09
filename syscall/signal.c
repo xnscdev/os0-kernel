@@ -98,21 +98,24 @@ sys_sigprocmask (int how, const sigset_t *__restrict set,
   int i;
   if (old != NULL)
     memcpy (old, &proc->p_sigblocked, sizeof (sigset_t));
-  switch (how)
+  if (set != NULL)
     {
-    case SIG_BLOCK:
-      for (i = 0; i < sizeof (sigset_t); i++)
-        proc->p_sigblocked.sig[i] |= set->sig[i];
-      break;
-    case SIG_UNBLOCK:
-      for (i = 0; i < sizeof (sigset_t); i++)
-	proc->p_sigblocked.sig[i] &= ~set->sig[i];
-      break;
-    case SIG_SETMASK:
-      memcpy (&proc->p_sigblocked, set, sizeof (sigset_t));
-      break;
-    default:
-      return -EINVAL;
+      switch (how)
+	{
+	case SIG_BLOCK:
+	  for (i = 0; i < sizeof (sigset_t); i++)
+	    proc->p_sigblocked.sig[i] |= set->sig[i];
+	  break;
+	case SIG_UNBLOCK:
+	  for (i = 0; i < sizeof (sigset_t); i++)
+	    proc->p_sigblocked.sig[i] &= ~set->sig[i];
+	  break;
+	case SIG_SETMASK:
+	  memcpy (&proc->p_sigblocked, set, sizeof (sigset_t));
+	  break;
+	default:
+	  return -EINVAL;
+	}
     }
   return 0;
 }
