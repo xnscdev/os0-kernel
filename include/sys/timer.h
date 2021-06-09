@@ -20,9 +20,12 @@
 #define _SYS_TIMER_H
 
 #include <sys/cdefs.h>
+#include <sys/time.h>
 #include <stdint.h>
 
 __BEGIN_DECLS
+
+extern struct itimerval itimers[__NR_itimers];
 
 void timer_set_freq (uint32_t freq);
 uint32_t timer_get_freq (void);

@@ -56,6 +56,7 @@ int sys_mount (const char *src, const char *dir, const char *type, int flags,
 int sys_umount (const char *dir);
 int sys_setuid (uid_t uid);
 uid_t sys_getuid (void);
+unsigned int sys_alarm (unsigned int seconds);
 int sys_access (const char *path, int mode);
 int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
@@ -87,6 +88,9 @@ int sys_ftruncate (int fd, off_t len);
 int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
 int sys_statvfs (const char *path, struct statvfs *st);
+int sys_setitimer (int which, const struct itimerval *__restrict new,
+		   struct itimerval *__restrict old);
+int sys_getitimer (int which, struct itimerval *curr);
 int sys_stat (const char *path, struct stat *st);
 int sys_lstat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);

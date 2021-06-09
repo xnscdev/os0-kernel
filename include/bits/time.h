@@ -28,6 +28,12 @@
 #define CLOCKS_PER_SEC 1000
 #define CLK_TCK        CLOCKS_PER_SEC
 
+#define ITIMER_REAL    0
+#define ITIMER_VIRTUAL 1
+#define ITIMER_PROF    2
+
+#define __NR_itimers 3
+
 struct timespec
 {
   time_t tv_sec;

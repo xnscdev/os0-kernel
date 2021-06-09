@@ -4,6 +4,7 @@ syscall_src = [
   'relvfs.c',
   'signal.c',
   'table.c',
+  'time.c',
   'util.c',
   'vfs.c',
   'xattr.c'

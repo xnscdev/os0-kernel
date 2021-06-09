@@ -19,10 +19,7 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
-#include <sys/timer.h>
 #include <sys/wait.h>
-#include <video/vga.h>
-#include <vm/heap.h>
 
 extern int exit_task;
 
@@ -59,31 +56,10 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
   task_exec (eip, argv, envp);
 }
 
-time_t
-sys_time (time_t *t)
-{
-  return time (t);
-}
-
 int
 sys_dup (int fd)
 {
   return fcntl (fd, F_DUPFD, 0);
-}
-
-clock_t
-sys_times (struct tms *tms)
-{
-  Process *proc = &process_table[task_getpid ()];
-  tms->tms_utime = proc->p_rusage.ru_utime.tv_sec * CLOCKS_PER_SEC +
-    proc->p_rusage.ru_utime.tv_usec * CLOCKS_PER_SEC / 1000000;
-  tms->tms_stime = proc->p_rusage.ru_stime.tv_sec * CLOCKS_PER_SEC +
-    proc->p_rusage.ru_stime.tv_usec * CLOCKS_PER_SEC / 1000000;
-  tms->tms_cutime = proc->p_cusage.ru_utime.tv_sec * CLOCKS_PER_SEC +
-    proc->p_cusage.ru_utime.tv_usec * CLOCKS_PER_SEC / 1000000;
-  tms->tms_cstime = proc->p_cusage.ru_stime.tv_sec * CLOCKS_PER_SEC +
-    proc->p_cusage.ru_stime.tv_usec * CLOCKS_PER_SEC / 1000000;
-  return time (NULL) * CLOCKS_PER_SEC;
 }
 
 int
@@ -163,31 +139,8 @@ sys_getrusage (int who, struct rusage *usage)
   return 0;
 }
 
-int
-sys_gettimeofday (struct timeval *__restrict tv, struct timezone *__restrict tz)
-{
-  if (tv != NULL)
-    {
-      tv->tv_sec = time (NULL);
-      tv->tv_usec = 0;
-    }
-  if (tz != NULL)
-    {
-      tz->tz_minuteswest = 0;
-      tz->tz_dsttime = 0;
-    }
-  return 0;
-}
-
 pid_t
 sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 {
   return wait4 (pid, status, options, usage);
-}
-
-int
-sys_nanosleep (const struct timespec *req, struct timespec *rem)
-{
-  msleep (req->tv_sec * 1000 + req->tv_nsec / 1000000);
-  return 0;
 }
