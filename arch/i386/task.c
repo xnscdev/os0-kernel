@@ -59,6 +59,7 @@ task_timer_tick (void)
   uint32_t esp;
   struct timeval *tp;
   Process *proc;
+  int i;
   if (task_current == NULL)
     return;
   proc = &process_table[task_getpid ()];
@@ -79,25 +80,30 @@ task_timer_tick (void)
       tp->tv_usec -= 1000000;
     }
 
-  /* Update process interval timers */
-  tp = &proc->p_itimers[ITIMER_REAL].it_value;
-  if (tp->tv_sec != 0 || tp->tv_usec != 0)
+  /* Update real-time interval timer for all processes */
+  for (i = 0; i < PROCESS_LIMIT; i++)
     {
-      if (tp->tv_usec >= 1000)
-	tp->tv_usec -= 1000;
-      else
+      tp = &process_table[i].p_itimers[ITIMER_REAL].it_value;
+      if (tp->tv_sec != 0 || tp->tv_usec != 0)
 	{
-	  if (tp->tv_sec > 0)
-	    {
-	      tp->tv_sec--;
-	      tp->tv_usec = 1000000 - tp->tv_usec;
-	    }
+	  if (tp->tv_usec >= 1000)
+	    tp->tv_usec -= 1000;
 	  else
 	    {
-	      /* Reset the timer and send a signal */
-	      tp->tv_sec = proc->p_itimers[ITIMER_REAL].it_interval.tv_sec;
-	      tp->tv_usec = proc->p_itimers[ITIMER_REAL].it_interval.tv_usec;
-	      sys_kill (task_getpid (), SIGALRM);
+	      if (tp->tv_sec > 0)
+		{
+		  tp->tv_sec--;
+		  tp->tv_usec = 1000000 - tp->tv_usec;
+		}
+	      else
+		{
+		  /* Reset the timer and send a signal */
+		  tp->tv_sec =
+		    process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_sec;
+		  tp->tv_usec =
+		    process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_usec;
+		  sys_kill (i, SIGALRM);
+		}
 	    }
 	}
     }
