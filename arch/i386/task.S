@@ -119,6 +119,7 @@ irq8:
 	movl	$0, exit_task
 
 4:
+	call	process_handle_signal
 	popa
 	iret
 

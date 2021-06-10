@@ -63,6 +63,8 @@ typedef struct
   struct rusage p_rusage;                    /* Resource usage */
   struct rusage p_cusage;                    /* Resourge usage of child
 						processes */
+  int p_pause;                               /* If process is paused */
+  int p_sig;                                 /* Signal to be handled */
   int p_term;                                /* If process is terminated */
   int p_waitstat;                            /* Value to set wait status to */
   uid_t p_uid;                               /* Real user id */
@@ -85,6 +87,7 @@ void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
 int process_terminated (pid_t pid);
+void process_handle_signal (void) __attribute__ ((aligned (PAGE_SIZE)));
 
 __END_DECLS
 

@@ -21,6 +21,12 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
+/* Signals in this implementation are handled by changing the saved
+   process instruction pointer to a separate handling function if signaling
+   another process, or directly calling the function if signaling the current
+   process. The handling function calls a signal handler or terminates the
+   process, then resumes the process if it was paused. */
+
 int
 sys_kill (pid_t pid, int sig)
 {
@@ -51,12 +57,27 @@ sys_kill (pid_t pid, int sig)
       return 0;
     }
 
-  /* FIXME This needs to be called on the process being signaled */
-  if (sigaction->sa_flags & SA_SIGINFO)
-    ; /* TODO Call sigaction->sa_sigaction */
+  if (pid == task_getpid ())
+    {
+      if (sigaction->sa_flags & SA_SIGINFO)
+	; /* TODO Call sigaction->sa_sigaction */
+      else
+	sigaction->sa_handler (sig);
+      process_table[pid].p_pause = 0;
+    }
   else
-    sigaction->sa_handler (sig);
+    /* Will be handled when process becomes active */
+    process_table[pid].p_sig = sig;
   return 0;
+}
+
+int
+sys_pause (void)
+{
+  Process *proc = &process_table[task_getpid ()];
+  while (proc->p_pause)
+    ;
+  return -EINTR;
 }
 
 sighandler_t

@@ -42,6 +42,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_setuid] = sys_setuid,
   [SYS_getuid] = sys_getuid,
   [SYS_alarm] = sys_alarm,
+  [SYS_pause] = sys_pause,
   [SYS_access] = sys_access,
   [SYS_kill] = sys_kill,
   [SYS_rename] = sys_rename,

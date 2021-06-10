@@ -57,6 +57,7 @@ int sys_umount (const char *dir);
 int sys_setuid (uid_t uid);
 uid_t sys_getuid (void);
 unsigned int sys_alarm (unsigned int seconds);
+int sys_pause (void);
 int sys_access (const char *path, int mode);
 int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
@@ -137,6 +138,7 @@ int sys_faccessat (int fd, const char *path, int mode, int flags);
 
 int sys_path_sep (const char *path, VFSInode **dir, char **name);
 VFSInode *inode_from_fd (int fd);
+void sys_setup_sighandler (pid_t pid);
 
 __END_DECLS
 

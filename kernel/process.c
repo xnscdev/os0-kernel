@@ -260,6 +260,8 @@ process_free (pid_t pid)
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = NULL;
   proc->p_break = 0;
+  proc->p_pause = 0;
+  proc->p_sig = 0;
   proc->p_term = 0;
   proc->p_waitstat = 0;
   proc->p_uid = 0;
@@ -395,4 +397,20 @@ int
 process_terminated (pid_t pid)
 {
   return process_table[pid].p_term;
+}
+
+void
+process_handle_signal (void)
+{
+  Process *proc = &process_table[task_getpid ()];
+  if (proc->p_sig != 0)
+    {
+      struct sigaction *sigaction = &proc->p_sigactions[proc->p_sig];
+      if (sigaction->sa_flags & SA_SIGINFO)
+	; /* TODO Call sigaction->sa_sigaction */
+      else
+	sigaction->sa_handler (proc->p_sig);
+      proc->p_pause = 0;
+      proc->p_sig = 0;
+    }
 }

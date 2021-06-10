@@ -198,10 +198,11 @@ _task_fork (void)
   memcpy ((void *) PAGE_COPY_VADDR, (void *) TASK_STACK_BOTTOM,
 	  TASK_STACK_SIZE);
 
-  /* This is done so user mode processes don't page fault when calling 
-     sys_exit() because it is mapped to a supervisor page */
+  /* Allow user mode code to run these functions */
   map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
 	    PAGE_FLAG_USER);
+  map_page (dir, get_paddr (curr_page_dir, process_handle_signal),
+	    TASK_SIGHANDLE_PAGE, PAGE_FLAG_USER);
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
