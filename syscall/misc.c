@@ -103,35 +103,7 @@ sys_getrusage (int who, struct rusage *usage)
       memcpy (usage, &proc->p_cusage, sizeof (struct rusage));
       break;
     case RUSAGE_BOTH:
-      usage->ru_utime.tv_sec += proc->p_rusage.ru_utime.tv_sec +
-	proc->p_cusage.ru_utime.tv_sec;
-      usage->ru_utime.tv_usec += proc->p_rusage.ru_utime.tv_usec +
-	proc->p_cusage.ru_utime.tv_usec;
-      usage->ru_utime.tv_sec += usage->ru_utime.tv_usec / 1000000;
-      usage->ru_utime.tv_usec %= 1000000;
-      usage->ru_stime.tv_sec += proc->p_rusage.ru_stime.tv_sec +
-	proc->p_cusage.ru_stime.tv_sec;
-      usage->ru_stime.tv_usec += proc->p_rusage.ru_stime.tv_usec +
-	proc->p_cusage.ru_stime.tv_usec;
-      usage->ru_stime.tv_sec += usage->ru_stime.tv_usec / 1000000;
-      usage->ru_stime.tv_usec %= 1000000;
-      usage->ru_maxrss += proc->p_rusage.ru_maxrss + proc->p_cusage.ru_maxrss;
-      usage->ru_ixrss += proc->p_rusage.ru_ixrss + proc->p_cusage.ru_ixrss;
-      usage->ru_idrss += proc->p_rusage.ru_idrss + proc->p_cusage.ru_idrss;
-      usage->ru_isrss += proc->p_rusage.ru_isrss + proc->p_cusage.ru_isrss;
-      usage->ru_minflt += proc->p_rusage.ru_minflt + proc->p_cusage.ru_minflt;
-      usage->ru_majflt += proc->p_rusage.ru_majflt + proc->p_cusage.ru_majflt;
-      usage->ru_nswap += proc->p_rusage.ru_nswap + proc->p_cusage.ru_nswap;
-      usage->ru_inblock += proc->p_rusage.ru_inblock +
-	proc->p_cusage.ru_inblock;
-      usage->ru_oublock += proc->p_rusage.ru_oublock +
-	proc->p_cusage.ru_oublock;
-      usage->ru_msgsnd += proc->p_rusage.ru_msgsnd + proc->p_cusage.ru_msgsnd;
-      usage->ru_msgrcv += proc->p_rusage.ru_msgrcv + proc->p_cusage.ru_msgrcv;
-      usage->ru_nsignals += proc->p_rusage.ru_nsignals +
-	proc->p_cusage.ru_nsignals;
-      usage->ru_nvcsw += proc->p_rusage.ru_nvcsw + proc->p_cusage.ru_nvcsw;
-      usage->ru_nivcsw += proc->p_rusage.ru_nivcsw + proc->p_cusage.ru_nivcsw;
+      process_add_rusage (usage, proc);
       break;
     default:
       return -EINVAL;
