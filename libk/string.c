@@ -149,6 +149,7 @@ static const char *errno_names[] = {
 };
 
 const char *const sys_signames[NR_signals] = {
+  NULL,
   "SIGHUP",
   "SIGINT",
   "SIGQUIT",

@@ -29,6 +29,7 @@
 void
 exc0_handler (uint32_t eip)
 {
+  /* Integer division by zero */
   pid_t pid = task_getpid ();
   Process *proc = &process_table[pid];
   proc->p_siginfo.si_signo = SIGFPE;
@@ -55,13 +56,27 @@ exc2_handler (uint32_t eip)
 void
 exc3_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Breakpoint Trap\nException address: 0x%lx", eip);
+  /* Triggered by int3 instruction */
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGTRAP;
+  proc->p_siginfo.si_code = TRAP_BRKPT;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  sys_kill (pid, SIGTRAP);
 }
 
 void
 exc4_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Overflow Trap\nException address: 0x%lx", eip);
+  /* Triggered by into instruction */
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGFPE;
+  proc->p_siginfo.si_code = FPE_INTOVF;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  sys_kill (pid, SIGFPE);
 }
 
 void
@@ -73,7 +88,14 @@ exc5_handler (uint32_t eip)
 void
 exc6_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Invalid Opcode\nException address: 0x%lx", eip);
+  /* Invalid opcode exception */
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGILL;
+  proc->p_siginfo.si_code = ILL_ILLOPC;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  sys_kill (pid, SIGILL);
 }
 
 void
@@ -112,22 +134,37 @@ exc12_handler (uint32_t err, uint32_t eip)
 void
 exc13_handler (uint32_t err, uint32_t eip)
 {
-  panic ("CPU Exception: General Protection Fault\nSegment selector: 0x%lx\n"
-	 "Exception address: 0x%lx", err, eip);
+  /* Assume general protection fault caused by privileged instruction */
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGILL;
+  proc->p_siginfo.si_code = ILL_PRVOPC;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  sys_kill (pid, SIGILL);
 }
 
 void
 exc14_handler (uint32_t err, uint32_t eip)
 {
-  uint32_t addr;
-  __asm__ volatile ("mov %%cr2, %0" : "=r" (addr));
+  /* Page fault raises segmentation fault
+     TODO Add swap support */
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGSEGV;
+  proc->p_siginfo.si_code = err & PF_FLAG_PROT ? SEGV_ACCERR : SEGV_MAPERR;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  __asm__ volatile ("mov %%cr2, %0" : "=r" (proc->p_siginfo.si_addr));
+  sys_kill (pid, SIGSEGV);
+  /*
   panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
 	 "Fault address: 0x%lx\nException address: 0x%lx",
 	 err & PF_FLAG_PROT ? "protection violation" : "non-present",
 	 err & PF_FLAG_WRITE ? "write access" : "read access",
 	 err & PF_FLAG_USER ? "user mode" : "kernel mode",
 	 err & PF_FLAG_RESERVED ? ", reserved entries" : "",
-	 err & PF_FLAG_INSTFETCH ? ", instruction fetch" : "", addr, eip);
+	 err & PF_FLAG_INSTFETCH ? ", instruction fetch" : "", addr, eip); */
 }
 
 void
