@@ -418,8 +418,28 @@ process_handle_signal (void)
     {
       struct sigaction *sigaction = &proc->p_sigactions[proc->p_sig];
       if (sigaction->sa_flags & SA_SIGINFO)
-	/* TODO Fill third parameter to sigaction routine */
-	sigaction->sa_sigaction (proc->p_sig, &proc->p_siginfo, NULL);
+	{
+	  /* Map process siginfo to new user-mode page first */
+	  uint32_t paddr = alloc_page ();
+	  map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
+		    PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+#ifdef INVLPG_SUPPORT
+	  vm_page_inval (paddr);
+#else
+	  vm_tlb_reset ();
+#endif
+	  memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo,
+		  sizeof (siginfo_t));
+	  sigaction->sa_sigaction (proc->p_sig, (siginfo_t *) TASK_SIGINFO_PAGE,
+				   NULL);
+	  unmap_page (curr_page_dir, TASK_SIGINFO_PAGE);
+#ifdef INVLPG_SUPPORT
+	  vm_page_inval (paddr);
+#else
+	  vm_tlb_reset ();
+#endif
+	  free_page (paddr);
+	}
       else
 	sigaction->sa_handler (proc->p_sig);
       proc->p_pause = 0;

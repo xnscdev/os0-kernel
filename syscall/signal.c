@@ -21,12 +21,6 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
-/* Signals in this implementation are handled by changing the saved
-   process instruction pointer to a separate handling function if signaling
-   another process, or directly calling the function if signaling the current
-   process. The handling function calls a signal handler or terminates the
-   process, then resumes the process if it was paused. */
-
 int
 sys_kill (pid_t pid, int sig)
 {
@@ -41,6 +35,8 @@ sys_kill (pid_t pid, int sig)
   if (sig < 0 || sig >= NR_signals)
     return -EINVAL;
   sigaction = &process_table[pid].p_sigactions[sig];
+
+  /* TODO Check if signal is blocked */
 
   if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
       || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)

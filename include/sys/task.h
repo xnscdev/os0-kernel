@@ -32,7 +32,7 @@
 #define SYSCALL_STACK_SIZE 0x1000
 
 #define TASK_EXIT_PAGE      0xff406000
-#define TASK_SIGHANDLE_PAGE 0xff407000
+#define TASK_SIGINFO_PAGE   0xff407000
 
 #ifndef _ASM
 

@@ -19,20 +19,29 @@
 #include <i386/paging.h>
 #include <i386/pic.h>
 #include <i386/timer.h>
+#include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/io.h>
 #include <sys/kbd.h>
-#include <stdlib.h>
+#include <sys/process.h>
+#include <sys/syscall.h>
 
 void
 exc0_handler (uint32_t eip)
 {
-  panic ("CPU Exception: Divide-by-zero Fault\nException address: 0x%lx", eip);
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  proc->p_siginfo.si_signo = SIGFPE;
+  proc->p_siginfo.si_code = FPE_INTDIV;
+  proc->p_siginfo.si_pid = pid;
+  proc->p_siginfo.si_uid = proc->p_uid;
+  sys_kill (pid, SIGFPE);
 }
 
 void
 exc1_handler (uint32_t eip)
 {
+  /* TODO Should this raise a signal? */
   panic ("CPU Exception: Debug Trap\nException address: 0x%lx", eip);
 }
 
