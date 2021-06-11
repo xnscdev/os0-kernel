@@ -24,7 +24,6 @@
 #include <sys/io.h>
 #include <sys/kbd.h>
 #include <sys/process.h>
-#include <sys/syscall.h>
 
 void
 exc0_handler (uint32_t eip)
@@ -36,7 +35,7 @@ exc0_handler (uint32_t eip)
   proc->p_siginfo.si_code = FPE_INTDIV;
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
-  sys_kill (pid, SIGFPE);
+  process_send_signal (pid, SIGFPE);
 }
 
 void
@@ -63,7 +62,7 @@ exc3_handler (uint32_t eip)
   proc->p_siginfo.si_code = TRAP_BRKPT;
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
-  sys_kill (pid, SIGTRAP);
+  process_send_signal (pid, SIGTRAP);
 }
 
 void
@@ -76,7 +75,7 @@ exc4_handler (uint32_t eip)
   proc->p_siginfo.si_code = FPE_INTOVF;
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
-  sys_kill (pid, SIGFPE);
+  process_send_signal (pid, SIGFPE);
 }
 
 void
@@ -95,7 +94,7 @@ exc6_handler (uint32_t eip)
   proc->p_siginfo.si_code = ILL_ILLOPC;
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
-  sys_kill (pid, SIGILL);
+  process_send_signal (pid, SIGILL);
 }
 
 void
@@ -141,7 +140,7 @@ exc13_handler (uint32_t err, uint32_t eip)
   proc->p_siginfo.si_code = ILL_PRVOPC;
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
-  sys_kill (pid, SIGILL);
+  process_send_signal (pid, SIGILL);
 }
 
 void
@@ -156,7 +155,7 @@ exc14_handler (uint32_t err, uint32_t eip)
   proc->p_siginfo.si_pid = pid;
   proc->p_siginfo.si_uid = proc->p_uid;
   __asm__ volatile ("mov %%cr2, %0" : "=r" (proc->p_siginfo.si_addr));
-  sys_kill (pid, SIGSEGV);
+  process_send_signal (pid, SIGSEGV);
   /*
   panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
 	 "Fault address: 0x%lx\nException address: 0x%lx",

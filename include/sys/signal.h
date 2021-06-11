@@ -177,6 +177,12 @@ __BEGIN_DECLS
 
 extern const char *const sys_signames[NR_signals];
 
+int sigemptyset (sigset_t *set);
+int sigfillset (sigset_t *set);
+int sigaddset (sigset_t *set, int sig);
+int sigdelset (sigset_t *set, int sig);
+int sigismember (const sigset_t *set, int sig);
+
 __END_DECLS
 
 #endif

@@ -24,8 +24,8 @@
 int
 sys_kill (pid_t pid, int sig)
 {
-  int exit = sig == SIGKILL;
-  struct sigaction *sigaction;
+  siginfo_t *info;
+  pid_t currpid = task_getpid ();
   if (pid == 0 || pid == -1)
     return -ENOSYS;
   if (pid < 0)
@@ -34,28 +34,15 @@ sys_kill (pid_t pid, int sig)
     return -EINVAL;
   if (sig < 0 || sig >= NR_signals)
     return -EINVAL;
-  sigaction = &process_table[pid].p_sigactions[sig];
 
-  /* TODO Check if signal is blocked */
+  /* Fill siginfo */
+  info = &process_table[pid].p_siginfo;
+  info->si_signo = sig;
+  info->si_code = SI_USER;
+  info->si_pid = currpid;
+  info->si_uid = process_table[currpid].p_uid;
 
-  if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
-      || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
-    {
-      if (!(sigaction->sa_flags & SA_SIGINFO)
-	  && sigaction->sa_handler == SIG_DFL)
-	exit = 1; /* Default action is to terminate process */
-    }
-
-  if (exit)
-    {
-      process_table[pid].p_term = 1;
-      process_table[pid].p_waitstat = sig;
-    }
-
-  process_table[pid].p_sig = sig;
-  if (pid == task_getpid ())
-    task_yield ();
-  return 0;
+  return process_send_signal (pid, sig);
 }
 
 int

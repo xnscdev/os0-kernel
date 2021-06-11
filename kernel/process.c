@@ -215,7 +215,6 @@ void
 process_free (pid_t pid)
 {
   Process *proc;
-  struct rusage *prusage;
   pid_t ppid;
   int i;
   if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
@@ -227,34 +226,7 @@ process_free (pid_t pid)
   proc->p_task = NULL;
 
   /* Add self rusage values to parent's child rusage */
-  prusage = &process_table[ppid].p_cusage;
-  prusage->ru_utime.tv_sec += proc->p_rusage.ru_utime.tv_sec +
-    proc->p_cusage.ru_utime.tv_sec;
-  prusage->ru_utime.tv_usec += proc->p_rusage.ru_utime.tv_usec +
-    proc->p_cusage.ru_utime.tv_usec;
-  prusage->ru_utime.tv_sec += prusage->ru_utime.tv_usec / 1000000;
-  prusage->ru_utime.tv_usec %= 1000000;
-  prusage->ru_stime.tv_sec += proc->p_rusage.ru_stime.tv_sec +
-    proc->p_cusage.ru_stime.tv_sec;
-  prusage->ru_stime.tv_usec += proc->p_rusage.ru_stime.tv_usec +
-    proc->p_cusage.ru_stime.tv_usec;
-  prusage->ru_stime.tv_sec += prusage->ru_stime.tv_usec / 1000000;
-  prusage->ru_stime.tv_usec %= 1000000;
-  prusage->ru_maxrss += proc->p_rusage.ru_maxrss + proc->p_cusage.ru_maxrss;
-  prusage->ru_ixrss += proc->p_rusage.ru_ixrss + proc->p_cusage.ru_ixrss;
-  prusage->ru_idrss += proc->p_rusage.ru_idrss + proc->p_cusage.ru_idrss;
-  prusage->ru_isrss += proc->p_rusage.ru_isrss + proc->p_cusage.ru_isrss;
-  prusage->ru_minflt += proc->p_rusage.ru_minflt + proc->p_cusage.ru_minflt;
-  prusage->ru_majflt += proc->p_rusage.ru_majflt + proc->p_cusage.ru_majflt;
-  prusage->ru_nswap += proc->p_rusage.ru_nswap + proc->p_cusage.ru_nswap;
-  prusage->ru_inblock += proc->p_rusage.ru_inblock + proc->p_cusage.ru_inblock;
-  prusage->ru_oublock += proc->p_rusage.ru_oublock + proc->p_cusage.ru_oublock;
-  prusage->ru_msgsnd += proc->p_rusage.ru_msgsnd + proc->p_cusage.ru_msgsnd;
-  prusage->ru_msgrcv += proc->p_rusage.ru_msgrcv + proc->p_cusage.ru_msgrcv;
-  prusage->ru_nsignals += proc->p_rusage.ru_nsignals +
-    proc->p_cusage.ru_nsignals;
-  prusage->ru_nvcsw += proc->p_rusage.ru_nvcsw + proc->p_cusage.ru_nvcsw;
-  prusage->ru_nivcsw += proc->p_rusage.ru_nivcsw + proc->p_cusage.ru_nivcsw;
+  process_add_rusage (&process_table[ppid], proc);
 
   /* Reset process data */
   vfs_unref_inode (proc->p_cwd);
@@ -394,10 +366,75 @@ process_set_break (uint32_t addr)
   return proc->p_break;
 }
 
+void
+process_add_rusage (Process *target, const Process *proc)
+{
+  struct rusage *prusage = &target->p_cusage;
+  prusage->ru_utime.tv_sec += proc->p_rusage.ru_utime.tv_sec +
+    proc->p_cusage.ru_utime.tv_sec;
+  prusage->ru_utime.tv_usec += proc->p_rusage.ru_utime.tv_usec +
+    proc->p_cusage.ru_utime.tv_usec;
+  prusage->ru_utime.tv_sec += prusage->ru_utime.tv_usec / 1000000;
+  prusage->ru_utime.tv_usec %= 1000000;
+  prusage->ru_stime.tv_sec += proc->p_rusage.ru_stime.tv_sec +
+    proc->p_cusage.ru_stime.tv_sec;
+  prusage->ru_stime.tv_usec += proc->p_rusage.ru_stime.tv_usec +
+    proc->p_cusage.ru_stime.tv_usec;
+  prusage->ru_stime.tv_sec += prusage->ru_stime.tv_usec / 1000000;
+  prusage->ru_stime.tv_usec %= 1000000;
+  prusage->ru_maxrss += proc->p_rusage.ru_maxrss + proc->p_cusage.ru_maxrss;
+  prusage->ru_ixrss += proc->p_rusage.ru_ixrss + proc->p_cusage.ru_ixrss;
+  prusage->ru_idrss += proc->p_rusage.ru_idrss + proc->p_cusage.ru_idrss;
+  prusage->ru_isrss += proc->p_rusage.ru_isrss + proc->p_cusage.ru_isrss;
+  prusage->ru_minflt += proc->p_rusage.ru_minflt + proc->p_cusage.ru_minflt;
+  prusage->ru_majflt += proc->p_rusage.ru_majflt + proc->p_cusage.ru_majflt;
+  prusage->ru_nswap += proc->p_rusage.ru_nswap + proc->p_cusage.ru_nswap;
+  prusage->ru_inblock += proc->p_rusage.ru_inblock + proc->p_cusage.ru_inblock;
+  prusage->ru_oublock += proc->p_rusage.ru_oublock + proc->p_cusage.ru_oublock;
+  prusage->ru_msgsnd += proc->p_rusage.ru_msgsnd + proc->p_cusage.ru_msgsnd;
+  prusage->ru_msgrcv += proc->p_rusage.ru_msgrcv + proc->p_cusage.ru_msgrcv;
+  prusage->ru_nsignals += proc->p_rusage.ru_nsignals +
+    proc->p_cusage.ru_nsignals;
+  prusage->ru_nvcsw += proc->p_rusage.ru_nvcsw + proc->p_cusage.ru_nvcsw;
+  prusage->ru_nivcsw += proc->p_rusage.ru_nivcsw + proc->p_cusage.ru_nivcsw;
+}
+
 int
 process_terminated (pid_t pid)
 {
   return process_table[pid].p_term;
+}
+
+int
+process_send_signal (pid_t pid, int sig)
+{
+  int exit = sig == SIGKILL;
+  struct sigaction *sigaction = &process_table[pid].p_sigactions[sig];
+
+  if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
+      || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
+    {
+      if (!(sigaction->sa_flags & SA_SIGINFO)
+	  && sigaction->sa_handler == SIG_DFL)
+	exit = 1; /* Default action is to terminate process */
+    }
+
+  if (sigismember (&process_table[pid].p_sigblocked, sig) && sig != SIGKILL)
+    {
+      sigaddset (&process_table[pid].p_sigpending, sig);
+      return 0;
+    }
+
+  if (exit)
+    {
+      process_table[pid].p_term = 1;
+      process_table[pid].p_waitstat = sig;
+    }
+
+  process_table[pid].p_sig = sig;
+  if (pid == task_getpid ())
+    task_yield ();
+  return 0;
 }
 
 void

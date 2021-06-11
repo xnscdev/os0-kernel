@@ -87,7 +87,9 @@ int process_exec (VFSInode *inode, uint32_t *entry);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
+void process_add_rusage (Process *target, const Process *proc);
 int process_terminated (pid_t pid);
+int process_send_signal (pid_t pid, int sig);
 void process_clear_sighandlers (void);
 void process_handle_signal (void);
 
