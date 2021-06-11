@@ -456,13 +456,23 @@ process_handle_signal (void)
 {
   Process *proc = &process_table[task_getpid ()];
   struct sigaction *sigaction;
+  sigset_t mask;
+  int i;
   if (proc->p_sig == 0)
     return;
+  sigaction = &proc->p_sigactions[proc->p_sig];
+  memcpy (&mask, &proc->p_sigblocked, sizeof (sigset_t));
 
   /* Remove from pending signals */
   sigdelset (&proc->p_sigpending, proc->p_sig);
 
-  sigaction = &proc->p_sigactions[proc->p_sig];
+  /* Block signals specified in sigaction signal mask, and block delivered
+     signal unless SA_NODEFER is active */
+  for (i = 0; i < sizeof (sigset_t); i++)
+    proc->p_sigblocked.sig[i] |= sigaction->sa_mask.sig[i];
+  if (!(sigaction->sa_flags & SA_NODEFER))
+    sigaddset (&proc->p_sigblocked, proc->p_sig);
+
   if (sigaction->sa_flags & SA_SIGINFO)
     {
       /* Map process siginfo to new user-mode page first */
@@ -488,7 +498,12 @@ process_handle_signal (void)
     }
   else
     sigaction->sa_handler (proc->p_sig);
+
+  /* Unpause process and reset siginfo */
   proc->p_pause = 0;
   proc->p_sig = 0;
   memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
+
+  /* Restore signal mask */
+  memcpy (&proc->p_sigblocked, &mask, sizeof (sigset_t));
 }
