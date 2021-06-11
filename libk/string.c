@@ -148,6 +148,40 @@ static const char *errno_names[] = {
   "Disk quota exceeded"
 };
 
+const char *const sys_signames[NR_signals] = {
+  "SIGHUP",
+  "SIGINT",
+  "SIGQUIT",
+  "SIGILL",
+  "SIGTRAP",
+  "SIGABRT",
+  "SIGBUS",
+  "SIGFPE",
+  "SIGKILL",
+  "SIGUSR1",
+  "SIGSEGV",
+  "SIGUSR2",
+  "SIGPIPE",
+  "SIGALRM",
+  "SIGTERM",
+  "SIGSTKFLT",
+  "SIGCHLD",
+  "SIGCONT",
+  "SIGSTOP",
+  "SIGTSTP",
+  "SIGTTIN",
+  "SIGTTOU",
+  "SIGURG",
+  "SIGXCPU",
+  "SIGXFSZ",
+  "SIGVTALRM",
+  "SIGPROF",
+  "SIGWINCH",
+  "SIGIO",
+  "SIGPWR",
+  "SIGSYS"
+};
+
 void *
 memcpy (void *__restrict dest, const void *__restrict src, size_t len)
 {

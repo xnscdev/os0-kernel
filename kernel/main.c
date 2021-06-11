@@ -27,6 +27,7 @@
 #include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <sys/timer.h>
+#include <sys/wait.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
@@ -155,6 +156,16 @@ init (void)
 #endif
       ret = sys_execve ("/sbin/init", init_argv, NULL);
       panic ("Failed to execute /sbin/init: %s", strerror (ret));
+    }
+  else
+    {
+      int status;
+      sys_waitpid (pid, &status, 0);
+      if (WIFEXITED (status))
+	panic ("/sbin/init exited with status %d", WEXITSTATUS (status));
+      else if (WIFSIGNALED (status))
+	panic ("/sbin/init received signal %s",
+	       sys_signames[WTERMSIG (status)]);
     }
 }
 

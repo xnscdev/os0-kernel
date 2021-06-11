@@ -22,11 +22,11 @@
 #include <libk/stack.h>
 #include <libk/types.h>
 #include <sys/ioctl.h>
+#include <sys/signal.h>
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

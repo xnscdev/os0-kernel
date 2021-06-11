@@ -67,8 +67,8 @@ sys_pause (void)
   return -EINTR;
 }
 
-sighandler_t
-sys_signal (int sig, sighandler_t func)
+sig_t
+sys_signal (int sig, sig_t func)
 {
   struct sigaction old;
   struct sigaction act;

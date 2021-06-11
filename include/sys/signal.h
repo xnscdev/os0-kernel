@@ -19,6 +19,7 @@
 #ifndef _SYS_SIGNAL_H
 #define _SYS_SIGNAL_H
 
+#include <sys/cdefs.h>
 #include <sys/types.h>
 #include <limits.h>
 
@@ -55,7 +56,7 @@
 #define SIGPOLL   SIGIO
 #define SIGPWR    30
 #define SIGSYS    31
-#define SIGUNUSED 31
+#define SIGUNUSED SIGSYS
 
 #define NR_signals 48
 #define SIGRTMIN   32
@@ -133,13 +134,12 @@
 
 /* Signal handler special values */
 
-#define SIG_DFL ((sighandler_t) 0)
-#define SIG_IGN ((sighandler_t) 1)
-#define SIG_ERR ((sighandler_t) -1)
+#define SIG_DFL ((sig_t) 0)
+#define SIG_IGN ((sig_t) 1)
+#define SIG_ERR ((sig_t) -1)
 
-typedef void (*sighandler_t) (int);
-
-typedef sighandler_t sig_t; /* BSD type */
+typedef void (*sig_t) (int);
+typedef int sig_atomic_t;
 
 typedef struct
 {
@@ -167,10 +167,16 @@ typedef struct
 
 struct sigaction
 {
-  sighandler_t sa_handler;
+  sig_t sa_handler;
   void (*sa_sigaction) (int, siginfo_t *, void *);
   unsigned long sa_flags;
   sigset_t sa_mask;
 };
+
+__BEGIN_DECLS
+
+extern const char *const sys_signames[NR_signals];
+
+__END_DECLS
 
 #endif

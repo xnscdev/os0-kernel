@@ -68,7 +68,7 @@ clock_t sys_times (struct tms *tms);
 int sys_brk (void *ptr);
 int sys_setgid (gid_t gid);
 gid_t sys_getgid (void);
-sighandler_t sys_signal (int sig, sighandler_t func);
+sig_t sys_signal (int sig, sig_t func);
 uid_t sys_geteuid (void);
 gid_t sys_getegid (void);
 int sys_ioctl (int fd, unsigned long req, void *data);
