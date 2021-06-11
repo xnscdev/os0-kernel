@@ -27,6 +27,7 @@
 #include <vm/paging.h>
 
 void sys_exit_halt (void) __attribute__ ((noreturn));
+void signal_trampoline (void);
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
@@ -201,6 +202,8 @@ _task_fork (void)
   /* Allow user mode code to run these functions */
   map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
 	    PAGE_FLAG_USER);
+  map_page (dir, get_paddr (curr_page_dir, signal_trampoline),
+	    (uint32_t) signal_trampoline, PAGE_FLAG_USER);
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)

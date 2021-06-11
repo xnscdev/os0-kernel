@@ -37,8 +37,14 @@ init_argv:
 .arg0:
 	.asciz "/sbin/init"
 
+	.section .bss
+	.type signal_return_addr, @object
+	.size signal_return_addr, 16
+signal_return_addr:
+	.skip 4
+
 	.section .text
-	.align PAGE_SIZE
+	.align 16
 	.global irq8
 	.type irq8, @function
 irq8:
@@ -58,14 +64,14 @@ irq8:
 
 	/* Exit if scheduler is uninitialized */
 	test	%edi, %edi
-	jz	.finish
+	jz	.next_start
 
 	/* Save task ESP and EIP */
 	mov	%esp, 4(%edi)
 	call	read_ip
 .entry:
 	test	%eax, %eax
-	jz	.finish /* If EAX is zero we have just switched tasks */
+	jz	.next_start /* If EAX is zero we have just switched tasks */
 	mov	%eax, 8(%edi)
 
 1:
@@ -107,7 +113,7 @@ irq8:
 	xor	%eax, %eax /* Zero EAX to exit on new task switch */
 	jmp	*%ecx
 
-.finish:
+.next_start:
 	/* Free exited process, if any */
 	mov	exit_task, %eax
 	test	%eax, %eax
@@ -120,6 +126,16 @@ irq8:
 
 4:
 	call	process_handle_signal
+	mov	process_signal, %ecx
+	test	%ecx, %ecx
+	jz	.done
+
+	/* Signal should be handled, execute signal handler */
+	mov	32(%esp), %eax
+	mov	%eax, signal_return_addr
+	movl	$signal_trampoline, 32(%esp)
+
+.done:
 	popa
 	iret
 
@@ -242,3 +258,23 @@ task_exec:
 
 2:
 	jmp	*%ecx
+
+	.align PAGE_SIZE
+	.global signal_trampoline
+	.type signal_trampoline, @function
+signal_trampoline:
+	/* TODO Support alternate signal stacks */
+	pushl	signal_return_addr
+	pusha
+	pushf
+
+	pushl	$0
+	pushl	$TASK_SIGINFO_PAGE
+	pushl	process_signal
+	mov	process_signal_handler, %ecx
+	call	*%ecx
+	add	$12, %esp
+
+	popf
+	popa
+	ret

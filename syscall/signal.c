@@ -34,6 +34,9 @@ sys_kill (pid_t pid, int sig)
     return -EINVAL;
   if (sig < 0 || sig >= NR_signals)
     return -EINVAL;
+  if (process_table[currpid].p_euid != 0
+      && process_table[currpid].p_euid != process_table[pid].p_euid)
+    return -EPERM;
 
   /* Fill siginfo */
   info = &process_table[pid].p_siginfo;

@@ -33,6 +33,8 @@
 #endif
 
 Process process_table[PROCESS_LIMIT];
+void *process_signal_handler;
+int process_signal;
 int exit_task;
 
 static int
@@ -456,7 +458,9 @@ process_handle_signal (void)
   Process *proc = &process_table[task_getpid ()];
   struct sigaction *sigaction;
   sigset_t mask;
+  uint32_t paddr;
   int i;
+  process_signal = proc->p_sig;
   if (proc->p_sig == 0)
     return;
   sigaction = &proc->p_sigactions[proc->p_sig];
@@ -472,37 +476,17 @@ process_handle_signal (void)
   if (!(sigaction->sa_flags & SA_NODEFER))
     sigaddset (&proc->p_sigblocked, proc->p_sig);
 
-  if (sigaction->sa_flags & SA_SIGINFO)
-    {
-      /* Map process siginfo to new user-mode page first */
-      uint32_t paddr = alloc_page ();
-      map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
-		PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+  /* Map process siginfo to new user-mode page first */
+  paddr = alloc_page ();
+  map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
+	    PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
-      vm_page_inval (paddr);
+  vm_page_inval (paddr);
 #else
-      vm_tlb_reset ();
+  vm_tlb_reset ();
 #endif
-      memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo,
-	      sizeof (siginfo_t));
-      sigaction->sa_sigaction (proc->p_sig, (siginfo_t *) TASK_SIGINFO_PAGE,
-			       NULL);
-      unmap_page (curr_page_dir, TASK_SIGINFO_PAGE);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval (paddr);
-#else
-      vm_tlb_reset ();
-#endif
-      free_page (paddr);
-    }
-  else
-    sigaction->sa_handler (proc->p_sig);
+  memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo, sizeof (siginfo_t));
 
-  /* Unpause process and reset siginfo */
-  proc->p_pause = 0;
-  proc->p_sig = 0;
-  memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
-
-  /* Restore signal mask */
-  memcpy (&proc->p_sigblocked, &mask, sizeof (sigset_t));
+  process_signal_handler = sigaction->sa_flags & SA_SIGINFO ?
+    (void *) sigaction->sa_sigaction : (void *) sigaction->sa_handler;
 }

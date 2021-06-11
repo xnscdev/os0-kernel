@@ -60,13 +60,13 @@ idt_init (void)
   idt.dp_limit = sizeof (IDTEntry) * IDT_SIZE - 1;
   idt.dp_base = (uint32_t) &idt_entries;
 
-#define EXC(x) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 3, IDT_GATE_INT);
+#define EXC(x) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 3, IDT_GATE_TRAP);
 #define IRQ(x) idt_set_gate (x + 32, (uint32_t) irq ## x, 0x08, 3, \
 			     IDT_GATE_INT);
 #include "irq.inc"
 #undef EXC
 #undef IRQ
-  idt_set_gate (0x80, (uint32_t) syscall, 0x08, 3, IDT_GATE_INT);
+  idt_set_gate (0x80, (uint32_t) syscall, 0x08, 3, IDT_GATE_TRAP);
 
   idt_load ((uint32_t) &idt);
 }
