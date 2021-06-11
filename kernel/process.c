@@ -283,10 +283,11 @@ process_free (pid_t pid)
     }
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
-  /* Clear all signal handlers */
-  memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);
+  /* Clear all signal handlers and info */
+  process_clear_sighandlers ();
   memset (&proc->p_sigblocked, 0, sizeof (sigset_t));
   memset (&proc->p_sigpending, 0, sizeof (sigset_t));
+  memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
 }
 
 int
@@ -400,17 +401,29 @@ process_terminated (pid_t pid)
 }
 
 void
+process_clear_sighandlers (void)
+{
+  memset (process_table[task_getpid ()].p_sigactions, 0,
+	  sizeof (struct sigaction) * NR_signals);
+}
+
+void
 process_handle_signal (void)
 {
+  /* FIXME This code will be running in the interrupt routine, and since it
+     directly calls signal handler routines, all signal handlers installed by
+     userspace programs will have ring 0 privileges!! */
   Process *proc = &process_table[task_getpid ()];
   if (proc->p_sig != 0)
     {
       struct sigaction *sigaction = &proc->p_sigactions[proc->p_sig];
       if (sigaction->sa_flags & SA_SIGINFO)
-	; /* TODO Call sigaction->sa_sigaction */
+	/* TODO Fill third parameter to sigaction routine */
+	sigaction->sa_sigaction (proc->p_sig, &proc->p_siginfo, NULL);
       else
 	sigaction->sa_handler (proc->p_sig);
       proc->p_pause = 0;
       proc->p_sig = 0;
+      memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
     }
 }

@@ -61,6 +61,8 @@
 #define SIGRTMIN   32
 #define SIGRTMAX   NR_signals
 
+/* Signal handler flags */
+
 #define SA_NOCLDSTOP   0x00000001
 #define SA_NOCLDWAIT   0x00000002
 #define SA_SIGINFO     0x00000004
@@ -72,9 +74,64 @@
 #define SA_NOMASK      SA_NODEFER
 #define SA_ONESHOT     SA_RESETHAND
 
+/* Reason for signal generation */
+
+#define SI_USER    0x100
+#define SI_KERNEL  0x101
+#define SI_QUEUE   0x102
+#define SI_TIMER   0x103
+#define SI_ASYNCIO 0x104
+#define SI_TKILL   0x105
+
+#define ILL_ILLOPC  0x200
+#define ILL_ILLOPN  0x201
+#define ILL_ILLADDR 0x202
+#define ILL_ILLTRP  0x203
+#define ILL_PRVOPC  0x204
+#define ILL_PRVREG  0x205
+#define ILL_COPROC  0x206
+#define ILL_BADSTK  0x207
+
+#define FPE_INTDIV 0x300
+#define FPE_INTOVF 0x301
+#define FPE_FLTDIV 0x302
+#define FPE_FLTOVF 0x303
+#define FPE_FLTUND 0x304
+#define FPE_FLTRES 0x305
+#define FPE_FLTINV 0x306
+#define FPE_FLTSUB 0x307
+
+#define SEGV_MAPERR 0x400
+#define SEGV_ACCERR 0x401
+
+#define BUS_ADRALN 0x500
+#define BUS_ADRERR 0x501
+#define BUS_OBJERR 0x502
+
+#define TRAP_BRKPT 0x600
+#define TRAP_TRACE 0x601
+
+#define CLD_EXITED    0x700
+#define CLD_KILLED    0x701
+#define CLD_DUMPED    0x702
+#define CLD_TRAPPED   0x703
+#define CLD_STOPPED   0x704
+#define CLD_CONTINUED 0x705
+
+#define POLL_IN  0x800
+#define POLL_OUT 0x801
+#define POLL_MSG 0x802
+#define POLL_ERR 0x803
+#define POLL_PRI 0x804
+#define POLL_HUP 0x805
+
+/* sigprocmask(2) actions */
+
 #define SIG_BLOCK   0
 #define SIG_UNBLOCK 1
 #define SIG_SETMASK 2
+
+/* Signal handler special values */
 
 #define SIG_DFL ((sighandler_t) 0)
 #define SIG_IGN ((sighandler_t) 1)

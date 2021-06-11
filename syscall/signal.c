@@ -54,20 +54,11 @@ sys_kill (pid_t pid, int sig)
     {
       process_table[pid].p_term = 1;
       process_table[pid].p_waitstat = sig;
-      return 0;
     }
 
+  process_table[pid].p_sig = sig;
   if (pid == task_getpid ())
-    {
-      if (sigaction->sa_flags & SA_SIGINFO)
-	; /* TODO Call sigaction->sa_sigaction */
-      else
-	sigaction->sa_handler (sig);
-      process_table[pid].p_pause = 0;
-    }
-  else
-    /* Will be handled when process becomes active */
-    process_table[pid].p_sig = sig;
+    task_yield ();
   return 0;
 }
 

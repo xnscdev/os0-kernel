@@ -201,8 +201,6 @@ _task_fork (void)
   /* Allow user mode code to run these functions */
   map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
 	    PAGE_FLAG_USER);
-  map_page (dir, get_paddr (curr_page_dir, process_handle_signal),
-	    TASK_SIGHANDLE_PAGE, PAGE_FLAG_USER);
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
@@ -234,7 +232,11 @@ _task_fork (void)
   proc->p_task = task;
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
-  /* Inherit parent working directory, real/effective/saved UID/GID */
+  /* Reset signal handlers */
+  memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);
+
+  /* Inherit parent working directory, real/effective/saved UID/GID,
+     and blocked signal mask */
   proc->p_cwd = parent->p_cwd;
   vfs_ref_inode (proc->p_cwd);
   proc->p_uid = parent->p_uid;
@@ -243,5 +245,7 @@ _task_fork (void)
   proc->p_gid = parent->p_gid;
   proc->p_egid = parent->p_egid;
   proc->p_sgid = parent->p_sgid;
+  memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
+  memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
   return task;
 }

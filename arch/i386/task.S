@@ -217,6 +217,9 @@ task_exec:
 	jmp	irq8
 
 1:
+	/* Clear signal handlers */
+	call	process_clear_sighandlers
+
 	cmp	$SYSCALL_STACK_ADDR, %esp
 	ja	2f
 
