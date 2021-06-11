@@ -411,18 +411,25 @@ process_send_signal (pid_t pid, int sig)
   int exit = sig == SIGKILL;
   struct sigaction *sigaction = &process_table[pid].p_sigactions[sig];
 
+  if (!exit)
+    {
+      if (sigismember (&process_table[pid].p_sigblocked, sig))
+	{
+	  /* Set signal as pending */
+	  sigaddset (&process_table[pid].p_sigpending, sig);
+	  return 0;
+	}
+      else if (!(sigaction->sa_flags & SA_SIGINFO)
+	       && sigaction->sa_handler == SIG_IGN)
+	return 0; /* Ignore signal */
+    }
+
   if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
       || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
     {
       if (!(sigaction->sa_flags & SA_SIGINFO)
 	  && sigaction->sa_handler == SIG_DFL)
 	exit = 1; /* Default action is to terminate process */
-    }
-
-  if (sigismember (&process_table[pid].p_sigblocked, sig) && sig != SIGKILL)
-    {
-      sigaddset (&process_table[pid].p_sigpending, sig);
-      return 0;
     }
 
   if (exit)
@@ -447,40 +454,41 @@ process_clear_sighandlers (void)
 void
 process_handle_signal (void)
 {
-  /* FIXME This code will be running in the interrupt routine, and since it
-     directly calls signal handler routines, all signal handlers installed by
-     userspace programs will have ring 0 privileges!! */
   Process *proc = &process_table[task_getpid ()];
-  if (proc->p_sig != 0)
+  struct sigaction *sigaction;
+  if (proc->p_sig == 0)
+    return;
+
+  /* Remove from pending signals */
+  sigdelset (&proc->p_sigpending, proc->p_sig);
+
+  sigaction = &proc->p_sigactions[proc->p_sig];
+  if (sigaction->sa_flags & SA_SIGINFO)
     {
-      struct sigaction *sigaction = &proc->p_sigactions[proc->p_sig];
-      if (sigaction->sa_flags & SA_SIGINFO)
-	{
-	  /* Map process siginfo to new user-mode page first */
-	  uint32_t paddr = alloc_page ();
-	  map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
-		    PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+      /* Map process siginfo to new user-mode page first */
+      uint32_t paddr = alloc_page ();
+      map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
+		PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
-	  vm_page_inval (paddr);
+      vm_page_inval (paddr);
 #else
-	  vm_tlb_reset ();
+      vm_tlb_reset ();
 #endif
-	  memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo,
-		  sizeof (siginfo_t));
-	  sigaction->sa_sigaction (proc->p_sig, (siginfo_t *) TASK_SIGINFO_PAGE,
-				   NULL);
-	  unmap_page (curr_page_dir, TASK_SIGINFO_PAGE);
+      memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo,
+	      sizeof (siginfo_t));
+      sigaction->sa_sigaction (proc->p_sig, (siginfo_t *) TASK_SIGINFO_PAGE,
+			       NULL);
+      unmap_page (curr_page_dir, TASK_SIGINFO_PAGE);
 #ifdef INVLPG_SUPPORT
-	  vm_page_inval (paddr);
+      vm_page_inval (paddr);
 #else
-	  vm_tlb_reset ();
+      vm_tlb_reset ();
 #endif
-	  free_page (paddr);
-	}
-      else
-	sigaction->sa_handler (proc->p_sig);
-      proc->p_pause = 0;
-      proc->p_sig = 0;
-      memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
+      free_page (paddr);
     }
+  else
+    sigaction->sa_handler (proc->p_sig);
+  proc->p_pause = 0;
+  proc->p_sig = 0;
+  memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
 }
