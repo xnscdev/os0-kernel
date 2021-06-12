@@ -78,8 +78,10 @@ sys_getegid (void)
 int
 sys_setpgid (pid_t pid, pid_t pgid)
 {
-  if (pid < 0 || pid >= PROCESS_LIMIT || pgid < 0)
+  if (pgid < 0)
     return -EINVAL;
+  if (!process_valid (pid))
+    return -ESRCH;
   process_table[pid == 0 ? task_getpid () : pid].p_pgid =
     pgid == 0 ? task_getpid () : pgid;
   return 0;
@@ -180,15 +182,15 @@ sys_setregid (gid_t rgid, gid_t egid)
 pid_t
 sys_getpgid (pid_t pid)
 {
-  if (pid < 0 || pid >= PROCESS_LIMIT)
-    return -EINVAL;
+  if (!process_valid (pid))
+    return -ESRCH;
   return process_table[pid == 0 ? task_getpid () : pid].p_pgid;
 }
 
 pid_t
 sys_getsid (pid_t pid)
 {
-  if (pid < 0 || pid >= PROCESS_LIMIT)
+  if (!process_valid (pid))
     return -ESRCH;
   return process_table[pid].p_sid;
 }

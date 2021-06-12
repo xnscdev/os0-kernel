@@ -239,7 +239,7 @@ _task_fork (void)
   memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);
 
   /* Inherit parent working directory, real/effective/saved UID/GID,
-     and blocked signal mask */
+     process group ID, session ID, and blocked signal mask */
   proc->p_cwd = parent->p_cwd;
   vfs_ref_inode (proc->p_cwd);
   proc->p_uid = parent->p_uid;

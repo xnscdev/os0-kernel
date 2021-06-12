@@ -213,13 +213,19 @@ process_exec (VFSInode *inode, uint32_t *entry)
   return ret;
 }
 
+int
+process_valid (pid_t pid)
+{
+  return pid >= 0 && pid < PROCESS_LIMIT && process_table[pid].p_task != NULL;
+}
+
 void
 process_free (pid_t pid)
 {
   Process *proc;
   pid_t ppid;
   int i;
-  if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
+  if (!process_valid (pid))
     return;
   proc = &process_table[pid];
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
@@ -268,8 +274,8 @@ int
 process_setup_std_streams (pid_t pid)
 {
   Process *proc;
-  if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
-    return -EINVAL;
+  if (!process_valid (pid))
+    return -ESRCH;
   proc = &process_table[pid];
   if (proc->p_files[STDIN_FILENO].pf_inode != NULL
       || proc->p_files[STDOUT_FILENO].pf_inode != NULL

@@ -31,8 +31,8 @@ wait4 (pid_t pid, int *status, int options, struct rusage *usage)
     return -ENOSYS;
   if (pid < 0)
     pid = -pid;
-  if (pid >= PROCESS_LIMIT)
-    return -EINVAL;
+  if (!process_valid (pid))
+    return -ESRCH;
   proc = &process_table[pid];
   if (!proc->p_term && (options & WNOHANG))
     return 0;

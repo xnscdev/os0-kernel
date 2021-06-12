@@ -30,8 +30,8 @@ sys_kill (pid_t pid, int sig)
     return -ENOSYS;
   if (pid < 0)
     pid = -pid;
-  if (pid >= PROCESS_LIMIT)
-    return -EINVAL;
+  if (!process_valid (pid))
+    return -ESRCH;
   if (sig < 0 || sig >= NR_signals)
     return -EINVAL;
   if (process_table[currpid].p_euid != 0
