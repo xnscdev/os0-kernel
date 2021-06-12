@@ -165,35 +165,16 @@ ext2_bgdt_size (Ext2Superblock *esb)
 int
 ext2_mount (VFSMount *mp, int flags, void *data)
 {
-  VFSDirEntry *root;
   int ret;
-
   if (data == NULL)
     return -EINVAL;
 
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
   mp->vfs_sb.sb_ops = &ext2_sops;
 
-  /* Set root dir entry and inode */
-  root = kmalloc (sizeof (VFSDirEntry));
-  if (unlikely (root == NULL))
-    return -ENOMEM;
-  root->d_flags = 0;
-  root->d_mounted = 1;
-  root->d_name = strdup ("/");
-  if (unlikely (root->d_name == NULL))
-    {
-      kfree (root);
-      return -ENOMEM;
-    }
-
   ret = ext2_init_disk (mp, flags, data);
   if (ret != 0)
-    {
-      ext2_destroy_inode (root->d_inode);
-      kfree (root);
-      return ret;
-    }
+    return ret;
 
   mp->vfs_sb.sb_root = ext2_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))

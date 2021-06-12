@@ -21,12 +21,17 @@
 
 #include <fs/vfs.h>
 #include <sys/cdefs.h>
+#include <sys/sysmacros.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #define DEVFS_FS_NAME    "devfs"
 #define DEVFS_ROOT_INODE 0
 #define DEVFS_FD_INODE   1
+
+#define DEVFS_DEVICE_INODE(rdev) (rdev + 2)
+
+#define DEVFS_BLKSIZE 1024 /* Arbitrary value */
 
 __BEGIN_DECLS
 
@@ -46,6 +51,7 @@ void devfs_free (VFSSuperblock *sb);
 int devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 		  const char *name, int follow_symlinks);
 int devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
+int devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 int devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
 int devfs_readlink (VFSInode *inode, char *buffer, size_t len);
 int devfs_getattr (VFSInode *inode, struct stat *st);

@@ -74,6 +74,8 @@ typedef struct
   gid_t p_gid;                               /* Real group id */
   gid_t p_egid;                              /* Effective group id */
   gid_t p_sgid;                              /* Saved set-group-id */
+  pid_t p_pgid;                              /* Process group id */
+  pid_t p_sid;                               /* Session id */
   struct itimerval p_itimers[__NR_itimers];  /* Interval timers */
   volatile unsigned int p_refcnt;            /* Reference count, used by wait
 						to postpone freeing a process */

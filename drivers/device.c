@@ -28,6 +28,33 @@ static unsigned char mbr_buffer[512];
 
 SpecDevice device_table[DEVICE_TABLE_SIZE];
 
+static int
+device_null_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
+{
+  return 0;
+}
+
+static int
+device_zero_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
+{
+  memset (buffer, 0, len);
+  return len;
+}
+
+static int
+device_discard_write (SpecDevice *dev, const void *buffer, size_t len,
+		      off_t offset)
+{
+  return len;
+}
+
+static int
+device_full_write (SpecDevice *dev, const void *buffer, size_t len,
+		   off_t offset)
+{
+  return -ENOSPC;
+}
+
 static void
 device_disk_init (int drive, SpecDevice *dev)
 {
@@ -98,6 +125,14 @@ devices_init (void)
 		   vga_dev_write);
   device_register (1, STDERR_FILENO, DEVICE_TYPE_CHAR, "stderr", NULL,
 		   vga_dev_write);
+
+  /* Initialize miscellaneous devices */
+  device_register (1, 3, DEVICE_TYPE_CHAR, "null", device_null_read,
+		   device_discard_write);
+  device_register (1, 4, DEVICE_TYPE_CHAR, "zero", device_zero_read,
+		   device_discard_write);
+  device_register (1, 5, DEVICE_TYPE_CHAR, "full", device_zero_read,
+		   device_full_write);
 }
 
 SpecDevice *

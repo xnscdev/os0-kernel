@@ -244,6 +244,8 @@ process_free (pid_t pid)
   proc->p_gid = 0;
   proc->p_egid = 0;
   proc->p_sgid = 0;
+  proc->p_pgid = 0;
+  proc->p_sid = 0;
   memset (&proc->p_rusage, 0, sizeof (struct rusage));
   memset (&proc->p_cusage, 0, sizeof (struct rusage));
 

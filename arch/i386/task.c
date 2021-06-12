@@ -248,6 +248,8 @@ _task_fork (void)
   proc->p_gid = parent->p_gid;
   proc->p_egid = parent->p_egid;
   proc->p_sgid = parent->p_sgid;
+  proc->p_pgid = parent->p_pgid;
+  proc->p_sid = parent->p_sid;
   memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
   memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
   return task;

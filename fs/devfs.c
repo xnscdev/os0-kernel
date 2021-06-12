@@ -33,6 +33,7 @@ const VFSSuperblockOps devfs_sops = {
 const VFSInodeOps devfs_iops = {
   .vfs_lookup = devfs_lookup,
   .vfs_read = devfs_read,
+  .vfs_write = devfs_write,
   .vfs_readdir = devfs_readdir,
   .vfs_readlink = devfs_readlink,
   .vfs_getattr = devfs_getattr
@@ -55,22 +56,8 @@ const VFSFilesystem devfs_vfs = {
 int
 devfs_mount (VFSMount *mp, int flags, void *data)
 {
-  VFSDirEntry *root;
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
   mp->vfs_sb.sb_ops = &devfs_sops;
-
-  /* Set root dir entry and inode */
-  root = kzalloc (sizeof (VFSDirEntry));
-  if (unlikely (root == NULL))
-    return -ENOMEM;
-  root->d_mounted = 1;
-  root->d_name = strdup ("/");
-  if (unlikely (root->d_name == NULL))
-    {
-      kfree (root);
-      return -ENOMEM;
-    }
-
   mp->vfs_sb.sb_root = devfs_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))
     return -ENOMEM;
@@ -92,11 +79,26 @@ VFSInode *
 devfs_alloc_inode (VFSSuperblock *sb)
 {
   VFSInode *inode = kzalloc (sizeof (VFSInode));
+  time_t t;
   if (unlikely (inode == NULL))
     return NULL;
   inode->vi_ops = &devfs_iops;
   inode->vi_sb = sb;
   inode->vi_refcnt = 1;
+
+  /* Set reasonable defaults */
+  t = time (NULL);
+  inode->vi_uid = 0;
+  inode->vi_gid = 0;
+  inode->vi_size = 0;
+  inode->vi_sectors = 0;
+  inode->vi_atime.tv_sec = t;
+  inode->vi_atime.tv_nsec = 0;
+  inode->vi_mtime.tv_sec = t;
+  inode->vi_mtime.tv_nsec = 0;
+  inode->vi_ctime.tv_sec = t;
+  inode->vi_ctime.tv_nsec = 0;
+  inode->vi_blocks = 0;
   return inode;
 }
 
@@ -121,6 +123,17 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
     return -ENOTDIR;
   if (dir->vi_ino == DEVFS_ROOT_INODE)
     {
+      if (strcmp (name, "fd") == 0)
+	{
+	  *inode = vfs_alloc_inode (sb);
+	  if (unlikely (*inode == NULL))
+	    return -ENOMEM;
+	  (*inode)->vi_ino = DEVFS_FD_INODE;
+	  (*inode)->vi_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	  (*inode)->vi_nlink = 2;
+	  (*inode)->vi_private = NULL;
+	  return 0;
+	}
       for (i = 0; i < DEVICE_TABLE_SIZE; i++)
 	{
 	  if (strcmp (device_table[i].sd_name, name) == 0)
@@ -136,6 +149,7 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	      (*inode)->vi_nlink = 1;
 	      (*inode)->vi_rdev =
 		makedev (device_table[i].sd_major, device_table[i].sd_minor);
+	      (*inode)->vi_ino = DEVFS_DEVICE_INODE ((*inode)->vi_rdev);
 	      (*inode)->vi_private = &device_table[i];
 	      return 0;
 	    }
@@ -144,19 +158,24 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
     }
   else if (dir->vi_ino == DEVFS_FD_INODE)
     {
-      int fd = 0;
-      /* Convert string to file descriptor */
-      while (isdigit (*name))
+      if (follow_symlinks)
 	{
-	  fd *= 10;
-	  fd += *name - '0';
-	  name++;
+	  int fd = 0;
+	  /* Convert string to file descriptor */
+	  while (isdigit (*name))
+	    {
+	      fd *= 10;
+	      fd += *name - '0';
+	      name++;
+	    }
+	  if (*name != '\0')
+	    return -ENOENT;
+	  *inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+	  vfs_ref_inode (*inode);
+	  return 0;
 	}
-      if (*name != '\0')
-	return -ENOENT;
-      *inode = process_table[task_getpid ()].p_files[fd].pf_inode;
-      vfs_ref_inode (*inode);
-      return 0;
+      else
+	return -EPERM;
     }
   return -ENOENT;
 }
@@ -164,13 +183,51 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 int
 devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return -ENOSYS;
+  SpecDevice *dev = inode->vi_private;
+  return dev->sd_read (dev, buffer, len, offset);
+}
+
+int
+devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
+{
+  SpecDevice *dev = inode->vi_private;
+  return dev->sd_write (dev, buffer, len, offset);
 }
 
 int
 devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  return -ENOSYS;
+  VFSDirEntry *dirent;
+  int ret;
+  if (dir->vd_count == 0)
+    {
+      dirent = kzalloc (sizeof (VFSDirEntry));
+      if (dirent == NULL)
+	return -ENOMEM;
+      ret = devfs_lookup (&dirent->d_inode, dir->vd_inode, sb, "fd", 0);
+      if (ret != 0)
+	return ret;
+      dirent->d_name = strdup ("fd");
+      *entry = dirent;
+      return 0;
+    }
+  for (; dir->vd_count < DEVICE_TABLE_SIZE; dir->vd_count++)
+    {
+      if (*device_table[dir->vd_count].sd_name != '\0')
+	{
+	  dirent = kzalloc (sizeof (VFSDirEntry));
+	  if (dirent == NULL)
+	    return -ENOMEM;
+	  ret = devfs_lookup (&dirent->d_inode, dir->vd_inode, sb,
+			      device_table[dir->vd_count].sd_name, 0);
+	  if (ret != 0)
+	    return ret;
+	  dirent->d_name = strdup (device_table[dir->vd_count].sd_name);
+	  *entry = dirent;
+	  return 0;
+	}
+    }
+  return 1;
 }
 
 int
@@ -182,7 +239,21 @@ devfs_readlink (VFSInode *inode, char *buffer, size_t len)
 int
 devfs_getattr (VFSInode *inode, struct stat *st)
 {
-  return -ENOSYS;
+  st->st_dev = ((uint32_t) inode->vi_sb->sb_fstype -
+		(uint32_t) fs_table) / sizeof (VFSFilesystem);
+  st->st_ino = inode->vi_ino;
+  st->st_mode = inode->vi_mode;
+  st->st_nlink = inode->vi_nlink;
+  st->st_uid = inode->vi_uid;
+  st->st_gid = inode->vi_gid;
+  st->st_rdev = inode->vi_rdev;
+  st->st_size = inode->vi_size;
+  st->st_atime = inode->vi_atime.tv_sec;
+  st->st_mtime = inode->vi_mtime.tv_sec;
+  st->st_ctime = inode->vi_ctime.tv_sec;
+  st->st_blksize = DEVFS_BLKSIZE;
+  st->st_blocks = inode->vi_blocks;
+  return 0;
 }
 
 int
