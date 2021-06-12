@@ -73,6 +73,7 @@
 #define SYS_dup2          63
 #define SYS_getppid       64
 #define SYS_getpgrp       65
+#define SYS_setsid        66
 #define SYS_sigaction     67
 #define SYS_setreuid      70
 #define SYS_setregid      71

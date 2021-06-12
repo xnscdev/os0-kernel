@@ -1,5 +1,3 @@
 option('process_limit', type: 'integer', min: 32, value: 256)
 option('fd_limit', type: 'integer', min: 32, value: 64)
 option('segment_limit', type: 'integer', min: 8, value: 32)
-
-option('tty_limit', type: 'integer', min: 4, value: 64)

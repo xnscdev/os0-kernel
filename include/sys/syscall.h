@@ -77,6 +77,7 @@ int sys_setpgid (pid_t pid, pid_t pgid);
 int sys_dup2 (int fd1, int fd2);
 pid_t sys_getppid (void);
 pid_t sys_getpgrp (void);
+pid_t sys_setsid (void);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,
 		   struct sigaction *__restrict old);
 int sys_setreuid (uid_t ruid, uid_t euid);
@@ -104,6 +105,7 @@ int sys_sigprocmask (int how, const sigset_t *__restrict set,
 		     sigset_t *__restrict old);
 pid_t sys_getpgid (pid_t pid);
 int sys_fchdir (int fd);
+pid_t sys_getsid (pid_t pid);
 int sys_nanosleep (const struct timespec *req, struct timespec *rem);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
 int sys_getresuid (uid_t *ruid, uid_t *euid, uid_t *suid);

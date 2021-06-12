@@ -21,7 +21,7 @@
 
 static Terminal default_terminal;
 
-Terminal *terminals[TERMINAL_LIMIT] = {&default_terminal};
+Terminal *terminals[PROCESS_LIMIT] = {&default_terminal};
 int active_terminal;
 
 void

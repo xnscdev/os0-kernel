@@ -97,6 +97,22 @@ sys_getpgrp (void)
   return process_table[task_getpid ()].p_pgid;
 }
 
+pid_t
+sys_setsid (void)
+{
+  pid_t pid = task_getpid ();
+  Process *proc = &process_table[pid];
+  int i;
+  for (i = 0; i < PROCESS_LIMIT; i++)
+    {
+      if (i != pid && process_table[i].p_pgid == pid)
+	return -EPERM; /* Calling process is a process group leader */
+    }
+  proc->p_pgid = pid;
+  proc->p_sid = pid;
+  return proc->p_sid;
+}
+
 int
 sys_setreuid (uid_t ruid, uid_t euid)
 {
@@ -167,6 +183,14 @@ sys_getpgid (pid_t pid)
   if (pid < 0 || pid >= PROCESS_LIMIT)
     return -EINVAL;
   return process_table[pid == 0 ? task_getpid () : pid].p_pgid;
+}
+
+pid_t
+sys_getsid (pid_t pid)
+{
+  if (pid < 0 || pid >= PROCESS_LIMIT)
+    return -ESRCH;
+  return process_table[pid].p_sid;
 }
 
 int

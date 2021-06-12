@@ -31,6 +31,4 @@
 #mesondefine PROCESS_FILE_LIMIT
 #mesondefine PROCESS_SEGMENT_LIMIT
 
-#mesondefine TERMINAL_LIMIT
-
 #endif

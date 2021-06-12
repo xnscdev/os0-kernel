@@ -76,7 +76,7 @@ typedef struct
 
 __BEGIN_DECLS
 
-extern Terminal *terminals[TERMINAL_LIMIT];
+extern Terminal *terminals[PROCESS_LIMIT];
 extern int active_terminal;
 extern uint16_t *vga_hdw_buf;
 extern VFSSuperblock vga_tty_sb;
