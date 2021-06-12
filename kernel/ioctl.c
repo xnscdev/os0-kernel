@@ -20,13 +20,65 @@
 #include <sys/process.h>
 #include <video/vga.h>
 
+static struct winsize vga_display_winsize = {
+  VGA_SCREEN_HEIGHT,
+  VGA_SCREEN_WIDTH,
+  9,
+  16
+};
+
+static int
+ioctl_isatty (Process *proc)
+{
+  return terminals[proc->p_sid] != NULL;
+}
+
 static int
 ioctl_tcgets (Process *proc, struct termios *data)
 {
-  if (terminals[proc->p_sid] == NULL)
+  if (!ioctl_isatty (proc))
     return -ENOTTY;
   memcpy (data, &terminals[proc->p_sid]->vt_termios, sizeof (struct termios));
   return 0;
+}
+
+static int
+ioctl_tcsets (Process *proc, struct termios *data)
+{
+  if (!ioctl_isatty (proc))
+    return -ENOTTY;
+  memcpy (&terminals[proc->p_sid]->vt_termios, data, sizeof (struct termios));
+  return 0;
+}
+
+static int
+ioctl_tcsetsf (Process *proc, struct termios *data)
+{
+  if (!ioctl_isatty (proc))
+    return -ENOTTY;
+  terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos = 0;
+  terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos = 0;
+  memcpy (&terminals[proc->p_sid]->vt_termios, data, sizeof (struct termios));
+  return 0;
+}
+
+static int
+ioctl_tcflush (Process *proc, int fd, int arg)
+{
+  if (!ioctl_isatty (proc))
+    return -ENOTTY;
+  switch (arg)
+    {
+    case TCOFLUSH:
+      return 0;
+    case TCIFLUSH:
+    case TCIOFLUSH:
+      terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos = 0;
+      terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos = 0;
+      return 0;
+    default:
+      return -EINVAL;
+    }
 }
 
 int
@@ -38,7 +90,47 @@ ioctl (int fd, unsigned long req, void *data)
   switch (req)
     {
     case TCGETS:
+    case TCGETA:
       return ioctl_tcgets (proc, data);
+    case TCSETS:
+    case TCSETSW:
+    case TCSETA:
+    case TCSETAW:
+      return ioctl_tcsets (proc, data);
+    case TCSETSF:
+    case TCSETAF:
+      return ioctl_tcsetsf (proc, data);
+    case TIOCGWINSZ:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      memcpy (data, &vga_display_winsize, sizeof (struct winsize));
+      break;
+    case TIOCSWINSZ:
+      return ioctl_isatty (proc) ? -ENOTSUP : -ENOTTY;
+    case TCSBRK:
+    case TCSBRKP:
+    case TIOCSBRK:
+    case TIOCCBRK:
+    case TCXONC:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      break;
+    case TIOCINQ:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      *((int *) data) = terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos -
+	terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos;
+    case TIOCOUTQ:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      *((int *) data) = 0;
+      break;
+    case TCFLSH:
+      return ioctl_tcflush (proc, fd, (int) data);
+    case TIOCSTI:
+      return -ENOTSUP; /* TODO Implement */
+    default:
+      return -EINVAL;
     }
-  return -EINVAL;
+  return 0;
 }

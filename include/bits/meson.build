@@ -8,6 +8,7 @@ install_headers('ioctl.h',
 		'unistd.h',
 		'time.h',
 		'times.h',
+		'tty.h',
 		'wait.h',
 		'xattr.h', subdir: 'bits')
 
