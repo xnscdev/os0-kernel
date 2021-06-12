@@ -4,6 +4,7 @@ drivers_src = [
   'atapi.c',
   'device.c',
   'kbd.c',
+  'terminal.c',
   'vga.c',
   'vga-dev.c'
 ]

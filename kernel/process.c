@@ -254,8 +254,6 @@ process_free (pid_t pid)
     {
       if (proc->p_files[i].pf_inode != NULL)
         vfs_unref_inode (proc->p_files[i].pf_inode);
-      if (proc->p_files[i].pf_termios != NULL)
-	kfree (proc->p_files[i].pf_termios);
     }
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
@@ -269,7 +267,6 @@ process_free (pid_t pid)
 int
 process_setup_std_streams (pid_t pid)
 {
-  struct termios *term;
   Process *proc;
   if (pid >= PROCESS_LIMIT || process_table[pid].p_task == NULL)
     return -EINVAL;
@@ -287,15 +284,6 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDIN_FILENO].pf_flags = 0;
   proc->p_files[STDIN_FILENO].pf_offset = 0;
 
-  term = kmalloc (sizeof (struct termios));
-  if (term == NULL)
-    return -ENOMEM;
-  term->c_iflag = DEFAULT_IFLAG;
-  term->c_oflag = DEFAULT_OFLAG;
-  term->c_cflag = DEFAULT_CFLAG;
-  term->c_lflag = DEFAULT_LFLAG;
-  proc->p_files[STDIN_FILENO].pf_termios = term;
-
   /* Create stdout */
   proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
   proc->p_files[STDOUT_FILENO].pf_inode->vi_private =
@@ -304,15 +292,6 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDOUT_FILENO].pf_flags = 0;
   proc->p_files[STDOUT_FILENO].pf_offset = 0;
 
-  term = kmalloc (sizeof (struct termios));
-  if (term == NULL)
-    return -ENOMEM;
-  term->c_iflag = DEFAULT_IFLAG;
-  term->c_oflag = DEFAULT_OFLAG;
-  term->c_cflag = DEFAULT_CFLAG;
-  term->c_lflag = DEFAULT_LFLAG;
-  proc->p_files[STDOUT_FILENO].pf_termios = term;
-
   /* Create stderr */
   proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
   proc->p_files[STDERR_FILENO].pf_inode->vi_private =
@@ -320,15 +299,6 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDERR_FILENO].pf_flags = 0;
   proc->p_files[STDERR_FILENO].pf_offset = 0;
-
-  term = kmalloc (sizeof (struct termios));
-  if (term == NULL)
-    return -ENOMEM;
-  term->c_iflag = DEFAULT_IFLAG;
-  term->c_oflag = DEFAULT_OFLAG;
-  term->c_cflag = DEFAULT_CFLAG;
-  term->c_lflag = DEFAULT_LFLAG;
-  proc->p_files[STDERR_FILENO].pf_termios = term;
   return 0;
 }
 

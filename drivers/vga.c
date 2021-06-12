@@ -18,99 +18,72 @@
 
 #include <sys/io.h>
 #include <video/vga.h>
+#include <string.h>
 
-static size_t vga_row;
-static size_t vga_column;
-static unsigned char vga_color;
-static uint16_t *vga_buffer;
-int vga_console;
+uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
 
 void
-vga_init (void)
+vga_putentry (Terminal *term, char c, size_t x, size_t y)
 {
-  size_t x;
-  size_t y;
-
-  vga_color = vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-  vga_buffer = (uint16_t *) VGA_BUFFER;
-
-  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
-    {
-      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
-	vga_buffer[vga_getindex (x, y)] = vga_mkentry (' ', vga_color);
-    }
-  vga_console = 1;
-}
-
-unsigned char
-vga_getcolor (void)
-{
-  return vga_color;
+  term->vt_data[vga_getindex (x, y)] = vga_mkentry (c, term->vt_color);
+  if (term == CURRENT_TERMINAL)
+    vga_hdw_buf[vga_getindex (x, y)] = vga_mkentry (c, term->vt_color);
 }
 
 void
-vga_setcolor (unsigned char color)
-{
-  vga_color = color;
-}
-
-void
-vga_putentry (char c, size_t x, size_t y)
-{
-  vga_buffer[vga_getindex (x, y)] = vga_mkentry (c, vga_color);
-}
-
-void
-vga_putchar (char c)
+vga_putchar (Terminal *term, char c)
 {
   __asm__ volatile ("cli");
   if (c == '\n')
     goto wrap;
-  vga_putentry (c, vga_column, vga_row);
-  if (++vga_column == VGA_SCREEN_WIDTH)
+  vga_putentry (term, c, term->vt_column, term->vt_row);
+  if (++term->vt_column == VGA_SCREEN_WIDTH)
     {
     wrap:
-      vga_column = 0;
-      if (++vga_row == VGA_SCREEN_HEIGHT)
+      term->vt_column = 0;
+      if (++term->vt_row == VGA_SCREEN_HEIGHT)
 	{
 	  size_t i;
 	  for (i = VGA_SCREEN_WIDTH; i < VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT;
 	       i++)
-	    vga_buffer[i - VGA_SCREEN_WIDTH] = vga_buffer[i];
+	    term->vt_data[i - VGA_SCREEN_WIDTH] = term->vt_data[i];
 	  for (i = 0; i < VGA_SCREEN_WIDTH; i++)
-	    vga_putentry (' ', i, VGA_SCREEN_HEIGHT - 1);
-	  vga_row--;
+	    vga_putentry (term, ' ', i, VGA_SCREEN_HEIGHT - 1);
+	  term->vt_row--;
+	  if (term == CURRENT_TERMINAL)
+	    memcpy (vga_hdw_buf, term->vt_data,
+		    2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 	}
     }
-  vga_setcurs (vga_column, vga_row);
+  vga_setcurs (term->vt_column, term->vt_row);
   __asm__ volatile ("sti");
 }
 
 void
-vga_delchar (void)
+vga_delchar (Terminal *term)
 {
-  if (vga_column > 0)
+  if (term->vt_column > 0)
     {
-      vga_column--;
-      vga_putentry (' ', vga_column, vga_row);
-      vga_setcurs (vga_column, vga_row);
+      term->vt_column--;
+      vga_putentry (term, ' ', term->vt_column, term->vt_row);
+      vga_setcurs (term->vt_column, term->vt_row);
     }
 }
 
 void
-vga_write (const char *s, size_t size)
+vga_write (Terminal *term, const char *s, size_t size)
 {
   int i;
   for (i = 0; i < size; i++)
-    vga_putchar (s[i]);
+    vga_putchar (term, s[i]);
 }
 
 void
-vga_puts (const char *s)
+vga_puts (Terminal *term, const char *s)
 {
   int written = 0;
   for (; *s != '\0'; s++, written++)
-    vga_putchar (*s);
+    vga_putchar (term, *s);
 }
 
 void

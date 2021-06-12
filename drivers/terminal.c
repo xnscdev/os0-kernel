@@ -1,5 +1,5 @@
 /*************************************************************************
- * kconfig.h -- This file is part of OS/0.                               *
+ * terminal.c -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,44 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _KCONFIG_H
-#define _KCONFIG_H
+#include <video/vga.h>
+#include <string.h>
 
-#define VERSION @VERSION@
+static Terminal default_terminal;
 
-#mesondefine ARCH_I386
+Terminal *terminals[TERMINAL_LIMIT] = {&default_terminal};
+int active_terminal;
 
-#ifdef ARCH_I386
-#mesondefine INVLPG_SUPPORT
-#endif
+void
+vga_init (void)
+{
+  size_t x;
+  size_t y;
 
-#mesondefine PROCESS_LIMIT
-#mesondefine PROCESS_FILE_LIMIT
-#mesondefine PROCESS_SEGMENT_LIMIT
+  default_terminal.vt_color =
+    vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
+    {
+      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	default_terminal.vt_data[vga_getindex (x, y)] =
+	  vga_mkentry (' ', default_terminal.vt_color);
+    }
+  memcpy (vga_hdw_buf, default_terminal.vt_data,
+	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 
-#mesondefine TERMINAL_LIMIT
+  /* Initialize termios */
+  default_terminal.vt_termios.c_iflag = DEFAULT_IFLAG;
+  default_terminal.vt_termios.c_oflag = DEFAULT_OFLAG;
+  default_terminal.vt_termios.c_cflag = DEFAULT_CFLAG;
+  default_terminal.vt_termios.c_lflag = DEFAULT_LFLAG;
+  default_terminal.vt_termios.c_ispeed = B9600;
+  default_terminal.vt_termios.c_ospeed = B9600;
+}
 
-#endif
+void
+set_active_terminal (int term)
+{
+  active_terminal = term;
+  memcpy ((void *) VGA_BUFFER, CURRENT_TERMINAL->vt_data,
+	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+}

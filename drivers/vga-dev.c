@@ -59,7 +59,7 @@ vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 int
 vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
 {
-  vga_write (buffer, len);
+  vga_write (CURRENT_TERMINAL, buffer, len);
   return 0;
 }
 

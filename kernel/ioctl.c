@@ -18,13 +18,14 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <video/vga.h>
 
 static int
-ioctl_tcgets (Process *proc, int fd, struct termios *data)
+ioctl_tcgets (Process *proc, struct termios *data)
 {
-  if (proc->p_files[fd].pf_termios == NULL)
+  if (terminals[proc->p_sid] == NULL)
     return -ENOTTY;
-  memcpy (data, proc->p_files[fd].pf_termios, sizeof (struct termios));
+  memcpy (data, &terminals[proc->p_sid]->vt_termios, sizeof (struct termios));
   return 0;
 }
 
@@ -37,7 +38,7 @@ ioctl (int fd, unsigned long req, void *data)
   switch (req)
     {
     case TCGETS:
-      return ioctl_tcgets (proc, fd, data);
+      return ioctl_tcgets (proc, data);
     }
   return -EINVAL;
 }

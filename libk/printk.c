@@ -50,7 +50,7 @@ vprintk (const char *fmt, va_list args)
 	    amt++;
 	  if (maxrem < amt)
 	    return -1;
-	  vga_write (fmt, amt);
+	  vga_write (CURRENT_TERMINAL, fmt, amt);
 	  fmt += amt;
 	  written += amt;
 	  continue;
@@ -62,7 +62,7 @@ vprintk (const char *fmt, va_list args)
 	  char c = (char) va_arg (args, int);
 	  if (maxrem == 0)
 	    return -1;
-	  vga_putchar (c);
+	  vga_putchar (CURRENT_TERMINAL, c);
 	  fmt++;
 	}
       else if (*fmt == 's')
@@ -71,7 +71,7 @@ vprintk (const char *fmt, va_list args)
 	  size_t len = strlen (s);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (s, len);
+	  vga_write (CURRENT_TERMINAL, s, len);
 	  fmt++;
 	}
       else if (*fmt == 'd' || *fmt == 'i')
@@ -82,7 +82,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'o')
@@ -93,7 +93,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'p')
@@ -105,8 +105,8 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len + 2)
 	    return -1;
-	  vga_puts ("0x");
-	  vga_write (itoa_buffer, len);
+	  vga_puts (CURRENT_TERMINAL, "0x");
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'u')
@@ -117,7 +117,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'x' || *fmt == 'X')
@@ -131,7 +131,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt++;
 	}
       else if (strncmp (fmt, "ld", 2) == 0 || strncmp (fmt, "li", 2) == 0)
@@ -142,7 +142,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lo", 2) == 0)
@@ -153,7 +153,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lu", 2) == 0)
@@ -164,7 +164,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lx", 2) == 0)
@@ -178,7 +178,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (itoa_buffer, len);
+	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
 	  fmt += 2;
 	}
       else
@@ -188,7 +188,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (fmt);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (fmt, len);
+	  vga_write (CURRENT_TERMINAL, fmt, len);
 	  written += len;
 	  fmt += len;
 	}

@@ -19,8 +19,12 @@
 #ifndef _VIDEO_VGA_H
 #define _VIDEO_VGA_H
 
+#include <kconfig.h>
+
 #include <fs/vfs.h>
 #include <sys/device.h>
+#include <sys/kbd.h>
+#include <termios.h>
 
 #define VGA_SCREEN_WIDTH 80
 #define VGA_SCREEN_HEIGHT 25
@@ -32,6 +36,11 @@
 #define vga_mkcolor(fg, bg) ((unsigned char) (fg | bg << 4))
 #define vga_mkentry(c, color) ((uint16_t) c | (uint16_t) color << 8)
 #define vga_getindex(x, y) (y * VGA_SCREEN_WIDTH + x)
+
+#define DEFAULT_IFLAG (BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY)
+#define DEFAULT_OFLAG (OPOST | ONLCR | XTABS)
+#define DEFAULT_CFLAG (B9600 | CREAD | CS7 | PARENB | HUPCL)
+#define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
 
 typedef enum
 {
@@ -53,19 +62,31 @@ typedef enum
   VGA_COLOR_WHITE
 } VGAColor;
 
+typedef struct
+{
+  uint16_t vt_data[VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT];
+  KbdBuffer vt_kbdbuf;
+  size_t vt_row;
+  size_t vt_column;
+  unsigned char vt_color;
+  struct termios vt_termios;
+} Terminal;
+
+#define CURRENT_TERMINAL (terminals[active_terminal])
+
 __BEGIN_DECLS
 
-extern int vga_console;
+extern Terminal *terminals[TERMINAL_LIMIT];
+extern int active_terminal;
+extern uint16_t *vga_hdw_buf;
 extern VFSSuperblock vga_tty_sb;
 
 void vga_init (void);
-unsigned char vga_getcolor (void);
-void vga_setcolor (unsigned char color);
-void vga_putentry (char c, size_t x, size_t y);
-void vga_putchar (char c);
-void vga_delchar (void);
-void vga_write (const char *s, size_t size);
-void vga_puts (const char *s);
+void vga_putentry (Terminal *term, char c, size_t x, size_t y);
+void vga_putchar (Terminal *term, char c);
+void vga_delchar (Terminal *term);
+void vga_write (Terminal *term, const char *s, size_t size);
+void vga_puts (Terminal *term, const char *s);
 void vga_setcurs (size_t x, size_t y);
 
 int vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset);
@@ -74,6 +95,8 @@ int vga_dev_write (SpecDevice *dev, const void *buffer, size_t len,
 int vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vga_tty_write (VFSInode *inode, const void *buffer, size_t len,
 		   off_t offset);
+
+void set_active_terminal (int term);
 
 __END_DECLS
 

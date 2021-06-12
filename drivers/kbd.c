@@ -18,15 +18,10 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
-#include <sys/kbd.h>
 #include <video/vga.h>
 
 static char kbd_press_map[128];
 static int modifies; /* If 0xe0 was seen previously */
-
-char kbd_buffer[KBD_BUFSIZ];
-size_t kbd_bufpos;
-size_t kbd_currpos;
 
 /* US QWERTY keyboard layout */
 
@@ -59,6 +54,7 @@ static char kbd_shift_chars[128] = {
 void
 kbd_handle (int scancode)
 {
+  KbdBuffer *buffer = &CURRENT_TERMINAL->vt_kbdbuf;
   if (modifies)
     {
       modifies = 0;
@@ -80,10 +76,11 @@ kbd_handle (int scancode)
   /* Remove character if backspace pressed */
   if (scancode == KEY_BACKSP)
     {
-      if (kbd_buffer[kbd_bufpos] != '\n' && kbd_bufpos > 0)
+      if (buffer->kbd_buffer[buffer->kbd_bufpos] != '\n'
+	  && buffer->kbd_bufpos > 0)
 	{
-	  kbd_bufpos--;
-	  vga_delchar ();
+	  buffer->kbd_bufpos--;
+	  vga_delchar (CURRENT_TERMINAL);
 	}
       return;
     }
@@ -92,29 +89,28 @@ kbd_handle (int scancode)
      it to the display if necessary */
   if (kbd_print_chars[scancode] != 0)
     {
-      struct termios *term;
       unsigned char c = kbd_print_chars[scancode];
       if (c != '\0' && kbd_shift_chars[c] != '\0'
 	  && (kbd_key_pressed (KEY_LSHIFT) || kbd_key_pressed (KEY_RSHIFT)))
 	c = kbd_shift_chars[c];
 
-      if (kbd_bufpos == KBD_BUFSIZ)
+      if (buffer->kbd_bufpos == KBD_BUFSIZ)
 	{
-	  if (kbd_currpos > 0)
+	  if (buffer->kbd_currpos > 0)
 	    {
-	      memmove (kbd_buffer, kbd_buffer + kbd_currpos,
-		       KBD_BUFSIZ - kbd_currpos);
-	      kbd_bufpos -= kbd_currpos;
-	      kbd_currpos = 0;
+	      memmove (buffer->kbd_buffer,
+		       buffer->kbd_buffer + buffer->kbd_currpos,
+		       KBD_BUFSIZ - buffer->kbd_currpos);
+	      buffer->kbd_bufpos -= buffer->kbd_currpos;
+	      buffer->kbd_currpos = 0;
 	    }
 	  else
 	    return; /* No space left, ignore keystroke */
 	}
-      kbd_buffer[kbd_bufpos++] = c;
+      buffer->kbd_buffer[buffer->kbd_bufpos++] = c;
 
-      term = process_table[task_getpid ()].p_files[STDIN_FILENO].pf_termios;
-      if (term != NULL && term->c_lflag & ECHO)
-	vga_putchar (c);
+      if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
+	vga_putchar (CURRENT_TERMINAL, c);
     }
 }
 
@@ -134,10 +130,11 @@ kbd_key_pressed (int key)
 int
 kbd_get_input (void *buffer, size_t len, int block)
 {
-  char *check = strchr (kbd_buffer + kbd_currpos, '\n');
+  KbdBuffer *kbdbuf = &CURRENT_TERMINAL->vt_kbdbuf;
+  char *check = strchr (kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, '\n');
   if (check == NULL)
     goto wait;
-  while (kbd_bufpos < kbd_currpos + len)
+  while (kbdbuf->kbd_bufpos < kbdbuf->kbd_currpos + len)
     {
     wait:
       if (block)
@@ -149,7 +146,7 @@ kbd_get_input (void *buffer, size_t len, int block)
       else
 	return -EAGAIN;
     }
-  memcpy (buffer, kbd_buffer + kbd_currpos, len);
-  kbd_currpos += len;
+  memcpy (buffer, kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, len);
+  kbdbuf->kbd_currpos += len;
   return 0;
 }

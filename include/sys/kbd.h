@@ -40,10 +40,14 @@
 
 #define KEY_EXTENDED 0xe0
 
-__BEGIN_DECLS
+typedef struct
+{
+  unsigned char kbd_buffer[KBD_BUFSIZ];
+  size_t kbd_bufpos;
+  size_t kbd_currpos;
+} KbdBuffer;
 
-extern char kbd_buffer[KBD_BUFSIZ];
-extern size_t kbd_bufpos;
+__BEGIN_DECLS
 
 void kbd_handle (int scancode);
 void kbd_await_press (int key);

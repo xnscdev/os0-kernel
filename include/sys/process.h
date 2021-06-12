@@ -30,18 +30,12 @@
 
 #define PROCESS_BREAK_LIMIT   0xb0000000
 
-#define DEFAULT_IFLAG (BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY)
-#define DEFAULT_OFLAG (OPOST | ONLCR | XTABS)
-#define DEFAULT_CFLAG (B9600 | CREAD | CS7 | PARENB | HUPCL)
-#define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
-
 typedef struct
 {
   VFSInode *pf_inode;
   int pf_mode;
   int pf_flags;
   off_t pf_offset;
-  struct termios *pf_termios;
 } ProcessFile;
 
 typedef struct
