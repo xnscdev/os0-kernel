@@ -75,10 +75,25 @@ sys_getegid (void)
   return process_table[task_getpid ()].p_egid;
 }
 
+int
+sys_setpgid (pid_t pid, pid_t pgid)
+{
+  if (pid < 0 || pid >= PROCESS_LIMIT || pgid < 0)
+    return -EINVAL;
+  process_table[pid == 0 ? task_getpid () : pid].p_pgid = pgid;
+  return 0;
+}
+
 pid_t
 sys_getppid (void)
 {
   return task_getppid ();
+}
+
+pid_t
+sys_getpgrp (void)
+{
+  return process_table[task_getpid ()].p_pgid;
 }
 
 int
@@ -143,6 +158,14 @@ sys_setregid (gid_t rgid, gid_t egid)
       proc->p_sgid = proc->p_egid;
     }
   return 0;
+}
+
+pid_t
+sys_getpgid (pid_t pid)
+{
+  if (pid < 0 || pid >= PROCESS_LIMIT)
+    return -EINVAL;
+  return process_table[pid == 0 ? task_getpid () : pid].p_pgid;
 }
 
 int

@@ -67,10 +67,12 @@
 #define SYS_getegid       50
 #define SYS_ioctl         54
 #define SYS_fcntl         55
+#define SYS_setpgid       57
 #define SYS_umask         60
 #define SYS_chroot        61
 #define SYS_dup2          63
 #define SYS_getppid       64
+#define SYS_getpgrp       65
 #define SYS_sigaction     67
 #define SYS_setreuid      70
 #define SYS_setregid      71
@@ -115,8 +117,6 @@
 #define SYS_getpgid       132
 #define SYS_fchdir        133
 #define SYS_sysfs         135
-#define SYS_setfsuid      138
-#define SYS_setfsgid      139
 #define SYS_flock         143
 #define SYS_getsid        147
 #define SYS_fdatasync     148

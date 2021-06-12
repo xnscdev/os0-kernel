@@ -73,8 +73,10 @@ uid_t sys_geteuid (void);
 gid_t sys_getegid (void);
 int sys_ioctl (int fd, unsigned long req, void *data);
 int sys_fcntl (int fd, int cmd, int arg);
+int sys_setpgid (pid_t pid, pid_t pgid);
 int sys_dup2 (int fd1, int fd2);
 pid_t sys_getppid (void);
+pid_t sys_getpgrp (void);
 int sys_sigaction (int sig, const struct sigaction *__restrict act,
 		   struct sigaction *__restrict old);
 int sys_setreuid (uid_t ruid, uid_t euid);
@@ -100,6 +102,7 @@ int sys_fstat (int fd, struct stat *st);
 pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
 int sys_sigprocmask (int how, const sigset_t *__restrict set,
 		     sigset_t *__restrict old);
+pid_t sys_getpgid (pid_t pid);
 int sys_fchdir (int fd);
 int sys_nanosleep (const struct timespec *req, struct timespec *rem);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
