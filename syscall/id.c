@@ -80,10 +80,23 @@ sys_setpgid (pid_t pid, pid_t pgid)
 {
   if (pgid < 0)
     return -EINVAL;
+  if (pid == 0)
+    pid = task_getpid ();
+  if (pgid == 0)
+    pgid = task_getpid ();
   if (!process_valid (pid))
     return -ESRCH;
-  process_table[pid == 0 ? task_getpid () : pid].p_pgid =
-    pgid == 0 ? task_getpid () : pgid;
+
+  /* Check if trying to change PGID of a session leader */
+  if (process_table[pid].p_sid == pid)
+    return -EPERM;
+
+  /* Check if trying to move process into a different session */
+  if (process_valid (pgid)
+      && process_table[pid].p_sid != process_table[pgid].p_sid)
+    return -EPERM;
+
+  process_table[pid].p_pgid = pgid;
   return 0;
 }
 
