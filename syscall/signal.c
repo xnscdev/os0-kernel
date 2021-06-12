@@ -52,6 +52,7 @@ int
 sys_pause (void)
 {
   Process *proc = &process_table[task_getpid ()];
+  proc->p_pause = 1;
   while (proc->p_pause)
     ;
   return -EINTR;
@@ -85,6 +86,27 @@ sys_sigaction (int sig, const struct sigaction *__restrict act,
     memcpy (old, &proc->p_sigactions[sig], sizeof (struct sigaction));
   if (act != NULL)
     memcpy (&proc->p_sigactions[sig], act, sizeof (struct sigaction));
+  return 0;
+}
+
+int
+sys_sigsuspend (const sigset_t *mask)
+{
+  Process *proc = &process_table[task_getpid ()];
+  sigset_t save;
+  memcpy (&save, &proc->p_sigblocked, sizeof (sigset_t));
+  memcpy (&proc->p_sigblocked, mask, sizeof (sigset_t));
+  proc->p_pause = 1;
+  while (proc->p_pause)
+    ;
+  memcpy (&proc->p_sigblocked, &save, sizeof (sigset_t));
+  return -EINTR;
+}
+
+int
+sys_sigpending (sigset_t *set)
+{
+  memcpy (set, &process_table[task_getpid ()].p_sigpending, sizeof (sigset_t));
   return 0;
 }
 
