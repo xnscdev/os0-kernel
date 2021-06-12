@@ -80,7 +80,8 @@ sys_setpgid (pid_t pid, pid_t pgid)
 {
   if (pid < 0 || pid >= PROCESS_LIMIT || pgid < 0)
     return -EINVAL;
-  process_table[pid == 0 ? task_getpid () : pid].p_pgid = pgid;
+  process_table[pid == 0 ? task_getpid () : pid].p_pgid =
+    pgid == 0 ? task_getpid () : pgid;
   return 0;
 }
 
