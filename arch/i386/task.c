@@ -207,28 +207,12 @@ _task_fork (void)
 
   task = kmalloc (sizeof (ProcessTask));
   if (task == NULL)
-    {
-      for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
-	{
-	  uint32_t paddr =
-	    get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
-	  if (paddr != 0)
-	    free_page (paddr);
-	}
-      page_dir_free (dir);
-      return NULL;
-    }
+    goto err;
   task->t_pid = pid;
   task->t_ppid = task_getpid ();
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_next = NULL;
-
-  for (temp = task_queue; temp->t_next != NULL; temp = temp->t_next)
-    ;
-  task->t_prev = temp;
-  temp->t_next = task;
-  task_queue->t_prev = task;
 
   proc = &process_table[pid];
   parent = &process_table[task_getpid ()];
@@ -241,6 +225,12 @@ _task_fork (void)
   /* Inherit parent working directory, real/effective/saved UID/GID,
      process group ID, session ID, and blocked signal mask */
   proc->p_cwd = parent->p_cwd;
+  proc->p_cwdpath = strdup (parent->p_cwdpath);
+  if (unlikely (proc->p_cwdpath == NULL))
+    {
+      kfree (task);
+      goto err;
+    }
   vfs_ref_inode (proc->p_cwd);
   proc->p_uid = parent->p_uid;
   proc->p_euid = parent->p_euid;
@@ -252,5 +242,22 @@ _task_fork (void)
   proc->p_sid = parent->p_sid;
   memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
   memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
+
+  for (temp = task_queue; temp->t_next != NULL; temp = temp->t_next)
+    ;
+  task->t_prev = temp;
+  temp->t_next = task;
+  task_queue->t_prev = task;
   return task;
+
+ err:
+  for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
+    {
+      uint32_t paddr =
+	get_paddr (curr_page_dir, (void *) (PAGE_COPY_VADDR + i));
+      if (paddr != 0)
+	free_page (paddr);
+    }
+  page_dir_free (dir);
+  return NULL;
 }

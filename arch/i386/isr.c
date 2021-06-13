@@ -149,21 +149,28 @@ exc14_handler (uint32_t err, uint32_t eip)
   /* Page fault raises segmentation fault
      TODO Add swap support */
   pid_t pid = task_getpid ();
-  Process *proc = &process_table[pid];
-  proc->p_siginfo.si_signo = SIGSEGV;
-  proc->p_siginfo.si_code = err & PF_FLAG_PROT ? SEGV_ACCERR : SEGV_MAPERR;
-  proc->p_siginfo.si_pid = pid;
-  proc->p_siginfo.si_uid = proc->p_uid;
-  __asm__ volatile ("mov %%cr2, %0" : "=r" (proc->p_siginfo.si_addr));
-  process_send_signal (pid, SIGSEGV);
-  /*
-  panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
-	 "Fault address: 0x%lx\nException address: 0x%lx",
-	 err & PF_FLAG_PROT ? "protection violation" : "non-present",
-	 err & PF_FLAG_WRITE ? "write access" : "read access",
-	 err & PF_FLAG_USER ? "user mode" : "kernel mode",
-	 err & PF_FLAG_RESERVED ? ", reserved entries" : "",
-	 err & PF_FLAG_INSTFETCH ? ", instruction fetch" : "", addr, eip); */
+  uint32_t addr;
+  __asm__ volatile ("mov %%cr2, %0" : "=r" (addr));
+  if (pid == 0)
+    {
+      panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
+	     "Fault address: 0x%lx\nException address: 0x%lx",
+	     err & PF_FLAG_PROT ? "protection violation" : "non-present",
+	     err & PF_FLAG_WRITE ? "write access" : "read access",
+	     err & PF_FLAG_USER ? "user mode" : "kernel mode",
+	     err & PF_FLAG_RESERVED ? ", reserved entries" : "",
+	     err & PF_FLAG_INSTFETCH ? ", instruction fetch" : "", addr, eip);
+    }
+  else
+    {
+      Process *proc = &process_table[pid];
+      proc->p_siginfo.si_signo = SIGSEGV;
+      proc->p_siginfo.si_code = err & PF_FLAG_PROT ? SEGV_ACCERR : SEGV_MAPERR;
+      proc->p_siginfo.si_pid = pid;
+      proc->p_siginfo.si_uid = proc->p_uid;
+      proc->p_siginfo.si_addr = (void *) addr;
+      process_send_signal (pid, SIGSEGV);
+    }
 }
 
 void

@@ -70,7 +70,8 @@ sys_write (int fd, void *buffer, size_t len)
 int
 sys_open (const char *path, int flags, mode_t mode)
 {
-  ProcessFile *files = process_table[task_getpid ()].p_files;
+  Process *proc = &process_table[task_getpid ()];
+  ProcessFile *files = proc->p_files;
   int i;
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
@@ -143,6 +144,14 @@ sys_open (const char *path, int flags, mode_t mode)
 	    }
 	  files[i].pf_offset =
 	    flags & O_APPEND ? files[i].pf_inode->vi_size : 0;
+
+	  files[i].pf_path = vfs_path_resolve (path);
+	  if (files[i].pf_path == NULL)
+	    {
+	      vfs_unref_inode (files[i].pf_inode);
+	      files[i].pf_inode = NULL;
+	      return -ENOMEM;
+	    }
 	  return i;
 	}
     }
@@ -159,6 +168,7 @@ sys_close (int fd)
   if (file->pf_inode == NULL)
     return -EBADF;
   vfs_unref_inode (file->pf_inode);
+  kfree (file->pf_path);
   file->pf_mode = 0;
   file->pf_offset = 0;
   return 0;
@@ -223,11 +233,20 @@ sys_chdir (const char *path)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *inode;
+  char *cwd;
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
+  cwd = vfs_path_resolve (path);
+  if (cwd == NULL)
+    {
+      vfs_unref_inode (inode);
+      return -ENOMEM;
+    }
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = inode;
+  kfree (proc->p_cwdpath);
+  proc->p_cwdpath = cwd;
   return 0;
 }
 
@@ -537,6 +556,9 @@ int
 sys_fchdir (int fd)
 {
   Process *proc = &process_table[task_getpid ()];
+  proc->p_cwdpath = strdup (proc->p_files[fd].pf_path);
+  if (proc->p_cwdpath == NULL)
+    return -ENOMEM;
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = proc->p_files[fd].pf_inode;
   vfs_ref_inode (proc->p_cwd);
@@ -547,4 +569,19 @@ int
 sys_chown (const char *path, uid_t uid, gid_t gid)
 {
   return __sys_xchown (path, uid, gid, 1);
+}
+
+int
+sys_getcwd (char *buffer, size_t len)
+{
+  char *cwd = process_table[task_getpid ()].p_cwdpath;
+  size_t cwdlen = strlen (cwd);
+  if (buffer == NULL)
+    return cwdlen;
+  if (len == 0)
+    return -EINVAL;
+  if (len <= cwdlen)
+    return -ERANGE;
+  strcpy (buffer, cwd);
+  return 0;
 }

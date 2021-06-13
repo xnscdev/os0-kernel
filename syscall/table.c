@@ -93,6 +93,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_setresgid] = sys_setresgid,
   [SYS_getresgid] = sys_getresgid,
   [SYS_chown] = sys_chown,
+  [SYS_getcwd] = sys_getcwd,
   [SYS_setxattr] = sys_setxattr,
   [SYS_lsetxattr] = sys_lsetxattr,
   [SYS_fsetxattr] = sys_fsetxattr,

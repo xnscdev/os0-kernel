@@ -32,16 +32,17 @@
 
 typedef struct
 {
-  VFSInode *pf_inode;
-  int pf_mode;
-  int pf_flags;
-  off_t pf_offset;
+  VFSInode *pf_inode; /* File descriptor inode */
+  char *pf_path;      /* Path used to open fd */
+  int pf_mode;        /* Access mode */
+  int pf_flags;       /* Other flags */
+  off_t pf_offset;    /* Current offset position */
 } ProcessFile;
 
 typedef struct
 {
-  uint32_t ps_addr;
-  uint32_t ps_size;
+  uint32_t ps_addr; /* Address of first page */
+  uint32_t ps_size; /* Size of segment */
 } ProcessSegment;
 
 typedef struct
@@ -53,6 +54,7 @@ typedef struct
   volatile ProcessTask *p_task;              /* Scheduler task */
   Array *p_segments;                         /* List of segments in memory */
   VFSInode *p_cwd;                           /* Working directory */
+  char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */
   struct rusage p_rusage;                    /* Resource usage */
   struct rusage p_cusage;                    /* Resourge usage of child

@@ -236,9 +236,13 @@ process_free (pid_t pid)
   /* Add self rusage values to parent's child rusage */
   process_add_rusage (&process_table[ppid].p_cusage, proc);
 
-  /* Reset process data */
+  /* Reset working directory */
   vfs_unref_inode (proc->p_cwd);
   proc->p_cwd = NULL;
+  kfree (proc->p_cwdpath);
+  proc->p_cwdpath = NULL;
+
+  /* Reset process data */
   proc->p_break = 0;
   proc->p_pause = 0;
   proc->p_sig = 0;
@@ -286,6 +290,9 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
   proc->p_files[STDIN_FILENO].pf_inode->vi_private =
     device_lookup (1, STDIN_FILENO);
+  proc->p_files[STDIN_FILENO].pf_path = strdup ("/dev/stdin");
+  if (proc->p_files[STDIN_FILENO].pf_path == NULL)
+    return -ENOMEM;
   proc->p_files[STDIN_FILENO].pf_mode = O_RDONLY;
   proc->p_files[STDIN_FILENO].pf_flags = 0;
   proc->p_files[STDIN_FILENO].pf_offset = 0;
@@ -294,6 +301,9 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
   proc->p_files[STDOUT_FILENO].pf_inode->vi_private =
     device_lookup (1, STDOUT_FILENO);
+  proc->p_files[STDOUT_FILENO].pf_path = strdup ("/dev/stdout");
+  if (proc->p_files[STDOUT_FILENO].pf_path == NULL)
+    return -ENOMEM;
   proc->p_files[STDOUT_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDOUT_FILENO].pf_flags = 0;
   proc->p_files[STDOUT_FILENO].pf_offset = 0;
@@ -302,6 +312,9 @@ process_setup_std_streams (pid_t pid)
   proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
   proc->p_files[STDERR_FILENO].pf_inode->vi_private =
     device_lookup (1, STDERR_FILENO);
+  proc->p_files[STDERR_FILENO].pf_path = strdup ("/dev/stderr");
+  if (proc->p_files[STDERR_FILENO].pf_path == NULL)
+    return -ENOMEM;
   proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
   proc->p_files[STDERR_FILENO].pf_flags = 0;
   proc->p_files[STDERR_FILENO].pf_offset = 0;

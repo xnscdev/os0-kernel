@@ -134,6 +134,8 @@ mount_rootfs (void)
   if (fd < 0)
     panic ("Failed to load kernel task working directory");
   process_table[0].p_cwd = process_table[0].p_files[fd].pf_inode;
+  process_table[0].p_cwdpath = process_table[0].p_files[fd].pf_path;
+  assert (process_table[0].p_cwdpath != NULL);
   memset (&process_table[0].p_files[fd], 0, sizeof (ProcessFile));
 }
 

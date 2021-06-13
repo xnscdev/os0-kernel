@@ -4,6 +4,7 @@ fs_src = [
   'ext2-util.c',
   'devfs.c',
   'fsguess.c',
+  'path.c',
   'perm.c',
   'vfs.c'
 ]

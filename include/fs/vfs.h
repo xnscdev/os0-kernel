@@ -33,6 +33,8 @@
 #define FS_TYPE_UNKNOWN 0
 #define FS_TYPE_EXT2    1
 
+#define VFS_PATH_SHORT_MAX 16
+
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
@@ -211,6 +213,7 @@ int vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b);
 void vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode);
 
 int vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks);
+char *vfs_path_resolve (const char *path);
 
 __END_DECLS
 
