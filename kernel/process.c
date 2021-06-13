@@ -481,3 +481,14 @@ process_handle_signal (void)
   process_signal_handler = sigaction->sa_flags & SA_SIGINFO ?
     (void *) sigaction->sa_sigaction : (void *) sigaction->sa_handler;
 }
+
+void
+process_signal_handled (void)
+{
+  Process *proc = &process_table[task_getpid ()];
+  uint32_t paddr = get_paddr (curr_page_dir, (void *) TASK_SIGINFO_PAGE);
+  free_page (paddr);
+  proc->p_sig = 0;
+  proc->p_pause = 0;
+  memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
+}

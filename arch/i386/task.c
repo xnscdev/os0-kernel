@@ -89,22 +89,21 @@ task_timer_tick (void)
 	{
 	  if (tp->tv_usec >= 1000)
 	    tp->tv_usec -= 1000;
-	  else
+	  else if (tp->tv_sec > 0)
 	    {
-	      if (tp->tv_sec > 0)
-		{
-		  tp->tv_sec--;
-		  tp->tv_usec = 1000000 - tp->tv_usec;
-		}
-	      else
-		{
-		  /* Reset the timer and send a signal */
-		  tp->tv_sec =
-		    process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_sec;
-		  tp->tv_usec =
-		    process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_usec;
-		  sys_kill (i, SIGALRM);
-		}
+	      tp->tv_sec--;
+	      tp->tv_usec = 999000 - tp->tv_usec;
+	    }
+
+	  if (tp->tv_sec == 0 && tp->tv_usec == 0)
+	    {
+	      /* Reset the timer and send a signal */
+	      tp->tv_sec =
+		process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_sec;
+	      tp->tv_usec =
+		process_table[i].p_itimers[ITIMER_REAL].it_interval.tv_usec;
+	      process_table[i].p_siginfo.si_code = SI_TIMER;
+	      process_send_signal (i, SIGALRM);
 	    }
 	}
     }

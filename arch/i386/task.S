@@ -275,6 +275,9 @@ signal_trampoline:
 	call	*%ecx
 	add	$12, %esp
 
+	/* Reset handled signal */
+	call	process_signal_handled
+
 	popf
 	popa
 	ret
