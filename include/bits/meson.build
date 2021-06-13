@@ -1,4 +1,5 @@
-install_headers('ioctl.h',
+install_headers('errlist.h',
+		'ioctl.h',
 		'resource.h',
 		'stat.h',
 		'statvfs.h',
