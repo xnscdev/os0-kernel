@@ -22,7 +22,7 @@
 #include <sys/cdefs.h>
 #include <stdint.h>
 
-__attribute__ ((always_inline)) static __inline unsigned char
+__always_inline static __inline unsigned char
 inb (unsigned short port)
 {
   unsigned char value;
@@ -30,7 +30,7 @@ inb (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline unsigned char
+__always_inline static __inline unsigned char
 inb_p (unsigned short port)
 {
   unsigned char value;
@@ -39,7 +39,7 @@ inb_p (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline unsigned short
+__always_inline static __inline unsigned short
 inw (unsigned short port)
 {
   unsigned short value;
@@ -47,7 +47,7 @@ inw (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline unsigned short
+__always_inline static __inline unsigned short
 inw_p (unsigned short port)
 {
   unsigned short value;
@@ -56,7 +56,7 @@ inw_p (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline unsigned int
+__always_inline static __inline unsigned int
 inl (unsigned short port)
 {
   unsigned int value;
@@ -64,7 +64,7 @@ inl (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline unsigned int
+__always_inline static __inline unsigned int
 inl_p (unsigned short port)
 {
   unsigned int value;
@@ -73,81 +73,81 @@ inl_p (unsigned short port)
   return value;
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outb (unsigned char value, unsigned short port)
 {
   __asm__ volatile ("outb %b0, %w1" :: "a" (value), "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outb_p (unsigned char value, unsigned short port)
 {
   __asm__ volatile ("outb %b0, %w1\noutb %%al, $0x80" :: "a" (value),
 		    "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outw (unsigned short value, unsigned short port)
 {
   __asm__ volatile ("outw %w0, %w1" :: "a" (value), "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outw_p (unsigned short value, unsigned short port)
 {
   __asm__ volatile ("outw %w0, %w1\noutb %%al, $0x80" :: "a" (value),
 		    "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outl (unsigned int value, unsigned short port)
 {
   __asm__ volatile ("outl %0, %w1" :: "a" (value), "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outl_p (unsigned int value, unsigned short port)
 {
   __asm__ volatile ("outl %0, %w1\noutb %%al, $0x80" :: "a" (value),
 		    "Nd" (port));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 insb (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep insb" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 insw (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep insw" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 insl (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep insl" : "=D" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outsb (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep outsb" : "=S" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outsw (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep outsw" : "=S" (addr), "=c" (count) : "d" (port),
 		    "0" (addr), "1" (count));
 }
 
-__attribute__ ((always_inline)) static __inline void
+__always_inline static __inline void
 outsl (unsigned short port, void *addr, unsigned int count)
 {
   __asm__ volatile ("cld; rep outsl" : "=S" (addr), "=c" (count) : "d" (port),

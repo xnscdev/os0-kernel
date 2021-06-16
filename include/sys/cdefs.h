@@ -35,6 +35,9 @@
 #define __restrict
 #endif
 
-#define __hidden __attribute__ ((visibility ("hidden")))
+#define __hidden        __attribute__ ((visibility ("hidden")))
+#define __weak          __attribute__ ((weak))
+#define __artificial    __attribute__ ((artificial))
+#define __always_inline __attribute__ ((always_inline))
 
 #endif
