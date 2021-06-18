@@ -46,6 +46,7 @@ int devfs_mount (VFSMount *mp, int flags, void *data);
 int devfs_unmount (VFSMount *mp, int flags);
 VFSInode *devfs_alloc_inode (VFSSuperblock *sb);
 void devfs_destroy_inode (VFSInode *inode);
+VFSDirectory *devfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
 void devfs_free (VFSSuperblock *sb);
 
 int devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,

@@ -117,6 +117,17 @@ sys_open (const char *path, int flags, mode_t mode)
 	  switch (flags & O_ACCMODE)
 	    {
 	    case O_RDONLY:
+	      if (S_ISDIR (files[i].pf_inode->vi_mode))
+		{
+		  files[i].pf_dir =
+		    vfs_alloc_dir (files[i].pf_inode, files[i].pf_inode->vi_sb);
+		  if (unlikely (files[i].pf_dir == NULL))
+		    {
+		      vfs_unref_inode (files[i].pf_inode);
+		      files[i].pf_inode = NULL;
+		      return -EIO;
+		    }
+		}
 	      files[i].pf_mode = O_RDONLY;
 	      break;
 	    case O_WRONLY:
@@ -168,6 +179,9 @@ sys_close (int fd)
   if (file->pf_inode == NULL)
     return -EBADF;
   vfs_unref_inode (file->pf_inode);
+  file->pf_inode = NULL;
+  vfs_destroy_dir (file->pf_dir);
+  file->pf_dir = NULL;
   kfree (file->pf_path);
   file->pf_mode = 0;
   file->pf_offset = 0;

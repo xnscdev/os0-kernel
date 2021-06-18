@@ -115,12 +115,12 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
       int ret = ext2_readdir (&entry, d, sb);
       if (ret < 0)
 	{
-	  ext2_free_dir (d);
+	  ext2_destroy_dir (d);
 	  return ret;
 	}
       else if (ret == 1)
 	{
-	  ext2_free_dir (d);
+	  ext2_destroy_dir (d);
 	  return -ENOENT;
 	}
       if (strcmp (entry->d_name, name) == 0)
@@ -139,7 +139,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  if (!follow_symlinks || !S_ISLNK (i->vi_mode))
 	    {
 	      *inode = i;
-	      ext2_free_dir (d);
+	      ext2_destroy_dir (d);
 	      return 0;
 	    }
 
@@ -153,7 +153,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  if (buffer == NULL)
 	    {
 	      vfs_unref_inode (i);
-	      ext2_free_dir (d);
+	      ext2_destroy_dir (d);
 	      return -ENOMEM;
 	    }
 
@@ -183,7 +183,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	    }
 
 	  kfree (buffer);
-	  ext2_free_dir (d);
+	  ext2_destroy_dir (d);
 	  proc->p_cwd = cwd;
 	  *inode = i;
 	  return 0;
@@ -191,14 +191,14 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	err:
 	  vfs_unref_inode (i);
 	  kfree (buffer);
-	  ext2_free_dir (d);
+	  ext2_destroy_dir (d);
 	  proc->p_cwd = cwd;
 	  return ret;
 	}
       vfs_destroy_dir_entry (entry);
     }
 
-  ext2_free_dir (d);
+  ext2_destroy_dir (d);
   return -ENOENT;
 }
 
@@ -766,13 +766,13 @@ ext2_rmdir (VFSInode *dir, const char *name)
 	break;
       else if (ret < 0)
 	{
-	  ext2_free_dir (d);
+	  ext2_destroy_dir (d);
 	  return ret;
 	}
       i++;
       vfs_destroy_dir_entry (entry);
     }
-  ext2_free_dir (d);
+  ext2_destroy_dir (d);
   if (i > 2)
     return -ENOTEMPTY; /* Empty directory should only have 2 entries */
 

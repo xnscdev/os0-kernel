@@ -37,6 +37,16 @@ init_argv:
 .arg0:
 	.asciz "/sbin/init"
 
+	.global init_envp
+	.type init_envp, @object
+init_envp:
+	.long .envp
+.envp:
+	.long .env0
+	.long 0
+.env0:
+	.asciz "TERM=xterm"
+
 	.section .bss
 	.type signal_return_addr, @object
 	.size signal_return_addr, 16

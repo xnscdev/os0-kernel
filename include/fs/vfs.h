@@ -45,6 +45,8 @@ typedef struct
 {
   VFSInode *(*sb_alloc_inode) (VFSSuperblock *);
   void (*sb_destroy_inode) (VFSInode *);
+  VFSDirectory *(*sb_alloc_dir) (VFSInode *, VFSSuperblock *);
+  void (*sb_destroy_dir) (VFSDirectory *);
   void (*sb_fill_inode) (VFSInode *);
   void (*sb_write_inode) (VFSInode *);
   void (*sb_free) (VFSSuperblock *);
@@ -172,6 +174,8 @@ int vfs_mount (const char *type, const char *dir, int flags, void *data);
 VFSInode *vfs_alloc_inode (VFSSuperblock *sb);
 void vfs_ref_inode (VFSInode *inode);
 void vfs_unref_inode (VFSInode *inode);
+VFSDirectory *vfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
+void vfs_destroy_dir (VFSDirectory *dir);
 void vfs_fill_inode (VFSInode *inode);
 void vfs_write_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);

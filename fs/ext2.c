@@ -27,6 +27,8 @@
 const VFSSuperblockOps ext2_sops = {
   .sb_alloc_inode = ext2_alloc_inode,
   .sb_destroy_inode = ext2_destroy_inode,
+  .sb_alloc_dir = ext2_alloc_dir,
+  .sb_destroy_dir = ext2_destroy_dir,
   .sb_fill_inode = ext2_fill_inode,
   .sb_write_inode = ext2_write_inode,
   .sb_free = ext2_free,
@@ -206,6 +208,40 @@ ext2_destroy_inode (VFSInode *inode)
 {
   kfree (inode->vi_private);
   kfree (inode);
+}
+
+VFSDirectory *
+ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
+{
+  VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
+  loff_t realblock;
+
+  if (unlikely (d == NULL))
+    return NULL;
+  d->vd_inode = dir;
+  d->vd_buffer = kmalloc (sb->sb_blksize);
+  if (unlikely (d->vd_buffer == NULL))
+    goto err;
+
+  realblock = ext2_data_block (dir->vi_private, sb, 0);
+  if (realblock < 0)
+    goto err;
+  if (ext2_read_blocks (d->vd_buffer, sb, realblock, 1) < 0)
+    goto err;
+  return d;
+
+ err:
+  ext2_destroy_dir (d);
+  return NULL;
+}
+
+void
+ext2_destroy_dir (VFSDirectory *dir)
+{
+  if (dir == NULL)
+    return;
+  kfree (dir->vd_buffer);
+  kfree (dir);
 }
 
 void

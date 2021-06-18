@@ -215,6 +215,23 @@ vfs_unref_inode (VFSInode *inode)
     inode->vi_sb->sb_ops->sb_destroy_inode (inode);
 }
 
+VFSDirectory *
+vfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
+{
+  if (dir->vi_sb->sb_ops->sb_alloc_dir == NULL)
+    return NULL;
+  return dir->vi_sb->sb_ops->sb_alloc_dir (dir, sb);
+}
+
+void
+vfs_destroy_dir (VFSDirectory *dir)
+{
+  if (dir == NULL)
+    return;
+  if (dir->vd_inode->vi_sb->sb_ops->sb_destroy_dir != NULL)
+    dir->vd_inode->vi_sb->sb_ops->sb_destroy_dir (dir);
+}
+
 void
 vfs_fill_inode (VFSInode *inode)
 {

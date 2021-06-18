@@ -27,6 +27,8 @@
 const VFSSuperblockOps devfs_sops = {
   .sb_alloc_inode = devfs_alloc_inode,
   .sb_destroy_inode = devfs_destroy_inode,
+  .sb_alloc_dir = devfs_alloc_dir,
+  .sb_destroy_dir = (void (*) (VFSDirectory *)) kfree,
   .sb_free = devfs_free
 };
 
@@ -106,6 +108,16 @@ void
 devfs_destroy_inode (VFSInode *inode)
 {
   kfree (inode);
+}
+
+VFSDirectory *
+devfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
+{
+  VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
+  if (unlikely (d == NULL))
+    return NULL;
+  d->vd_inode = dir;
+  return d;
 }
 
 void

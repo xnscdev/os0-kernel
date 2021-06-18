@@ -178,13 +178,13 @@ loff_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
-VFSDirectory *ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
-void ext2_free_dir (VFSDirectory *dir);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);
 VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 void ext2_destroy_inode (VFSInode *inode);
+VFSDirectory *ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
+void ext2_destroy_dir (VFSDirectory *dir);
 void ext2_fill_inode (VFSInode *inode);
 void ext2_write_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);

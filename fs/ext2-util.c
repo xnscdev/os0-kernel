@@ -943,37 +943,3 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   kfree (data);
   return ret;
 }
-
-VFSDirectory *
-ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
-{
-  VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
-  loff_t realblock;
-
-  if (unlikely (d == NULL))
-    return NULL;
-  d->vd_inode = dir;
-  d->vd_buffer = kmalloc (sb->sb_blksize);
-  if (unlikely (d->vd_buffer == NULL))
-    goto err;
-
-  realblock = ext2_data_block (dir->vi_private, sb, 0);
-  if (realblock < 0)
-    goto err;
-  if (ext2_read_blocks (d->vd_buffer, sb, realblock, 1) < 0)
-    goto err;
-  return d;
-
- err:
-  ext2_free_dir (d);
-  return NULL;
-}
-
-void
-ext2_free_dir (VFSDirectory *dir)
-{
-  if (dir == NULL)
-    return;
-  kfree (dir->vd_buffer);
-  kfree (dir);
-}

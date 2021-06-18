@@ -32,11 +32,12 @@
 
 typedef struct
 {
-  VFSInode *pf_inode; /* File descriptor inode */
-  char *pf_path;      /* Path used to open fd */
-  int pf_mode;        /* Access mode */
-  int pf_flags;       /* Other flags */
-  off_t pf_offset;    /* Current offset position */
+  VFSInode *pf_inode;   /* File descriptor inode */
+  VFSDirectory *pf_dir; /* Directory, for reading entries */
+  char *pf_path;        /* Path used to open fd */
+  int pf_mode;          /* Access mode */
+  int pf_flags;         /* Other flags */
+  off_t pf_offset;      /* Current offset position */
 } ProcessFile;
 
 typedef struct
