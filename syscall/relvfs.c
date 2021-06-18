@@ -304,6 +304,7 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
   VFSInode *inode;
+  int accmode = flags & AT_EACCESS ? 0 : 1;
   int ret;
   if (fd != AT_FDCWD)
     {
@@ -321,10 +322,11 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
     case F_OK:
       break; /* The file exists at this point */
     case X_OK:
+      return vfs_perm_check_exec (inode, accmode);
     case R_OK:
+      return vfs_perm_check_read (inode, accmode);
     case W_OK:
-      ret = -ENOSYS; /* TODO Implement */
-      break;
+      return vfs_perm_check_write (inode, accmode);
     default:
       ret = -EINVAL;
     }

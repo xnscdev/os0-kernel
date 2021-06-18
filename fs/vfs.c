@@ -282,7 +282,7 @@ vfs_create (VFSInode *dir, const char *name, mode_t mode)
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  ret = vfs_perm_check_write (dir);
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_create != NULL)
@@ -297,7 +297,7 @@ vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  ret = vfs_perm_check_read (dir);
+  ret = vfs_perm_check_read (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_lookup != NULL)
@@ -311,7 +311,7 @@ vfs_link (VFSInode *old, VFSInode *dir, const char *new)
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  ret = vfs_perm_check_write (dir);
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_link != NULL)
@@ -325,7 +325,7 @@ vfs_unlink (VFSInode *dir, const char *name)
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  ret = vfs_perm_check_write (dir);
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_unlink != NULL)
@@ -339,7 +339,7 @@ vfs_symlink (VFSInode *dir, const char *old, const char *new)
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  ret = vfs_perm_check_write (dir);
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_symlink != NULL)
@@ -350,7 +350,7 @@ vfs_symlink (VFSInode *dir, const char *old, const char *new)
 int
 vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  int ret = vfs_perm_check_read (inode);
+  int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_read != NULL)
@@ -361,7 +361,7 @@ vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 int
 vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
-  int ret = vfs_perm_check_write (inode);
+  int ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_write != NULL)
@@ -372,7 +372,7 @@ vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 int
 vfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  int ret = vfs_perm_check_read (dir->vd_inode);
+  int ret = vfs_perm_check_read (dir->vd_inode, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vd_inode->vi_mode))
@@ -407,7 +407,7 @@ vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  int ret = vfs_perm_check_write (dir);
+  int ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -420,7 +420,7 @@ vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 int
 vfs_rmdir (VFSInode *dir, const char *name)
 {
-  int ret = vfs_perm_check_write (dir);
+  int ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -433,7 +433,7 @@ vfs_rmdir (VFSInode *dir, const char *name)
 int
 vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
-  int ret = vfs_perm_check_write (dir);
+  int ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -447,10 +447,10 @@ int
 vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 	    const char *newname)
 {
-  int ret = vfs_perm_check_write (olddir);
+  int ret = vfs_perm_check_write (olddir, 0);
   if (ret != 0)
     return ret;
-  ret = vfs_perm_check_write (newdir);
+  ret = vfs_perm_check_write (newdir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (olddir->vi_mode))
@@ -466,7 +466,7 @@ vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 int
 vfs_readlink (VFSInode *inode, char *buffer, size_t len)
 {
-  int ret = vfs_perm_check_read (inode);
+  int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_readlink != NULL)
@@ -477,7 +477,7 @@ vfs_readlink (VFSInode *inode, char *buffer, size_t len)
 int
 vfs_truncate (VFSInode *inode)
 {
-  int ret = vfs_perm_check_write (inode);
+  int ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_truncate != NULL)
@@ -497,7 +497,7 @@ int
 vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 	      size_t len, int flags)
 {
-  int ret = vfs_perm_check_write (inode);
+  int ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_setxattr != NULL)
@@ -508,7 +508,7 @@ vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 int
 vfs_getxattr (VFSInode *inode, const char *name, void *buffer, size_t len)
 {
-  int ret = vfs_perm_check_read (inode);
+  int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_getxattr != NULL)
@@ -519,7 +519,7 @@ vfs_getxattr (VFSInode *inode, const char *name, void *buffer, size_t len)
 int
 vfs_listxattr (VFSInode *inode, char *buffer, size_t len)
 {
-  int ret = vfs_perm_check_read (inode);
+  int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_listxattr != NULL)
@@ -530,7 +530,7 @@ vfs_listxattr (VFSInode *inode, char *buffer, size_t len)
 int
 vfs_removexattr (VFSInode *inode, const char *name)
 {
-  int ret = vfs_perm_check_write (inode);
+  int ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_removexattr != NULL)

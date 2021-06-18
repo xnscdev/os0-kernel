@@ -21,19 +21,19 @@
 #include <errno.h>
 
 int
-vfs_perm_check_read (VFSInode *inode)
+vfs_perm_check_read (VFSInode *inode, int real)
 {
-  uid_t euid = sys_geteuid ();
-  if (euid == 0)
+  uid_t uid = real ? sys_getuid () : sys_geteuid ();
+  if (uid == 0)
     return 0; /* Super-user has all permissions */
-  if (inode->vi_uid == euid)
+  if (inode->vi_uid == uid)
     {
       if (!(inode->vi_mode & S_IRUSR))
 	return -EACCES;
       if (S_ISDIR (inode->vi_mode) && !(inode->vi_mode & S_IXUSR))
 	return -EACCES;
     }
-  else if (inode->vi_gid == sys_getegid ())
+  else if (inode->vi_gid == (real ? sys_getgid () : sys_getegid ()))
     {
       if (!(inode->vi_mode & S_IRGRP))
 	return -EACCES;
@@ -48,19 +48,19 @@ vfs_perm_check_read (VFSInode *inode)
 }
 
 int
-vfs_perm_check_write (VFSInode *inode)
+vfs_perm_check_write (VFSInode *inode, int real)
 {
-  uid_t euid = sys_geteuid ();
-  if (euid == 0)
+  uid_t uid = real ? sys_getuid () : sys_geteuid ();
+  if (uid == 0)
     return 0; /* Super-user has all permissions */
-  if (inode->vi_uid == euid)
+  if (inode->vi_uid == uid)
     {
       if (!(inode->vi_mode & S_IWUSR))
 	return -EACCES;
       if (S_ISDIR (inode->vi_mode) && !(inode->vi_mode & S_IXUSR))
 	return -EACCES;
     }
-  else if (inode->vi_gid == sys_getgid ())
+  else if (inode->vi_gid == (real ? sys_getgid () : sys_getegid ()))
     {
       if (!(inode->vi_mode & S_IWGRP))
 	return -EACCES;
@@ -70,19 +70,22 @@ vfs_perm_check_write (VFSInode *inode)
   else if (!(inode->vi_mode & S_IWOTH))
     return -EACCES;
   else if (S_ISDIR (inode->vi_mode) && !(inode->vi_mode & S_IXOTH))
-	return -EACCES;
+    return -EACCES;
   return 0;
 }
 
 int
-vfs_perm_check_exec (VFSInode *inode)
+vfs_perm_check_exec (VFSInode *inode, int real)
 {
-  if (inode->vi_uid == sys_getuid ())
+  uid_t uid = real ? sys_getuid () : sys_geteuid ();
+  if (uid == 0)
+    return inode->vi_mode & (S_IXUSR | S_IXGRP | S_IXOTH) ? 0 : -EACCES;
+  if (inode->vi_uid == uid)
     {
       if (!(inode->vi_mode & S_IXUSR))
 	return -EACCES;
     }
-  else if (inode->vi_gid == sys_getgid ())
+  else if (inode->vi_gid == (real ? sys_getgid () : sys_getegid ()))
     {
       if (!(inode->vi_mode & S_IXGRP))
 	return -EACCES;
