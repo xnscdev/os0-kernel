@@ -1,5 +1,5 @@
 /*************************************************************************
- * statvfs.h -- This file is part of OS/0.                               *
+ * statfs.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,15 +16,9 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _BITS_STATVFS_H
-#define _BITS_STATVFS_H
+#ifndef _SYS_STATFS_H
+#define _SYS_STATFS_H
 
-#ifndef _SYS_STATVFS_H
-#error  "<bits/statvfs.h> should not be included directly"
-#endif
-
-#include <sys/types.h>
-
-#include <bits/types/statvfs.h>
+#include <bits/statfs.h>
 
 #endif

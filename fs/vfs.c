@@ -261,10 +261,10 @@ vfs_update_sb (VFSSuperblock *sb)
 }
 
 int
-vfs_statvfs (VFSSuperblock *sb, struct statvfs *st)
+vfs_statfs (VFSSuperblock *sb, struct statfs *st)
 {
-  if (sb->sb_ops->sb_statvfs != NULL)
-    return sb->sb_ops->sb_statvfs (sb, st);
+  if (sb->sb_ops->sb_statfs != NULL)
+    return sb->sb_ops->sb_statfs (sb, st);
   return -ENOSYS;
 }
 

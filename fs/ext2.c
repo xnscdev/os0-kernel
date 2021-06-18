@@ -34,7 +34,7 @@ const VFSSuperblockOps ext2_sops = {
   .sb_write_inode = ext2_write_inode,
   .sb_free = ext2_free,
   .sb_update = ext2_update,
-  .sb_statvfs = ext2_statvfs,
+  .sb_statfs = ext2_statfs,
   .sb_remount = ext2_remount
 };
 
@@ -355,15 +355,16 @@ ext2_update (VFSSuperblock *sb)
 }
 
 int
-ext2_statvfs (VFSSuperblock *sb, struct statvfs *st)
+ext2_statfs (VFSSuperblock *sb, struct statfs *st)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
+  uid_t euid = process_table[task_getpid ()].p_euid;
   st->f_type = EXT2_MAGIC;
   st->f_bsize = sb->sb_blksize;
   st->f_blocks = esb->esb_blocks;
   st->f_bfree = esb->esb_fblocks;
   st->f_bavail = esb->esb_fblocks -
-    (process_table[task_getpid ()].p_euid != 0) * esb->esb_rblocks;
+    (euid != 0 && euid != esb->esb_ruid) * esb->esb_rblocks;
   st->f_files = esb->esb_inodes;
   st->f_ffree = esb->esb_finodes;
   st->f_fsid.f_val[0] = sb->sb_dev->sd_major;

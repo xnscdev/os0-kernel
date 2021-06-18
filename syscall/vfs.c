@@ -530,15 +530,24 @@ sys_fchown (int fd, uid_t uid, gid_t gid)
 }
 
 int
-sys_statvfs (const char *path, struct statvfs *st)
+sys_statfs (const char *path, struct statfs *st)
 {
   VFSInode *inode;
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
-  ret = vfs_statvfs (inode->vi_sb, st);
+  ret = vfs_statfs (inode->vi_sb, st);
   vfs_unref_inode (inode);
   return ret;
+}
+
+int
+sys_fstatfs (int fd, struct statfs *st)
+{
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_statfs (inode->vi_sb, st);
 }
 
 int

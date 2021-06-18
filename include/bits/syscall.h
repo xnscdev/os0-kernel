@@ -97,7 +97,8 @@
 #define SYS_fchown        95
 #define SYS_getpriority   96
 #define SYS_setpriority   97
-#define SYS_statvfs       99
+#define SYS_statfs        99
+#define SYS_fstatfs       100
 #define SYS_ioperm        101
 #define SYS_socketcall    102
 #define SYS_syslog        103

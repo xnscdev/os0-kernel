@@ -28,7 +28,6 @@
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #include <dirent.h>
 #include <stddef.h>
 
@@ -94,7 +93,8 @@ int sys_truncate (const char *path, off_t len);
 int sys_ftruncate (int fd, off_t len);
 int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
-int sys_statvfs (const char *path, struct statvfs *st);
+int sys_statfs (const char *path, struct statfs *st);
+int sys_fstatfs (int fd, struct statfs *st);
 int sys_setitimer (int which, const struct itimerval *__restrict new,
 		   struct itimerval *__restrict old);
 int sys_getitimer (int which, struct itimerval *curr);
