@@ -64,12 +64,13 @@ typedef enum
 
 typedef struct
 {
-  uint16_t vt_data[VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT];
-  KbdBuffer vt_kbdbuf;
-  size_t vt_row;
-  size_t vt_column;
-  unsigned char vt_color;
-  struct termios vt_termios;
+  uint16_t vt_data[VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT]; /* Screen data */
+  KbdBuffer vt_kbdbuf;       /* Keyboard input buffer for terminal */
+  size_t vt_row;             /* Cursor row */
+  size_t vt_column;          /* Cursor column */
+  pid_t vt_fgpgid;           /* Foreground process group ID */
+  unsigned char vt_color;    /* Current color */
+  struct termios vt_termios; /* Termios structure */
 } Terminal;
 
 #define CURRENT_TERMINAL (terminals[active_terminal])

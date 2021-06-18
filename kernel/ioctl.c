@@ -129,6 +129,21 @@ ioctl (int fd, unsigned long req, void *data)
       return ioctl_tcflush (proc, fd, (int) data);
     case TIOCSTI:
       return -ENOTSUP; /* TODO Implement */
+    case TIOCGPGRP:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      *((pid_t *) data) = terminals[proc->p_sid]->vt_fgpgid;
+      break;
+    case TIOCSPGRP:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      terminals[proc->p_sid]->vt_fgpgid = *((pid_t *) data);
+      break;
+    case TIOCGSID:
+      if (!ioctl_isatty (proc))
+	return -ENOTTY;
+      *((pid_t *) data) = proc->p_sid;
+      break;
     default:
       return -EINVAL;
     }
