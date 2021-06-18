@@ -29,6 +29,7 @@
 #include <sys/signal.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <dirent.h>
 #include <stddef.h>
 
 __BEGIN_DECLS
@@ -105,6 +106,7 @@ int sys_sigprocmask (int how, const sigset_t *__restrict set,
 		     sigset_t *__restrict old);
 pid_t sys_getpgid (pid_t pid);
 int sys_fchdir (int fd);
+int sys_getdents (int fd, struct dirent *dirp, unsigned int count);
 pid_t sys_getsid (pid_t pid);
 int sys_nanosleep (const struct timespec *req, struct timespec *rem);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);

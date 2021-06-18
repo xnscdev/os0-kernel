@@ -20,6 +20,7 @@
 #include <fs/ext2.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
+#include <sys/process.h>
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
 #include <errno.h>
@@ -361,8 +362,8 @@ ext2_statvfs (VFSSuperblock *sb, struct statvfs *st)
   st->f_bsize = sb->sb_blksize;
   st->f_blocks = esb->esb_blocks;
   st->f_bfree = esb->esb_fblocks;
-  /* TODO Consider reserved blocks */
-  st->f_bavail = esb->esb_fblocks;
+  st->f_bavail = esb->esb_fblocks -
+    (process_table[task_getpid ()].p_euid != 0) * esb->esb_rblocks;
   st->f_files = esb->esb_inodes;
   st->f_ffree = esb->esb_finodes;
   st->f_fsid.f_val[0] = sb->sb_dev->sd_major;

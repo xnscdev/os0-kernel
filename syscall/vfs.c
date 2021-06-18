@@ -334,6 +334,14 @@ sys_lseek (int fd, off_t offset, int whence)
   if (real_offset < 0)
     return -EINVAL;
   file->pf_offset = real_offset;
+
+  if (S_ISDIR (file->pf_inode->vi_mode))
+    {
+      vfs_destroy_dir (file->pf_dir);
+      file->pf_dir = vfs_alloc_dir (file->pf_inode, file->pf_inode->vi_sb);
+      if (unlikely (file->pf_dir == NULL))
+	return -EIO;
+    }
   return real_offset;
 }
 
@@ -577,6 +585,42 @@ sys_fchdir (int fd)
   proc->p_cwd = proc->p_files[fd].pf_inode;
   vfs_ref_inode (proc->p_cwd);
   return 0;
+}
+
+int
+sys_getdents (int fd, struct dirent *dirp, unsigned int count)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSDirectory *dir;
+  VFSDirEntry *entry;
+  unsigned int i;
+  int ret;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  dir = proc->p_files[fd].pf_dir;
+  if (dir == NULL)
+    return -ENOTDIR;
+  for (i = 0; i < count; i++)
+    {
+      ret = vfs_readdir (&entry, dir, dir->vd_inode->vi_sb);
+      switch (ret)
+	{
+	case 1:
+	  if (i == count - 1)
+	    break;
+	  return 0;
+	case 0:
+	  dirp[i].d_ino = entry->d_inode->vi_ino;
+	  dirp[i].d_reclen = sizeof (struct dirent);
+	  dirp[i].d_type = DT_UNKNOWN;
+	  strncpy (dirp[i].d_name, entry->d_name, 256);
+	  vfs_destroy_dir_entry (entry);
+	  break;
+	default:
+	  return ret;
+	}
+    }
+  return sizeof (struct dirent) * count;
 }
 
 int

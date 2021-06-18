@@ -118,6 +118,7 @@
 #define SYS_getpgid       132
 #define SYS_fchdir        133
 #define SYS_sysfs         135
+#define SYS_getdents      141
 #define SYS_flock         143
 #define SYS_getsid        147
 #define SYS_fdatasync     148

@@ -1,4 +1,5 @@
-install_headers('errlist.h',
+install_headers('dirent.h',
+		'errlist.h',
 		'ioctl.h',
 		'resource.h',
 		'stat.h',
