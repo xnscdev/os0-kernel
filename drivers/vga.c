@@ -33,30 +33,12 @@ vga_putentry (Terminal *term, char c, size_t x, size_t y)
 void
 vga_putchar (Terminal *term, char c)
 {
-  __asm__ volatile ("cli");
-  if (c == '\n')
-    goto wrap;
-  vga_putentry (term, c, term->vt_column, term->vt_row);
-  if (++term->vt_column == VGA_SCREEN_WIDTH)
-    {
-    wrap:
-      term->vt_column = 0;
-      if (++term->vt_row == VGA_SCREEN_HEIGHT)
-	{
-	  size_t i;
-	  for (i = VGA_SCREEN_WIDTH; i < VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT;
-	       i++)
-	    term->vt_data[i - VGA_SCREEN_WIDTH] = term->vt_data[i];
-	  for (i = 0; i < VGA_SCREEN_WIDTH; i++)
-	    vga_putentry (term, ' ', i, VGA_SCREEN_HEIGHT - 1);
-	  term->vt_row--;
-	  if (term == CURRENT_TERMINAL)
-	    memcpy (vga_hdw_buf, term->vt_data,
-		    2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
-	}
-    }
-  vga_setcurs (term->vt_column, term->vt_row);
-  __asm__ volatile ("sti");
+  if (parsing_escseq)
+    vga_terminal_parse_escseq (term, c);
+  else if (c == '\033')
+    parsing_escseq = 1;
+  else
+    vga_display_putchar (term, c);
 }
 
 void
@@ -84,6 +66,61 @@ vga_puts (Terminal *term, const char *s)
   int written = 0;
   for (; *s != '\0'; s++, written++)
     vga_putchar (term, *s);
+}
+
+void
+vga_display_putchar (Terminal *term, char c)
+{
+  int active;
+  if (c == '\0')
+    return;
+  active = term == CURRENT_TERMINAL;
+  if (active)
+    __asm__ volatile ("cli");
+  if (c == '\n')
+    goto wrap;
+  vga_putentry (term, c, term->vt_column, term->vt_row);
+  if (++term->vt_column == VGA_SCREEN_WIDTH)
+    {
+    wrap:
+      term->vt_column = 0;
+      if (++term->vt_row == VGA_SCREEN_HEIGHT)
+	{
+	  size_t i;
+	  for (i = VGA_SCREEN_WIDTH; i < VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT;
+	       i++)
+	    term->vt_data[i - VGA_SCREEN_WIDTH] = term->vt_data[i];
+	  for (i = 0; i < VGA_SCREEN_WIDTH; i++)
+	    vga_putentry (term, ' ', i, VGA_SCREEN_HEIGHT - 1);
+	  term->vt_row--;
+	  if (active)
+	    memcpy (vga_hdw_buf, term->vt_data,
+		    2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+	}
+    }
+  vga_setcurs (term->vt_column, term->vt_row);
+  if (active)
+    __asm__ volatile ("sti");
+}
+
+void
+vga_clear (Terminal *term)
+{
+  size_t y;
+  size_t x;
+  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
+    {
+      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	term->vt_data[vga_getindex (x, y)] =
+	  vga_mkentry (' ', term->vt_color);
+    }
+  if (term == CURRENT_TERMINAL)
+    {
+      __asm__ volatile ("cli");
+      memcpy (vga_hdw_buf, term->vt_data,
+	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+      __asm__ volatile ("sti");
+    }
 }
 
 void

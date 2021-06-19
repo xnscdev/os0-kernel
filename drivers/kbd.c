@@ -73,15 +73,22 @@ kbd_handle (int scancode)
     }
   kbd_press_map[scancode] = 1;
 
-  /* Remove character if backspace pressed */
-  if (scancode == KEY_BACKSP)
+  switch (scancode)
     {
+    case KEY_BACKSP:
+      /* Remove character if backspace pressed */
       if (buffer->kbd_buffer[buffer->kbd_bufpos] != '\n'
 	  && buffer->kbd_bufpos > 0)
 	{
 	  buffer->kbd_bufpos--;
-	  vga_delchar (CURRENT_TERMINAL);
+	  if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
+	    vga_delchar (CURRENT_TERMINAL);
 	}
+      return;
+    case KEY_ESC:
+      /* Send ESC char to terminal to begin parsing terminal escape
+	 sequence */
+      vga_putchar (CURRENT_TERMINAL, '\033');
       return;
     }
 

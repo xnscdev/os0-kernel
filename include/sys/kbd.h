@@ -28,6 +28,7 @@
 
 #define KBD_BUFSIZ 1024
 
+#define KEY_ESC      0x01
 #define KEY_BACKSP   0x0e
 #define KEY_ENTER    0x1c
 #define KEY_LCTRL    0x1d

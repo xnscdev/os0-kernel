@@ -17,12 +17,197 @@
  *************************************************************************/
 
 #include <video/vga.h>
+#include <ctype.h>
+#include <limits.h>
 #include <string.h>
 
 static Terminal default_terminal;
 
 Terminal *terminals[PROCESS_LIMIT] = {&default_terminal};
 int active_terminal;
+int parsing_escseq;
+
+static void
+vga_csi_cursor_up (Terminal *term)
+{
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] == 0)
+    term->vt_escseq.vte_num[0] = 1;
+  if (term->vt_row < term->vt_escseq.vte_num[0])
+    term->vt_row = 0;
+  else
+    term->vt_row -= term->vt_escseq.vte_num[0];
+  vga_setcurs (term->vt_column, term->vt_row);
+}
+
+static void
+vga_csi_cursor_down (Terminal *term)
+{
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] == 0)
+    term->vt_escseq.vte_num[0] = 1;
+  if (term->vt_row > VGA_SCREEN_HEIGHT - term->vt_escseq.vte_num[0] - 1)
+    term->vt_row = VGA_SCREEN_HEIGHT - 1;
+  else
+    term->vt_row += term->vt_escseq.vte_num[0];
+  vga_setcurs (term->vt_column, term->vt_row);
+}
+
+static void
+vga_csi_cursor_right (Terminal *term)
+{
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] == 0)
+    term->vt_escseq.vte_num[0] = 1;
+  if (term->vt_column > VGA_SCREEN_WIDTH - term->vt_escseq.vte_num[0] - 1)
+    term->vt_column = VGA_SCREEN_WIDTH - 1;
+  else
+    term->vt_column += term->vt_escseq.vte_num[0];
+  vga_setcurs (term->vt_column, term->vt_row);
+}
+
+static void
+vga_csi_cursor_left (Terminal *term)
+{
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] == 0)
+    term->vt_escseq.vte_num[0] = 1;
+  if (term->vt_column < term->vt_escseq.vte_num[0])
+    term->vt_column = 0;
+  else
+    term->vt_column -= term->vt_escseq.vte_num[0];
+  vga_setcurs (term->vt_column, term->vt_row);
+}
+
+static void
+vga_erase_display (Terminal *term)
+{
+  size_t y;
+  size_t x;
+  switch (term->vt_escseq.vte_num[0])
+    {
+    case 0:
+      for (x = term->vt_column; x < VGA_SCREEN_WIDTH; x++)
+	term->vt_data[vga_getindex (term->vt_row, x)] =
+	  vga_mkentry (' ', vga_mkcolor (VGA_COLOR_BLACK, VGA_COLOR_BLACK));
+      for (y = term->vt_row + 1; y < VGA_SCREEN_HEIGHT; y++)
+	{
+	  for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	    term->vt_data[vga_getindex (x, y)] =
+	      vga_mkentry (' ', vga_mkcolor (VGA_COLOR_BLACK, VGA_COLOR_BLACK));
+	}
+      break;
+    case 1:
+      for (x = 0; x < term->vt_column; x++)
+	term->vt_data[vga_getindex (term->vt_row, x)] =
+	  vga_mkentry (' ', vga_mkcolor (VGA_COLOR_BLACK, VGA_COLOR_BLACK));
+      for (y = 0; y < term->vt_row; y++)
+	{
+	  for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	    term->vt_data[vga_getindex (x, y)] =
+	      vga_mkentry (' ', vga_mkcolor (VGA_COLOR_BLACK, VGA_COLOR_BLACK));
+	}
+      break;
+    case '2':
+      for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
+	{
+	  for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	    term->vt_data[vga_getindex (x, y)] =
+	      vga_mkentry (' ', vga_mkcolor (VGA_COLOR_BLACK, VGA_COLOR_BLACK));
+	}
+      break;
+    }
+  if (term == CURRENT_TERMINAL)
+    {
+      __asm__ volatile ("cli");
+      memcpy (vga_hdw_buf, term->vt_data,
+	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+      __asm__ volatile ("sti");
+    }
+}
+
+static void
+vga_terminal_parse_escseq_esc (Terminal *term, char c)
+{
+  switch (c)
+    {
+    case 'E':
+      vga_display_putchar (term, '\n');
+      break;
+    case '[':
+      term->vt_escseq.vte_mode = TERMINAL_ESC_SEQ_CSI;
+      break;
+    case 'c':
+      term->vt_color = vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+      vga_clear (term);
+      term->vt_row = 0;
+      term->vt_column = 0;
+      vga_setcurs (0, 0);
+      break;
+    case '7':
+      term->vt_saved_row = term->vt_row;
+      term->vt_saved_col = term->vt_column;
+      break;
+    case '8':
+      term->vt_row = term->vt_saved_row;
+      term->vt_column = term->vt_saved_col;
+      if (term == CURRENT_TERMINAL)
+	vga_setcurs (term->vt_column, term->vt_row);
+      break;
+    default:
+      vga_terminal_cancel_escseq (term);
+    }
+}
+
+static void
+vga_terminal_parse_escseq_csi (Terminal *term, char c)
+{
+  if (isdigit (c))
+    {
+      if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+	return;
+      if (term->vt_escseq.vte_num[0] > UINT_MAX / 10)
+	{
+	  term->vt_escseq.vte_flags |= VT_FLAG_OVERFLOW;
+	  return;
+	}
+      term->vt_escseq.vte_num[0] *= 10;
+      if (term->vt_escseq.vte_num[0] > UINT_MAX - c + '0')
+	{
+	  term->vt_escseq.vte_flags |= VT_FLAG_OVERFLOW;
+	  return;
+	}
+      term->vt_escseq.vte_num[0] += c - '0';
+      term->vt_escseq.vte_flags |= VT_FLAG_NUM;
+      return;
+    }
+
+  switch (c)
+    {
+    case '@':
+      break;
+    case 'A':
+      vga_csi_cursor_up (term);
+      break;
+    case 'B':
+      vga_csi_cursor_down (term);
+      break;
+    case 'C':
+      vga_csi_cursor_right (term);
+      break;
+    case 'D':
+      vga_csi_cursor_left (term);
+      break;
+    case 'J':
+      vga_erase_display (term);
+      break;
+    }
+  vga_terminal_cancel_escseq (term);
+}
 
 void
 vga_init (void)
@@ -48,6 +233,35 @@ vga_init (void)
   default_terminal.vt_termios.c_lflag = DEFAULT_LFLAG;
   default_terminal.vt_termios.c_ispeed = B9600;
   default_terminal.vt_termios.c_ospeed = B9600;
+}
+
+void
+vga_terminal_cancel_escseq (Terminal *term)
+{
+  term->vt_escseq.vte_flags = 0;
+  memset (term->vt_escseq.vte_num, 0, sizeof (unsigned int) * 4);
+  term->vt_escseq.vte_mode = TERMINAL_ESC_SEQ_ESC;
+  parsing_escseq = 0;
+}
+
+void
+vga_terminal_parse_escseq (Terminal *term, char c)
+{
+  if (c == '\033')
+    {
+      vga_terminal_cancel_escseq (term);
+      return;
+    }
+
+  switch (term->vt_escseq.vte_mode)
+    {
+    case TERMINAL_ESC_SEQ_ESC:
+      vga_terminal_parse_escseq_esc (term, c);
+      break;
+    case TERMINAL_ESC_SEQ_CSI:
+      vga_terminal_parse_escseq_csi (term, c);
+      break;
+    }
 }
 
 void

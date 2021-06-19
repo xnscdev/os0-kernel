@@ -42,6 +42,9 @@
 #define DEFAULT_CFLAG (B9600 | CREAD | CS7 | PARENB | HUPCL)
 #define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
 
+#define VT_FLAG_OVERFLOW 0x0001
+#define VT_FLAG_NUM      0x0002
+
 typedef enum
 {
   VGA_COLOR_BLACK = 0,
@@ -62,15 +65,31 @@ typedef enum
   VGA_COLOR_WHITE
 } VGAColor;
 
+typedef enum
+{
+  TERMINAL_ESC_SEQ_ESC = 0, /* Initial state, ESC just pressed */
+  TERMINAL_ESC_SEQ_CSI      /* Control sequence */
+} TerminalEscSeqMode;
+
+typedef struct
+{
+  unsigned int vte_flags;
+  unsigned int vte_num[4];
+  TerminalEscSeqMode vte_mode;
+} TerminalEscSeqState;
+
 typedef struct
 {
   uint16_t vt_data[VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT]; /* Screen data */
-  KbdBuffer vt_kbdbuf;       /* Keyboard input buffer for terminal */
-  size_t vt_row;             /* Cursor row */
-  size_t vt_column;          /* Cursor column */
-  pid_t vt_fgpgid;           /* Foreground process group ID */
-  unsigned char vt_color;    /* Current color */
-  struct termios vt_termios; /* Termios structure */
+  KbdBuffer vt_kbdbuf;           /* Keyboard input buffer for terminal */
+  TerminalEscSeqState vt_escseq; /* State for parsing escape sequences */
+  size_t vt_row;                 /* Cursor row */
+  size_t vt_column;              /* Cursor column */
+  size_t vt_saved_row;           /* Saved cursor row */
+  size_t vt_saved_col;           /* Saved cursor column */
+  pid_t vt_fgpgid;               /* Foreground process group ID */
+  unsigned char vt_color;        /* Current color */
+  struct termios vt_termios;     /* Termios structure */
 } Terminal;
 
 #define CURRENT_TERMINAL (terminals[active_terminal])
@@ -81,6 +100,7 @@ extern Terminal *terminals[PROCESS_LIMIT];
 extern int active_terminal;
 extern uint16_t *vga_hdw_buf;
 extern VFSSuperblock vga_tty_sb;
+extern int parsing_escseq;
 
 void vga_init (void);
 void vga_putentry (Terminal *term, char c, size_t x, size_t y);
@@ -88,6 +108,8 @@ void vga_putchar (Terminal *term, char c);
 void vga_delchar (Terminal *term);
 void vga_write (Terminal *term, const char *s, size_t size);
 void vga_puts (Terminal *term, const char *s);
+void vga_display_putchar (Terminal *term, char c);
+void vga_clear (Terminal *term);
 void vga_setcurs (size_t x, size_t y);
 
 int vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset);
@@ -97,6 +119,8 @@ int vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vga_tty_write (VFSInode *inode, const void *buffer, size_t len,
 		   off_t offset);
 
+void vga_terminal_cancel_escseq (Terminal *term);
+void vga_terminal_parse_escseq (Terminal *term, char c);
 void set_active_terminal (int term);
 
 __END_DECLS
