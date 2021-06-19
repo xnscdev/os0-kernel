@@ -79,7 +79,10 @@ vga_display_putchar (Terminal *term, char c)
     __asm__ volatile ("cli");
   if (c == '\n')
     goto wrap;
-  vga_putentry (term, c, term->vt_column, term->vt_row);
+  if (c == '\t')
+    term->vt_column |= 7;
+  else
+    vga_putentry (term, c, term->vt_column, term->vt_row);
   if (++term->vt_column == VGA_SCREEN_WIDTH)
     {
     wrap:

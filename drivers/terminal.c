@@ -84,6 +84,33 @@ vga_csi_cursor_left (Terminal *term)
 }
 
 static void
+vga_csi_cursor_col_set (Terminal *term)
+{
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] > VGA_SCREEN_WIDTH)
+    term->vt_escseq.vte_num[0] = VGA_SCREEN_WIDTH - 1;
+  else if (term->vt_escseq.vte_num[0] > 0)
+    term->vt_escseq.vte_num[0]--;
+  term->vt_column = term->vt_escseq.vte_num[0];
+  vga_setcurs (term->vt_column, term->vt_row);
+}
+
+static void
+vga_csi_cursor_tab (Terminal *term)
+{
+  int i;
+  if (term->vt_escseq.vte_flags & VT_FLAG_OVERFLOW)
+    return;
+  if (term->vt_escseq.vte_num[0] > VGA_SCREEN_WIDTH / 8)
+    term->vt_escseq.vte_num[0] = VGA_SCREEN_WIDTH / 8;
+  else if (term->vt_escseq.vte_num[0] == 0)
+    term->vt_escseq.vte_num[0] = 1;
+  for (i = 0; i < term->vt_escseq.vte_num[0]; i++)
+    vga_display_putchar (term, '\t');
+}
+
+static void
 vga_erase_display (Terminal *term)
 {
   size_t y;
@@ -201,6 +228,12 @@ vga_terminal_parse_escseq_csi (Terminal *term, char c)
       break;
     case 'D':
       vga_csi_cursor_left (term);
+      break;
+    case 'G':
+      vga_csi_cursor_col_set (term);
+      break;
+    case 'I':
+      vga_csi_cursor_tab (term);
       break;
     case 'J':
       vga_erase_display (term);
