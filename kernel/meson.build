@@ -7,6 +7,7 @@ kernel_src = [
   'main.c',
   'memory.c',
   'process.c',
+  'rtld.c',
   'wait.c'
 ]
 

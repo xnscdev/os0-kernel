@@ -20,10 +20,10 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <sys/rtld.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
-#include <elf.h>
 
 /* Macros for determining valid ELF header machine type */
 #ifdef  ARCH_I386
@@ -76,8 +76,8 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 }
 
 static int
-process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
-		    Elf32_Half phentsize, Elf32_Half phnum)
+process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Ehdr *ehdr,
+		    DynamicLinkInfo *dlinfo)
 {
   Elf32_Phdr *phdr;
   Elf32_Half i;
@@ -86,18 +86,20 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
 
   phdr = kmalloc (sizeof (Elf32_Phdr));
   if (unlikely (phdr == NULL))
-    return -1;
+    return -ENOMEM;
 
-  for (i = 0; i < phnum; i++)
+  for (i = 0; i < ehdr->e_phnum; i++)
     {
-      if (vfs_read (inode, phdr, sizeof (Elf32_Phdr),
-		    phoff + phentsize * i) < 0)
+      ret = vfs_read (inode, phdr, sizeof (Elf32_Phdr),
+		      ehdr->e_phoff + ehdr->e_phentsize * i);
+      if (ret < 0)
 	{
 	  kfree (phdr);
-	  return -1;
+	  return ret;
 	}
-      if (phdr->p_type == PT_LOAD)
+      switch (phdr->p_type)
 	{
+	case PT_LOAD:
 	  /* Load the segment into memory */
 	  ret = process_load_segment (inode, segments, phdr);
 	  if (ret < 0)
@@ -105,12 +107,28 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Off phoff,
 	      kfree (phdr);
 	      return ret;
 	    }
-
 	  /* Load headers are required to be in ascending order based on
 	     virtual address, so the program break should be set to the
 	     address of the last segment. This does not account for
 	     overlapping segments */
 	  pbreak = ret;
+	  if (phdr->p_offset == 0)
+	    dlinfo->dl_loadbase = (void *) phdr->p_vaddr;
+	  break;
+	case PT_INTERP:
+	  /* Don't read the interpreter path from the executable, just set the
+	     pointer to where it should be. As long as a load header loads
+	     a segment containing the interpreter path into memory, the
+	     pointer will point to a valid string. */
+	  dlinfo->dl_active = 1;
+	  dlinfo->dl_interp = (char *) phdr->p_vaddr;
+	  break;
+	case PT_DYNAMIC:
+	  /* As explained with PT_INTERP, assume the structure will be valid
+	     as long as a load header overlaps with the dynamic header */
+	  dlinfo->dl_active = 1;
+	  dlinfo->dl_dynamic = (Elf32_Dyn *) phdr->p_vaddr;
+	  break;
 	}
     }
 
@@ -139,6 +157,7 @@ process_exec (VFSInode *inode, uint32_t *entry)
   Elf32_Ehdr *ehdr;
   Array *segments;
   Process *proc;
+  DynamicLinkInfo dlinfo;
   int ret;
   int i;
   __asm__ volatile ("cli");
@@ -171,17 +190,39 @@ process_exec (VFSInode *inode, uint32_t *entry)
 
   /* Check for 32-bit little-endian ELF executable for correct machine */
   if (ehdr->e_ident[EI_CLASS] != ELFCLASS32
-      || ehdr->e_ident[EI_DATA] != ELFDATA2LSB || ehdr->e_type != ET_EXEC
+      || ehdr->e_ident[EI_DATA] != ELFDATA2LSB
+      || ehdr->e_type != ET_EXEC
       || ehdr->e_machine != MACHTYPE)
     {
       ret = -ENOEXEC;
       goto end;
     }
 
-  ret = process_load_phdrs (inode, segments, ehdr->e_phoff, ehdr->e_phentsize,
-			    ehdr->e_phnum);
+  /* Clear dynamic link info */
+  memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
+
+  /* Load program headers */
+  ret = process_load_phdrs (inode, segments, ehdr, &dlinfo);
   if (ret < 0)
     goto end;
+
+  if (dlinfo.dl_active)
+    {
+      /* Require a program header to have loaded the ELF header into memory,
+	 and also ensure that there is a dynamic section */
+      if (dlinfo.dl_loadbase == NULL || dlinfo.dl_dynamic == NULL)
+	{
+	  ret = -ENOEXEC;
+	  goto end;
+	}
+
+      /* Prepare executable for dynamic linking */
+      ret = rtld_setup (&dlinfo);
+      if (ret < 0)
+	goto end;
+    }
+
+  /* Setup program break */
   proc = &process_table[task_getpid ()];
   proc->p_break = ret;
   if (proc->p_break & (PAGE_SIZE - 1))
