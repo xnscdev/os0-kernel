@@ -42,19 +42,54 @@ typedef struct
 
 typedef struct
 {
+  Elf32_Sym *sym_table;
+  size_t sym_entsize;
+} ELFSymbolTable;
+
+typedef struct
+{
+  Elf32_Rela *ra_table;
+  size_t ra_size;
+  size_t ra_entsize;
+} ELFRelaTable;
+
+typedef struct
+{
+  Elf32_Rel *r_table;
+  size_t r_size;
+  size_t r_entsize;
+} ELFRelTable;
+
+typedef struct
+{
+  Elf32_Word pt_type;
+  void *pt_table;
+  size_t pt_size;
+} PLTRelTable;
+
+typedef struct
+{
   int dl_active;            /* Set if program uses dynamic linking */
   void *dl_loadbase;        /* Pointer to ELF header */
   char *dl_interp;          /* ELF interpreter path */
-  void *dl_interpload;      /* Pointer to ELF header of interpreter */
   Elf32_Dyn *dl_dynamic;    /* Address of ELF .dynamic section */
-  ELFStringTable dl_strtab; /* Dynamic symbol string table */
+  void *dl_pltgot;          /* Address of PLT/GOT */
+  Elf32_Word *dl_hash;      /* Symbol hash table */
+  ELFStringTable dl_strtab; /* Symbol string table */
+  ELFSymbolTable dl_symtab; /* Dynamic symbol table */
+  ELFRelaTable dl_rela;     /* Relocations with explicit addends */
+  ELFRelTable dl_rel;       /* Relocation table */
+  void *dl_init;            /* Address of initialization function */
+  void *dl_fini;            /* Address of termination function */
+  PLTRelTable dl_pltrel;    /* Relocation table for PLT */
 } DynamicLinkInfo;
 
 __BEGIN_DECLS
 
 int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo);
 int rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments,
-		      DynamicLinkInfo *dlinfo);
+		      DynamicLinkInfo *dlinfo, DynamicLinkInfo *interp_dlinfo);
+int rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo);
 
 __END_DECLS
 

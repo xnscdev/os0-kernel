@@ -27,16 +27,17 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 {
   uint32_t vaddr;
   ProcessSegment *segment;
-  void *start = (void *) (LD_SO_LOAD_ADDR + (phdr->p_vaddr & 0xfffff000));
+  void *start = (void *) (LD_SO_LOAD_ADDR + phdr->p_vaddr);
   uint32_t i;
 
-  for (vaddr = (uint32_t) start; vaddr < (uint32_t) start + phdr->p_memsz;
+  for (vaddr = LD_SO_LOAD_ADDR; vaddr < LD_SO_LOAD_ADDR + phdr->p_memsz;
        vaddr += PAGE_SIZE)
     {
       uint32_t paddr = alloc_page ();
       if (unlikely (paddr == 0))
 	goto err;
-      map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+      map_page (curr_page_dir, paddr, vaddr + (phdr->p_vaddr & 0xfffff000),
+		PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
 #else
@@ -60,7 +61,8 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
   return start;
 
  err:
-  for (i = (uint32_t) start; i < vaddr; i += PAGE_SIZE)
+  for (i = (uint32_t) start; i < vaddr + (phdr->p_vaddr & 0xfffff000);
+       i += PAGE_SIZE)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) i);
       if (paddr != 0)
@@ -69,24 +71,180 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
   return NULL;
 }
 
-int
-rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo)
+static int
+rtld_load_interp_dynamic (Elf32_Dyn *dynamic, DynamicLinkInfo *dlinfo)
 {
-  int ret = rtld_load_interp (ehdr, segments, dlinfo);
-  if (ret < 0)
-    return ret;
+  Elf32_Dyn *entry;
+  for (entry = dynamic; entry->d_tag != DT_NULL; entry++)
+    {
+      switch (entry->d_tag)
+	{
+	case DT_NEEDED:
+	  return -1; /* ld.so is not allowed to use shared libraries */
+	case DT_PLTRELSZ:
+	  dlinfo->dl_pltrel.pt_size = entry->d_un.d_val;
+	  break;
+	case DT_PLTGOT:
+	  dlinfo->dl_pltgot = (void *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_HASH:
+	  dlinfo->dl_hash =
+	    (Elf32_Word *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_STRTAB:
+	  dlinfo->dl_strtab.st_table =
+	    (char *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_SYMTAB:
+	  dlinfo->dl_symtab.sym_table =
+	    (Elf32_Sym *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_RELA:
+	  dlinfo->dl_rela.ra_table =
+	    (Elf32_Rela *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_RELASZ:
+	  dlinfo->dl_rela.ra_size = entry->d_un.d_val;
+	  break;
+	case DT_RELAENT:
+	  dlinfo->dl_rela.ra_entsize = entry->d_un.d_val;
+	  break;
+	case DT_STRSZ:
+	  dlinfo->dl_strtab.st_len = entry->d_un.d_val;
+	  break;
+	case DT_SYMENT:
+	  dlinfo->dl_symtab.sym_entsize = entry->d_un.d_val;
+	  break;
+	case DT_INIT:
+	  dlinfo->dl_init = (void *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_FINI:
+	  dlinfo->dl_fini = (void *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_REL:
+	  dlinfo->dl_rel.r_table =
+	    (Elf32_Rel *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	case DT_RELSZ:
+	  dlinfo->dl_rel.r_size = entry->d_un.d_val;
+	  break;
+	case DT_RELENT:
+	  dlinfo->dl_rel.r_entsize = entry->d_un.d_val;
+	  break;
+	case DT_PLTREL:
+	  switch (entry->d_un.d_val)
+	    {
+	    case DT_REL:
+	    case DT_RELA:
+	      dlinfo->dl_pltrel.pt_type = entry->d_un.d_val;
+	      break;
+	    default:
+	      return -1;
+	    }
+	  break;
+	case DT_JMPREL:
+	  dlinfo->dl_pltrel.pt_table =
+	    (void *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  break;
+	}
+    }
+  return 0;
+}
+
+static int
+rtld_load_interp_phdrs (VFSInode *inode, Elf32_Ehdr *ehdr, Array *segments,
+			DynamicLinkInfo *dlinfo,
+			DynamicLinkInfo *interp_dlinfo)
+{
+  Elf32_Phdr *phdr = kmalloc (sizeof (Elf32_Phdr));
+  Elf32_Dyn *dynamic = NULL;
+  int i;
+  if (unlikely (phdr == NULL))
+    goto err;
+
+  for (i = 0; i < ehdr->e_phnum; i++)
+    {
+      if (vfs_read (inode, phdr, sizeof (Elf32_Phdr),
+		    ehdr->e_phoff + ehdr->e_phentsize * i) < 0)
+	goto err;
+      if (phdr->p_type == PT_LOAD)
+	{
+	  if (rtld_load_interp_segment (inode, segments, phdr) == NULL)
+	    goto err;
+	}
+      else if (phdr->p_type == PT_DYNAMIC)
+        dynamic = (Elf32_Dyn *) (LD_SO_LOAD_ADDR + phdr->p_vaddr);
+    }
+
+  if (unlikely (dynamic == NULL))
+    goto err;
+  if (rtld_load_interp_dynamic (dynamic, interp_dlinfo) != 0)
+    goto err;
+
+  kfree (phdr);
+  return 0;
+
+ err:
+  kfree (phdr);
+  return -ENOEXEC;
+}
+
+static int
+rtld_perform_rel (DynamicLinkInfo *dlinfo)
+{
+  size_t size;
+  for (size = 0; size < dlinfo->dl_rel.r_size; size += dlinfo->dl_rel.r_entsize)
+    {
+      Elf32_Rel *entry =
+	(Elf32_Rel *) ((uint32_t) dlinfo->dl_rel.r_table + size);
+      switch (ELF32_R_TYPE (entry->r_info))
+	{
+	case R_386_RELATIVE:
+	  *((uint32_t *) (LD_SO_LOAD_ADDR + entry->r_offset)) +=
+	    LD_SO_LOAD_ADDR;
+	  break;
+	}
+    }
+  return 0;
+}
+
+static int
+rtld_perform_rela (DynamicLinkInfo *dlinfo)
+{
+  size_t size;
+  for (size = 0; size < dlinfo->dl_rel.r_size; size += dlinfo->dl_rel.r_entsize)
+    {
+      Elf32_Rela *entry =
+	(Elf32_Rela *) ((uint32_t) dlinfo->dl_rel.r_table + size);
+      switch (ELF32_R_TYPE (entry->r_info))
+	{
+	case R_386_RELATIVE:
+	  *((uint32_t *) (LD_SO_LOAD_ADDR + entry->r_offset)) +=
+	    LD_SO_LOAD_ADDR + entry->r_addend;
+	  break;
+	}
+    }
   return 0;
 }
 
 int
-rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo)
+rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo)
 {
-  Elf32_Phdr *phdr = NULL;
-  VFSInode *inode;
+  DynamicLinkInfo interp_dlinfo;
   int ret;
-  int i;
+  memset (&interp_dlinfo, 0, sizeof (DynamicLinkInfo));
+  ret = rtld_load_interp (ehdr, segments, dlinfo, &interp_dlinfo);
+  if (ret < 0)
+    return ret;
+  return rtld_perform_interp_reloc (&interp_dlinfo);
+}
 
-  ret = vfs_open_file (&inode, dlinfo->dl_interp, 1);
+int
+rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo,
+		  DynamicLinkInfo *interp_dlinfo)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, dlinfo->dl_interp, 1);
   if (ret < 0)
     return ret;
 
@@ -114,36 +272,27 @@ rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo)
     }
 
   /* Load program headers */
-  phdr = kmalloc (sizeof (Elf32_Phdr));
-  if (unlikely (phdr == NULL))
-    {
-      ret = -ENOMEM;
-      goto end;
-    }
-  for (i = 0; i < ehdr->e_phnum; i++)
-    {
-      ret = vfs_read (inode, phdr, sizeof (Elf32_Phdr),
-		      ehdr->e_phoff + ehdr->e_phentsize * i);
-      if (ret < 0)
-	{
-	  kfree (phdr);
-	  return ret;
-	}
-      if (phdr->p_type == PT_LOAD)
-	{
-	  void *addr = rtld_load_interp_segment (inode, segments, phdr);
-	  if (addr == NULL)
-	    {
-	      ret = -ENOEXEC;
-	      goto end;
-	    }
-	  if (phdr->p_offset == 0)
-	    dlinfo->dl_interpload = addr;
-	}
-    }
+  ret = rtld_load_interp_phdrs (inode, ehdr, segments, dlinfo, interp_dlinfo);
 
  end:
   vfs_unref_inode (inode);
-  kfree (phdr);
   return ret;
+}
+
+int
+rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo)
+{
+  if (dlinfo->dl_rel.r_table == NULL && dlinfo->dl_rela.ra_table == NULL)
+    return -ENOEXEC;
+  if (dlinfo->dl_rel.r_table != NULL)
+    {
+      if (rtld_perform_rel (dlinfo) != 0)
+	return -ENOEXEC;
+    }
+  if (dlinfo->dl_rela.ra_table != NULL)
+    {
+      if (rtld_perform_rela (dlinfo) != 0)
+	return -ENOEXEC;
+    }
+  return 0;
 }
