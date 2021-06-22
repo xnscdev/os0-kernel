@@ -25,13 +25,6 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
-/* Macros for determining valid ELF header machine type */
-#ifdef  ARCH_I386
-#define MACHTYPE EM_386
-#else
-#error "No ELF machine type supported for architecture"
-#endif
-
 Process process_table[PROCESS_LIMIT];
 void *process_signal_handler;
 int process_signal;
@@ -201,9 +194,23 @@ process_exec (VFSInode *inode, uint32_t *entry)
   /* Clear dynamic link info */
   memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
 
-  /* Load program headers */
+  /* Load program headers and set entry point */
   ret = process_load_phdrs (inode, segments, ehdr, &dlinfo);
   if (ret < 0)
+    goto end;
+  if (entry != NULL)
+    *entry = ehdr->e_entry;
+
+  /* Clear all open file descriptors and open std streams */
+  proc = &process_table[task_getpid ()];
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      VFSInode *fdi = proc->p_files[i].pf_inode;
+      if (fdi != NULL)
+	vfs_unref_inode (fdi);
+    }
+  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+  if (process_setup_std_streams (task_getpid ()) != 0)
     goto end;
 
   if (dlinfo.dl_active)
@@ -216,14 +223,13 @@ process_exec (VFSInode *inode, uint32_t *entry)
 	  goto end;
 	}
 
-      /* Prepare executable for dynamic linking */
-      ret = rtld_setup (&dlinfo);
+      /* Load interpreter into memory */
+      ret = rtld_setup (ehdr, segments, &dlinfo);
       if (ret < 0)
 	goto end;
     }
 
   /* Setup program break */
-  proc = &process_table[task_getpid ()];
   proc->p_break = ret;
   if (proc->p_break & (PAGE_SIZE - 1))
     {
@@ -231,18 +237,6 @@ process_exec (VFSInode *inode, uint32_t *entry)
       proc->p_break += PAGE_SIZE;
     }
 
-  /* Clear all open file descriptors and open std streams */
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
-    {
-      VFSInode *fdi = proc->p_files[i].pf_inode;
-      if (fdi != NULL)
-	vfs_unref_inode (fdi);
-    }
-  if (process_setup_std_streams (task_getpid ()) != 0)
-    goto end;
-
-  if (entry != NULL)
-    *entry = ehdr->e_entry;
   kfree (ehdr);
   __asm__ volatile ("sti");
   return 0;

@@ -19,9 +19,20 @@
 #ifndef _SYS_RTLD_H
 #define _SYS_RTLD_H
 
-#include <sys/cdefs.h>
+#include <kconfig.h>
+
+#include <libk/array.h>
 #include <elf.h>
 #include <stddef.h>
+
+/* Macros for determining valid ELF header machine type */
+#ifdef  ARCH_I386
+#define MACHTYPE EM_386
+#else
+#error "No ELF machine type supported for architecture"
+#endif
+
+#define LD_SO_LOAD_ADDR 0x00008000
 
 typedef struct
 {
@@ -31,42 +42,19 @@ typedef struct
 
 typedef struct
 {
-  Elf32_Sym *sym_table;
-  size_t sym_entsize;
-} ELFSymbolTable;
-
-typedef struct
-{
-  Elf32_Rela *ra_table;
-  size_t ra_size;
-  size_t ra_entsize;
-} ELFRelaTable;
-
-typedef struct
-{
-  Elf32_Rel *r_table;
-  size_t r_size;
-  size_t r_entsize;
-} ELFRelTable;
-
-typedef struct
-{
   int dl_active;            /* Set if program uses dynamic linking */
   void *dl_loadbase;        /* Pointer to ELF header */
   char *dl_interp;          /* ELF interpreter path */
+  void *dl_interpload;      /* Pointer to ELF header of interpreter */
   Elf32_Dyn *dl_dynamic;    /* Address of ELF .dynamic section */
-  void *dl_pltgot;          /* Address of PLT/GOT */
-  void *dl_hash;            /* Hash table */
   ELFStringTable dl_strtab; /* Dynamic symbol string table */
-  ELFSymbolTable dl_symtab; /* Dynamic symbol table */
-  ELFRelaTable dl_rela;     /* Relocations with explicit addends */
-  ELFRelTable dl_rel;       /* Relocation table */
 } DynamicLinkInfo;
 
 __BEGIN_DECLS
 
-int rtld_setup (DynamicLinkInfo *dlinfo);
-int rtld_load_dynamic_section (DynamicLinkInfo *dlinfo);
+int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo);
+int rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments,
+		      DynamicLinkInfo *dlinfo);
 
 __END_DECLS
 
