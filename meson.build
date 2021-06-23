@@ -42,7 +42,7 @@ configure_file(input: 'kconfig.h.in', output: 'kconfig.h',
 subdir('drivers')
 subdir('fs')
 subdir('libk')
-subdir('syscall')
+subdir('uapi')
 
 subdir('kernel')
 subdir('include')

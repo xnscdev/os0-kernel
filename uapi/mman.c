@@ -69,6 +69,8 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     }
   else
     base = PROCESS_BREAK_LIMIT;
+  if (proc->p_mregions->sa_size == 0)
+    goto map;
 
   /* Search for the first mmap'd region with a base address above the
      address we calculated above */
@@ -89,6 +91,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     ;
   base = first;
 
+ map:
   if (prot & PROT_WRITE)
     pgflags |= PAGE_FLAG_WRITE;
   for (vaddr = base; vaddr < base + len; vaddr += PAGE_SIZE)

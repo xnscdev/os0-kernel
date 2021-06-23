@@ -16,7 +16,7 @@ kernel = executable('kernel', kernel_src, link_args: [
 		      meson.current_source_dir() / 'linker.ld',
 		      '-nostdlib',
 		      '-lgcc',
-		    ], link_with: [arch, drivers, fs, libk, syscall],
+		    ], link_with: [arch, drivers, fs, libk, uapi],
 		    include_directories: includedir, install_dir: '/boot',
 		    link_depends: files('linker.ld'), install: true)
 

@@ -1,4 +1,4 @@
-syscall_src = [
+uapi_src = [
   'id.c',
   'misc.c',
   'mman.c',
@@ -11,5 +11,5 @@ syscall_src = [
   'xattr.c'
 ]
 
-syscall = static_library('syscall', syscall_src,
+uapi = static_library('uapi', uapi_src,
 			 include_directories: includedir)
