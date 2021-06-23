@@ -28,8 +28,7 @@
 #include <sys/task.h>
 #include <termios.h>
 
-#define PROCESS_BREAK_LIMIT 0xb0000000
-#define MMAP_START_ADDR     0x10000000
+#define PROCESS_BREAK_LIMIT 0x18000000
 
 typedef struct
 {

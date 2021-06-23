@@ -68,7 +68,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 	return (void *) -EINVAL; /* Address is not page aligned */
     }
   else
-    base = MMAP_START_ADDR;
+    base = PROCESS_BREAK_LIMIT;
 
   /* Search for the first mmap'd region with a base address above the
      address we calculated above */
