@@ -1,5 +1,5 @@
 /*************************************************************************
- * kconfig.h -- This file is part of OS/0.                               *
+ * mman.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,20 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _KCONFIG_H
-#define _KCONFIG_H
+#include <libk/libk.h>
+#include <sys/process.h>
+#include <sys/syscall.h>
 
-#define VERSION @VERSION@
+void *
+sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
+{
+  return NULL;
+}
 
-#mesondefine ARCH_I386
-
-#ifdef ARCH_I386
-#mesondefine INVLPG_SUPPORT
-#endif
-
-#mesondefine PROCESS_LIMIT
-#mesondefine PROCESS_FILE_LIMIT
-#mesondefine PROCESS_SEGMENT_LIMIT
-#mesondefine PROCESS_MREGION_LIMIT
-
-#endif
+int
+sys_munmap (void *addr, size_t len)
+{
+  return -ENOSYS;
+}

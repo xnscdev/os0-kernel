@@ -29,7 +29,6 @@
 #include <termios.h>
 
 #define PROCESS_BREAK_LIMIT      0xb0000000
-#define PROCESS_START_FREE_VADDR 0x10000000
 
 typedef struct
 {
@@ -49,14 +48,21 @@ typedef struct
 
 typedef struct
 {
+  uint32_t pm_base; /* Base address */
+  uint32_t pm_len;  /* Length of memory region */
+  int pm_prot;      /* Memory protection options */
+  int pm_flags;     /* Flags set by mmap(2) */
+} ProcessMemoryRegion;
+
+typedef struct
+{
   ProcessFile p_files[PROCESS_FILE_LIMIT];   /* File descriptor table */
   struct sigaction p_sigactions[NR_signals]; /* Signal handler table */
   sigset_t p_sigblocked;                     /* Signal block mask */
   sigset_t p_sigpending;                     /* Signal pending mask */
   volatile ProcessTask *p_task;              /* Scheduler task */
   Array *p_segments;                         /* List of segments in memory */
-  uint32_t p_nvaddr;                         /* Next available unmapped virtual
-						memory address */
+  Array *p_mregions;                         /* List of mmap'd regions */
   VFSInode *p_cwd;                           /* Working directory */
   char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */
@@ -88,6 +94,8 @@ extern Process process_table[PROCESS_LIMIT];
 int process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo);
 int process_valid (pid_t pid);
 void process_free (pid_t pid);
+void process_segment_free (void *elem, void *data);
+void process_region_free (void *elem, void *data);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
 void process_add_rusage (struct rusage *usage, const Process *proc);

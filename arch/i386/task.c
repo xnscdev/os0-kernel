@@ -52,7 +52,6 @@ scheduler_init (void)
   process_table[0].p_task = task_current;
   for (i = 0; i < NR_signals; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
-  process_table[0].p_nvaddr = PROCESS_START_FREE_VADDR;
   __asm__ volatile ("sti");
 }
 
@@ -151,6 +150,8 @@ _task_fork (void)
 {
   volatile ProcessTask *temp;
   ProcessTask *task;
+  Array *segments;
+  Array *mregions;
   Process *proc;
   Process *parent;
   uint32_t *dir;
@@ -221,7 +222,6 @@ _task_fork (void)
   parent = &process_table[task_getpid ()];
   proc->p_task = task;
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-  proc->p_nvaddr = PROCESS_START_FREE_VADDR;
 
   /* Reset signal handlers */
   memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);
@@ -247,11 +247,49 @@ _task_fork (void)
   memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
   memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
 
+  /* Copy memory region arrays */
+  segments = array_new (PROCESS_SEGMENT_LIMIT);
+  if (unlikely (segments == NULL))
+    goto err;
+  if (parent->p_segments != NULL)
+    {
+      for (i = 0; i < parent->p_segments->a_size; i++)
+	{
+	  ProcessSegment *segment = kmalloc (sizeof (ProcessSegment));
+	  ProcessSegment *pseg;
+	  if (unlikely (segment == NULL))
+	    goto err;
+	  pseg = parent->p_segments->a_elems[i];
+	  segment->ps_addr = pseg->ps_addr;
+	  segment->ps_size = pseg->ps_size;
+	  array_append (segments, segment);
+	}
+    }
+  mregions = array_new (PROCESS_MREGION_LIMIT);
+  if (parent->p_mregions != NULL)
+    {
+      for (i = 0; i < parent->p_mregions->a_size; i++)
+	{
+	  ProcessMemoryRegion *region = kmalloc (sizeof (ProcessMemoryRegion));
+	  ProcessMemoryRegion *pmem;
+	  if (unlikely (region == NULL))
+	    goto err;
+	  pmem = parent->p_mregions->a_elems[i];
+	  region->pm_base = pmem->pm_base;
+	  region->pm_len = pmem->pm_len;
+	  region->pm_prot = pmem->pm_prot;
+	  region->pm_flags = pmem->pm_flags;
+	  array_append (mregions, region);
+	}
+    }
+
   for (temp = task_queue; temp->t_next != NULL; temp = temp->t_next)
     ;
   task->t_prev = temp;
   temp->t_next = task;
   task_queue->t_prev = task;
+  proc->p_segments = segments;
+  proc->p_mregions = mregions;
   return task;
 
  err:
@@ -263,5 +301,7 @@ _task_fork (void)
 	free_page (paddr);
     }
   page_dir_free (dir);
+  array_destroy (segments, process_segment_free, dir);
+  array_destroy (mregions, process_region_free, dir);
   return NULL;
 }

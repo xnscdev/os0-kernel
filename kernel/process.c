@@ -145,26 +145,12 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Ehdr *ehdr,
   return pbreak;
 }
 
-static void
-process_segment_free (void *elem, void *data)
-{
-  ProcessSegment *segment = elem;
-  uint32_t addr;
-  for (addr = segment->ps_addr; addr < segment->ps_addr + segment->ps_size;
-       addr += PAGE_SIZE)
-    {
-      uint32_t paddr = get_paddr (data, (void *) addr);
-      if (paddr != 0)
-	free_page (paddr);
-    }
-  kfree (segment);
-}
-
 int
 process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 {
   Elf32_Ehdr *ehdr;
   Array *segments;
+  Array *mregions;
   Process *proc;
   int ret;
   int i;
@@ -172,6 +158,13 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 
   segments = array_new (PROCESS_SEGMENT_LIMIT);
   if (unlikely (segments == NULL))
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
+
+  mregions = array_new (PROCESS_MREGION_LIMIT);
+  if (unlikely (mregions == NULL))
     {
       ret = -ENOMEM;
       goto end;
@@ -255,12 +248,17 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       proc->p_break += PAGE_SIZE;
     }
 
+  array_destroy (proc->p_segments, process_segment_free, curr_page_dir);
+  proc->p_segments = segments;
+  array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
+  proc->p_mregions = mregions;
   kfree (ehdr);
   __asm__ volatile ("sti");
   return 0;
 
  end:
   array_destroy (segments, process_segment_free, curr_page_dir);
+  array_destroy (mregions, process_region_free, curr_page_dir);
   kfree (ehdr);
   __asm__ volatile ("sti");
   return ret;
@@ -282,6 +280,9 @@ process_free (pid_t pid)
     return;
   proc = &process_table[pid];
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
+  proc->p_segments = NULL;
+  array_destroy (proc->p_mregions, process_region_free, proc->p_task->t_pgdir);
+  proc->p_mregions = NULL;
   ppid = proc->p_task->t_ppid;
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
@@ -296,7 +297,6 @@ process_free (pid_t pid)
   proc->p_cwdpath = NULL;
 
   /* Reset process data */
-  proc->p_nvaddr = 0;
   proc->p_break = 0;
   proc->p_pause = 0;
   proc->p_sig = 0;
@@ -326,6 +326,42 @@ process_free (pid_t pid)
   memset (&proc->p_sigblocked, 0, sizeof (sigset_t));
   memset (&proc->p_sigpending, 0, sizeof (sigset_t));
   memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
+}
+
+void
+process_segment_free (void *elem, void *data)
+{
+  ProcessSegment *segment = elem;
+  uint32_t addr;
+  for (addr = segment->ps_addr; addr < segment->ps_addr + segment->ps_size;
+       addr += PAGE_SIZE)
+    {
+      uint32_t paddr = get_paddr (data, (void *) addr);
+      if (paddr != 0)
+	free_page (paddr);
+    }
+  kfree (segment);
+}
+
+void
+process_region_free (void *elem, void *data)
+{
+  ProcessMemoryRegion *region = elem;
+  uint32_t addr;
+  for (addr = region->pm_base; addr < region->pm_base + region->pm_len;
+       addr += PAGE_SIZE)
+    {
+      uint32_t paddr = get_paddr (data, (void *) addr);
+      if (paddr != 0)
+	free_page (paddr);
+      unmap_page (data, addr);
+#ifdef INVLPG_SUPPORT
+      vm_page_inval (paddr);
+#else
+      vm_tlb_reset ();
+#endif
+    }
+  kfree (region);
 }
 
 int

@@ -24,7 +24,7 @@
 #include <vm/paging.h>
 #include <vm/heap.h>
 
-static char page_empty [PAGE_SIZE];
+static const char page_empty [PAGE_SIZE];
 
 extern uint32_t _kernel_heap_start;
 extern uint32_t _kernel_heap_end;
@@ -264,15 +264,13 @@ page_dir_free (uint32_t *dir)
   int i;
   for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
     {
-      /* If page table is on kernel heap, free it, otherwise deallocate
-	 and free the page unless it was relocated on boot */
+      /* If page table is on kernel heap, free it */
       if (vmap[i] >= kernel_heap.mh_addr
 	  && vmap[i] < kernel_heap.mh_addr + kernel_heap.mh_size)
         kfree ((uint32_t *) vmap[i]);
-      else if (get_paddr (dir, (uint32_t *) vmap[i]) + RELOC_VADDR != vmap[i])
-	free_unmap_page ((uint32_t *) vmap[i]);
       dir[i] = 0;
       vmap[i] = 0;
     }
-  free_unmap_page (dir);
+  kfree (vmap);
+  kfree (dir);
 }

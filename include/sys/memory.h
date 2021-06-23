@@ -71,9 +71,7 @@ extern void *_kernel_end;
 void mem_init (uint32_t mem);
 
 uint32_t alloc_page (void);
-void *alloc_map_page (int flags);
 void free_page (uint32_t addr);
-void free_unmap_page (void *addr);
 
 __END_DECLS
 
