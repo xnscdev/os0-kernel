@@ -52,6 +52,7 @@ scheduler_init (void)
   process_table[0].p_task = task_current;
   for (i = 0; i < NR_signals; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
+  process_table[0].p_nvaddr = PROCESS_START_FREE_VADDR;
   __asm__ volatile ("sti");
 }
 
@@ -220,6 +221,7 @@ _task_fork (void)
   parent = &process_table[task_getpid ()];
   proc->p_task = task;
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
+  proc->p_nvaddr = PROCESS_START_FREE_VADDR;
 
   /* Reset signal handlers */
   memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);

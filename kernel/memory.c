@@ -18,7 +18,9 @@
 
 #include <libk/libk.h>
 #include <sys/memory.h>
+#include <sys/process.h>
 #include <limits.h>
+#include <vm/paging.h>
 
 static Stack *page_stack;
 static uint32_t mem_curraddr;
@@ -49,8 +51,38 @@ alloc_page (void)
   return addr;
 }
 
+void *
+alloc_map_page (int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  uint32_t paddr = alloc_page ();
+  uint32_t vaddr;
+  if (unlikely (paddr == 0))
+    return NULL;
+  while (get_paddr (curr_page_dir, (void *) proc->p_nvaddr) != 0)
+    proc->p_nvaddr += PAGE_SIZE;
+  vaddr = proc->p_nvaddr;
+  proc->p_nvaddr += PAGE_SIZE;
+  map_page (curr_page_dir, paddr, vaddr, flags);
+#ifdef INVLPG_SUPPORT
+  vm_page_inval (paddr);
+#else
+  vm_tlb_reset ();
+#endif
+  return (void *) vaddr;
+}
+
 void
 free_page (uint32_t addr)
 {
   stack_push (page_stack, (void *) (addr & 0xfffff000));
+}
+
+void
+free_unmap_page (void *addr)
+{
+  uint32_t paddr = get_paddr (curr_page_dir, addr);
+  if (unlikely (paddr == 0))
+    return;
+  free_page (paddr);
 }

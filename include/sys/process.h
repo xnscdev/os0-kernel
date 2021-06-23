@@ -28,7 +28,8 @@
 #include <sys/task.h>
 #include <termios.h>
 
-#define PROCESS_BREAK_LIMIT   0xb0000000
+#define PROCESS_BREAK_LIMIT      0xb0000000
+#define PROCESS_START_FREE_VADDR 0x10000000
 
 typedef struct
 {
@@ -54,6 +55,8 @@ typedef struct
   sigset_t p_sigpending;                     /* Signal pending mask */
   volatile ProcessTask *p_task;              /* Scheduler task */
   Array *p_segments;                         /* List of segments in memory */
+  uint32_t p_nvaddr;                         /* Next available unmapped virtual
+						memory address */
   VFSInode *p_cwd;                           /* Working directory */
   char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */

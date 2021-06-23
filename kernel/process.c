@@ -296,6 +296,7 @@ process_free (pid_t pid)
   proc->p_cwdpath = NULL;
 
   /* Reset process data */
+  proc->p_nvaddr = 0;
   proc->p_break = 0;
   proc->p_pause = 0;
   proc->p_sig = 0;

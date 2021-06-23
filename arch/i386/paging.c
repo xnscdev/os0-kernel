@@ -221,7 +221,7 @@ page_dir_clone (uint32_t *orig)
   if (unlikely (dir == NULL))
     return NULL;
   memset (dir, 0, PAGE_DIR_SIZE << 2);
-  vmap = kvalloc (PAGE_TBL_SIZE << 2);
+  vmap = kvalloc (PAGE_DIR_SIZE << 2);
   if (unlikely (vmap == NULL))
     {
       kfree (dir);
@@ -245,7 +245,7 @@ page_dir_clone (uint32_t *orig)
       else
 	{
 	  vmap[i] = (uint32_t) page_table_clone (i, (uint32_t *) vtable[i]);
-	  if (vmap[i] == 0)
+	  if (unlikely (vmap[i] == 0))
 	    {
 	      page_dir_free (dir);
 	      return NULL;
@@ -264,12 +264,15 @@ page_dir_free (uint32_t *dir)
   int i;
   for (i = 0; i < PAGE_DIR_SIZE - 1; i++)
     {
-      /* If page table is on kernel heap, assume it's allocated and free it */
+      /* If page table is on kernel heap, free it, otherwise deallocate
+	 and free the page unless it was relocated on boot */
       if (vmap[i] >= kernel_heap.mh_addr
 	  && vmap[i] < kernel_heap.mh_addr + kernel_heap.mh_size)
-	kfree ((uint32_t *) vmap[i]);
+        kfree ((uint32_t *) vmap[i]);
+      else if (get_paddr (dir, (uint32_t *) vmap[i]) + RELOC_VADDR != vmap[i])
+	free_unmap_page ((uint32_t *) vmap[i]);
       dir[i] = 0;
       vmap[i] = 0;
     }
-  kfree (dir);
+  free_unmap_page (dir);
 }
