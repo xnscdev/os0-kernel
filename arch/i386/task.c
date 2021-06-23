@@ -22,12 +22,13 @@
 #include <i386/tss.h>
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <sys/rtld.h>
 #include <sys/syscall.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 
 void sys_exit_halt (void) __attribute__ ((noreturn));
-void signal_trampoline (void);
+void signal_trampoline (void) __attribute__ ((aligned (PAGE_SIZE)));
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
@@ -198,9 +199,11 @@ _task_fork (void)
   memcpy ((void *) PAGE_COPY_VADDR, (void *) TASK_STACK_BOTTOM,
 	  TASK_STACK_SIZE);
 
-  /* Allow user mode code to run these functions */
+  /* Map the exit busy-wait page as user mode so process can exit */
   map_page (dir, get_paddr (curr_page_dir, sys_exit_halt), TASK_EXIT_PAGE,
 	    PAGE_FLAG_USER);
+
+  /* Allow user mode code to execute the functions in this page */
   map_page (dir, get_paddr (curr_page_dir, signal_trampoline),
 	    (uint32_t) signal_trampoline, PAGE_FLAG_USER);
 

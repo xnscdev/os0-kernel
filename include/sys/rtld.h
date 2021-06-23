@@ -22,6 +22,7 @@
 #include <kconfig.h>
 
 #include <libk/array.h>
+#include <sys/memory.h>
 #include <elf.h>
 #include <stddef.h>
 
@@ -32,7 +33,8 @@
 #error "No ELF machine type supported for architecture"
 #endif
 
-#define LD_SO_LOAD_ADDR 0x00008000
+#define LD_SO_LOAD_ADDR    0x00008000
+#define LD_SO_ENTRY_SYMBOL "__rtld_main"
 
 typedef struct
 {
@@ -71,6 +73,8 @@ typedef struct
 {
   int dl_active;            /* Set if program uses dynamic linking */
   void *dl_loadbase;        /* Pointer to ELF header */
+  void *dl_entry;           /* Entry point of executable */
+  void *dl_rtldentry;       /* Entry point of dynamic linker */
   char *dl_interp;          /* ELF interpreter path */
   Elf32_Dyn *dl_dynamic;    /* Address of ELF .dynamic section */
   void *dl_pltgot;          /* Address of PLT/GOT */
@@ -79,17 +83,19 @@ typedef struct
   ELFSymbolTable dl_symtab; /* Dynamic symbol table */
   ELFRelaTable dl_rela;     /* Relocations with explicit addends */
   ELFRelTable dl_rel;       /* Relocation table */
-  void *dl_init;            /* Address of initialization function */
-  void *dl_fini;            /* Address of termination function */
+  void (*dl_init) (void);   /* Address of initialization function */
+  void (*dl_fini) (void);   /* Address of termination function */
   PLTRelTable dl_pltrel;    /* Relocation table for PLT */
 } DynamicLinkInfo;
 
 __BEGIN_DECLS
 
-int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo);
+int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
+		DynamicLinkInfo *dlinfo);
 int rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments,
 		      DynamicLinkInfo *dlinfo, DynamicLinkInfo *interp_dlinfo);
 int rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo);
+void rtld_setup_dynamic_linker (void);
 
 __END_DECLS
 

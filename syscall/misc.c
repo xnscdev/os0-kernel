@@ -44,16 +44,18 @@ sys_waitpid (pid_t pid, int *status, int options)
 int
 sys_execve (const char *path, char *const *argv, char *const *envp)
 {
+  DynamicLinkInfo dlinfo;
   uint32_t eip;
   VFSInode *inode;
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
-  ret = process_exec (inode, &eip);
+  memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
+  ret = process_exec (inode, &eip, &dlinfo);
   vfs_unref_inode (inode);
   if (ret != 0)
     return ret;
-  task_exec (eip, argv, envp);
+  task_exec (eip, argv, envp, &dlinfo);
 }
 
 int

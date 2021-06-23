@@ -20,7 +20,6 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
-#include <sys/rtld.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
@@ -42,6 +41,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
       uint32_t paddr = alloc_page ();
       if (unlikely (paddr == 0))
 	return -ENOMEM;
+      /* Map with write permission to copy data first */
       map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
@@ -65,6 +65,22 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
     }
   memset ((void *) (phdr->p_vaddr + phdr->p_filesz), 0,
 	  phdr->p_memsz - phdr->p_filesz);
+
+  if (!(phdr->p_flags & PF_W))
+    {
+      /* Segment is not writable, remap all pages without write permission */
+      for (addr = phdr->p_vaddr & 0xfffff000;
+	   addr < phdr->p_vaddr + phdr->p_memsz; addr += PAGE_SIZE)
+	{
+	  uint32_t paddr = get_paddr (curr_page_dir, addr);
+	  map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+	  vm_page_inval (paddr);
+#else
+	  vm_tlb_reset ();
+#endif
+	}
+    }
   return phdr->p_vaddr + phdr->p_memsz; /* Potential program break address */
 }
 
@@ -145,12 +161,11 @@ process_segment_free (void *elem, void *data)
 }
 
 int
-process_exec (VFSInode *inode, uint32_t *entry)
+process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 {
   Elf32_Ehdr *ehdr;
   Array *segments;
   Process *proc;
-  DynamicLinkInfo dlinfo;
   int ret;
   int i;
   __asm__ volatile ("cli");
@@ -191,15 +206,11 @@ process_exec (VFSInode *inode, uint32_t *entry)
       goto end;
     }
 
-  /* Clear dynamic link info */
-  memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
-
   /* Load program headers and set entry point */
-  ret = process_load_phdrs (inode, segments, ehdr, &dlinfo);
+  ret = process_load_phdrs (inode, segments, ehdr, dlinfo);
   if (ret < 0)
     goto end;
-  if (entry != NULL)
-    *entry = ehdr->e_entry;
+  *entry = ehdr->e_entry;
 
   /* Clear all open file descriptors and open std streams */
   proc = &process_table[task_getpid ()];
@@ -213,20 +224,27 @@ process_exec (VFSInode *inode, uint32_t *entry)
   if (process_setup_std_streams (task_getpid ()) != 0)
     goto end;
 
-  if (dlinfo.dl_active)
+  if (dlinfo->dl_active)
     {
       /* Require a program header to have loaded the ELF header into memory,
 	 and also ensure that there is a dynamic section */
-      if (dlinfo.dl_loadbase == NULL || dlinfo.dl_dynamic == NULL)
+      if (dlinfo->dl_loadbase == NULL || dlinfo->dl_dynamic == NULL)
 	{
 	  ret = -ENOEXEC;
 	  goto end;
 	}
 
       /* Load interpreter into memory */
-      ret = rtld_setup (ehdr, segments, &dlinfo);
+      dlinfo->dl_entry = (void *) *entry;
+      ret = rtld_setup (ehdr, segments, entry, dlinfo);
       if (ret < 0)
 	goto end;
+
+      /* The saved entry point address needs to be changed to a helper
+	 function instead, since we need to tell the dynamic linker where
+	 the real executable entry point is. */
+      dlinfo->dl_rtldentry = (void *) *entry;
+      *entry = (uint32_t) rtld_setup_dynamic_linker;
     }
 
   /* Setup program break */

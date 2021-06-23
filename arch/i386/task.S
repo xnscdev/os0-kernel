@@ -234,6 +234,7 @@ task_exec:
 	mov	4(%esp), %ecx
 	mov	8(%esp), %esi
 	mov	12(%esp), %edi
+	mov	16(%esp), %esi
 	cli
 	pushf
 	mov	%cs, %ax
@@ -247,8 +248,10 @@ task_exec:
 	call	process_clear_sighandlers
 
 	cmp	$SYSCALL_STACK_ADDR, %esp
-	ja	2f
+	jna	2f
+	jmp	*%ecx
 
+2:
 	/* Switch to user mode and reenable interrupts */
 	mov	$0x23, %ax
 	mov	%ax, %ds
@@ -259,15 +262,10 @@ task_exec:
 	pushl	$0x23
 	push	%eax
 	pushf
-	pop	%eax
-	or	$0x200, %eax
-	push	%eax
+	orl	$0x200, (%esp)
 	pushl	$0x1b
 	push	%ecx
 	iret
-
-2:
-	jmp	*%ecx
 
 	.align PAGE_SIZE
 	.global signal_trampoline
@@ -291,3 +289,21 @@ signal_trampoline:
 	popf
 	popa
 	ret
+
+	.size signal_trampoline, . - signal_trampoline
+
+	.global rtld_setup_dynamic_linker
+	.type rtld_setup_dynamic_linker, @function
+rtld_setup_dynamic_linker:
+	/* ESI is the address of the dynamic link info structure upon entry
+	   to this routine */
+
+	pushl	20(%esi) /* Dynamic structure */
+	pushl	4(%esi)  /* Address of program ELF header */
+	call	*12(%esi)
+	add	$8, %esp
+
+	/* Dynamic linker finished executing, jump to real executable start */
+	jmp	*8(%esi)
+
+	.size rtld_setup_dynamic_linker, . - rtld_setup_dynamic_linker

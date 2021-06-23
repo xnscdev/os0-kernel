@@ -20,7 +20,7 @@
 #define _SYS_TASK_H
 
 #ifndef _ASM
-#include <sys/cdefs.h>
+#include <sys/rtld.h>
 #include <sys/types.h>
 #endif
 
@@ -54,8 +54,8 @@ void task_timer_tick (void);
 int task_fork (void);
 void task_yield (void);
 int task_new (uint32_t eip);
-void task_exec (uint32_t eip, char *const *argv, char *const *envp)
-  __attribute__ ((noreturn));
+void task_exec (uint32_t eip, char *const *argv, char *const *envp,
+		DynamicLinkInfo *dlinfo) __attribute__ ((noreturn));
 void task_free (ProcessTask *task);
 pid_t task_getpid (void);
 pid_t task_getppid (void);

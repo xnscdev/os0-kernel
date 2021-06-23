@@ -82,7 +82,7 @@ __BEGIN_DECLS
 
 extern Process process_table[PROCESS_LIMIT];
 
-int process_exec (VFSInode *inode, uint32_t *entry);
+int process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo);
 int process_valid (pid_t pid);
 void process_free (pid_t pid);
 int process_setup_std_streams (pid_t pid);

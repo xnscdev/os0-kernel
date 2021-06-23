@@ -153,6 +153,7 @@ exc14_handler (uint32_t err, uint32_t eip)
   __asm__ volatile ("mov %%cr2, %0" : "=r" (addr));
   if (pid == 0)
     {
+      /* Page fault in kernel task is fatal. Panic with info about the fault */
       panic ("CPU Exception: Page Fault\nAttributes: %s, %s, %s%s%s\n"
 	     "Fault address: 0x%lx\nException address: 0x%lx",
 	     err & PF_FLAG_PROT ? "protection violation" : "non-present",

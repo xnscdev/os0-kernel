@@ -18,7 +18,6 @@
 
 #include <libk/libk.h>
 #include <sys/process.h>
-#include <sys/rtld.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
 
@@ -37,7 +36,7 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
       if (unlikely (paddr == 0))
 	goto err;
       map_page (curr_page_dir, paddr, vaddr + (phdr->p_vaddr & 0xfffff000),
-		PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+	        PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
 #else
@@ -51,6 +50,22 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 	goto err;
     }
   memset (start + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
+
+  if (!(phdr->p_flags & PF_W))
+    {
+      /* Segment is not writable, remap all pages without write permission */
+      for (vaddr = LD_SO_LOAD_ADDR; vaddr < LD_SO_LOAD_ADDR + phdr->p_memsz;
+	   vaddr += PAGE_SIZE)
+	{
+	  uint32_t paddr = get_paddr (curr_page_dir, vaddr);
+	  map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+	  vm_page_inval (paddr);
+#else
+	  vm_tlb_reset ();
+#endif
+	}
+    }
 
   segment = kmalloc (sizeof (ProcessSegment));
   if (unlikely (segment == NULL))
@@ -148,6 +163,10 @@ rtld_load_interp_dynamic (Elf32_Dyn *dynamic, DynamicLinkInfo *dlinfo)
 	  break;
 	}
     }
+  if (dlinfo->dl_strtab.st_table == NULL
+      || dlinfo->dl_symtab.sym_table == NULL
+      || dlinfo->dl_hash == NULL)
+    return -1;
   return 0;
 }
 
@@ -227,16 +246,76 @@ rtld_perform_rela (DynamicLinkInfo *dlinfo)
   return 0;
 }
 
+static unsigned long
+rtld_symbol_hash (const unsigned char *name)
+{
+  unsigned long h = 0;
+  unsigned long g;
+  while (*name != '\0')
+    {
+      h = (h << 4) + *name++;
+      g = h & 0xf0000000;
+      if (g != 0)
+	h ^= g >> 24;
+      h &= ~g;
+    }
+  return h;
+}
+
+static void *
+rtld_get_entry_point (DynamicLinkInfo *dlinfo)
+{
+  /* Look up the symbol named by the LD_SO_ENTRY_SYMBOL macro using
+     the symbol hash function, and get the address of the entry point
+     to the dynamic linker */
+  Elf32_Word nbucket = dlinfo->dl_hash[0];
+  Elf32_Word nchain = dlinfo->dl_hash[1];
+  Elf32_Word *bucket = &dlinfo->dl_hash[2];
+  Elf32_Word *chain = &bucket[nbucket];
+  unsigned long hash = rtld_symbol_hash (LD_SO_ENTRY_SYMBOL);
+  Elf32_Word y = bucket[hash % nbucket];
+  while (y != STN_UNDEF)
+    {
+      Elf32_Sym *symbol =
+	(Elf32_Sym *) ((uint32_t) dlinfo->dl_symtab.sym_table +
+		       y * dlinfo->dl_symtab.sym_entsize);
+      if (strcmp (dlinfo->dl_strtab.st_table + symbol->st_name,
+		  LD_SO_ENTRY_SYMBOL) == 0)
+	{
+	  if (ELF32_ST_BIND (symbol->st_info) != STB_GLOBAL)
+	    return NULL;
+	  return (void *) (symbol->st_value + LD_SO_LOAD_ADDR);
+	}
+      y = chain[y % nchain];
+    }
+  return NULL; /* Could not find symbol */
+}
+
 int
-rtld_setup (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo)
+rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
+	    DynamicLinkInfo *dlinfo)
 {
   DynamicLinkInfo interp_dlinfo;
+  void *rtld_entry_addr;
   int ret;
+
+  /* Load ELF interpreter */
   memset (&interp_dlinfo, 0, sizeof (DynamicLinkInfo));
   ret = rtld_load_interp (ehdr, segments, dlinfo, &interp_dlinfo);
-  if (ret < 0)
+  if (unlikely (ret < 0))
     return ret;
-  return rtld_perform_interp_reloc (&interp_dlinfo);
+
+  /* Perform relocations on ELF interpreter */
+  ret = rtld_perform_interp_reloc (&interp_dlinfo);
+  if (unlikely (ret < 0))
+    return ret;
+
+  /* Load entry point of ELF interpreter */
+  rtld_entry_addr = rtld_get_entry_point (&interp_dlinfo);
+  if (unlikely (rtld_entry_addr == NULL))
+    return -ENOEXEC;
+  *entry = (uint32_t) rtld_entry_addr;
+  return 0;
 }
 
 int
