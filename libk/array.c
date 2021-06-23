@@ -67,20 +67,24 @@ array_destroy (Array *array, ReleasePredicate func, void *data)
   kfree (array);
 }
 
-int
-sorted_array_new (SortedArray *array, uint32_t max, ComparePredicate cmp)
+SortedArray *
+sorted_array_new (uint32_t max, ComparePredicate cmp)
 {
-  if (array == NULL || cmp == NULL)
-    return -EINVAL;
+  SortedArray *array = kmalloc (sizeof (SortedArray));
+  if (unlikely (array == NULL))
+    return NULL;
   array->sa_elems = kmalloc (sizeof (void *) * max);
   if (unlikely (array->sa_elems == NULL))
-    return -ENOMEM;
+    {
+      kfree (array);
+      return NULL;
+    }
   memset (array->sa_elems, 0, sizeof (void *) * max);
   array->sa_size = 0;
   array->sa_max = max;
   array->sa_cmp = cmp;
   array->sa_alloc = 1;
-  return 0;
+  return array;
 }
 
 int
@@ -99,10 +103,19 @@ sorted_array_place (SortedArray *array, void *addr, uint32_t max,
 }
 
 void
-sorted_array_destroy (SortedArray *array)
+sorted_array_destroy (SortedArray *array, ReleasePredicate func, void *data)
 {
-  if (array != NULL && array->sa_alloc)
+  if (array == NULL)
+    return;
+  if (func != NULL)
+    {
+      uint32_t i;
+      for (i = 0; i < array->sa_size; i++)
+	func (array->sa_elems[i], data);
+    }
+  if (array->sa_alloc)
     kfree (array->sa_elems);
+  kfree (array);
 }
 
 void

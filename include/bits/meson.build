@@ -1,6 +1,7 @@
 install_headers('dirent.h',
 		'errlist.h',
 		'ioctl.h',
+		'mman.h',
 		'resource.h',
 		'signal.h',
 		'stat.h',

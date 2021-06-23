@@ -1,5 +1,5 @@
 /*************************************************************************
- * array.h -- This file is part of OS/0.                                 *
+ * mman.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,45 +16,27 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_ARRAY_H
-#define _LIBK_ARRAY_H
+#ifndef _BITS_MMAN_H
+#define _BITS_MMAN_H
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
+#define PROT_READ  4
+#define PROT_WRITE 2
+#define PROT_EXEC  1
+#define PROT_NONE  0
 
-typedef struct
-{
-  void **a_elems;
-  uint32_t a_size;
-  uint32_t a_max;
-} Array;
+#define MAP_SHARED        0x0000
+#define MAP_PRIVATE       0x0001
+#define MAP_ANONYMOUS     0x0002
+#define MAP_ANON          MAP_ANONYMOUS
+#define MAP_DENYWRITE     0x0004
+#define MAP_EXECUTABLE    0x0008
+#define MAP_FILE          0x0010
+#define MAP_FIXED         0x0020
+#define MAP_GROWSDOWN     0x0040
+#define MAP_NORESERVE     0x0080
+#define MAP_STACK         0x0100
+#define MAP_UNINITIALIZED 0x0200
 
-typedef struct
-{
-  void **sa_elems;
-  uint32_t sa_size;
-  uint32_t sa_max;
-  ComparePredicate sa_cmp;
-  unsigned char sa_alloc;
-} SortedArray;
-
-__BEGIN_DECLS
-
-int default_cmp (const void *a, const void *b);
-
-Array *array_new (uint32_t max);
-int array_append (Array *array, void *elem);
-void array_destroy (Array *array, ReleasePredicate func, void *data);
-
-SortedArray *sorted_array_new (uint32_t max, ComparePredicate cmp);
-int sorted_array_place (SortedArray *array, void *addr, uint32_t max,
-			ComparePredicate cmp);
-void sorted_array_destroy (SortedArray *array, ReleasePredicate func,
-			   void *data);
-void sorted_array_insert (SortedArray *array, void *item);
-void *sorted_array_lookup (SortedArray *array, uint32_t i);
-void sorted_array_remove (SortedArray *array, uint32_t i);
-
-__END_DECLS
+#define MAP_FAILED ((void *) -1)
 
 #endif

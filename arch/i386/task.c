@@ -151,7 +151,7 @@ _task_fork (void)
   volatile ProcessTask *temp;
   ProcessTask *task;
   Array *segments;
-  Array *mregions;
+  SortedArray *mregions;
   Process *proc;
   Process *parent;
   uint32_t *dir;
@@ -265,21 +265,23 @@ _task_fork (void)
 	  array_append (segments, segment);
 	}
     }
-  mregions = array_new (PROCESS_MREGION_LIMIT);
+  mregions = sorted_array_new (PROCESS_MREGION_LIMIT, process_mregion_cmp);
   if (parent->p_mregions != NULL)
     {
-      for (i = 0; i < parent->p_mregions->a_size; i++)
+      for (i = 0; i < parent->p_mregions->sa_size; i++)
 	{
 	  ProcessMemoryRegion *region = kmalloc (sizeof (ProcessMemoryRegion));
 	  ProcessMemoryRegion *pmem;
 	  if (unlikely (region == NULL))
 	    goto err;
-	  pmem = parent->p_mregions->a_elems[i];
+	  pmem = parent->p_mregions->sa_elems[i];
 	  region->pm_base = pmem->pm_base;
 	  region->pm_len = pmem->pm_len;
 	  region->pm_prot = pmem->pm_prot;
 	  region->pm_flags = pmem->pm_flags;
-	  array_append (mregions, region);
+	  region->pm_ino = pmem->pm_ino;
+	  vfs_ref_inode (region->pm_ino);
+	  sorted_array_insert (mregions, region);
 	}
     }
 
@@ -302,6 +304,6 @@ _task_fork (void)
     }
   page_dir_free (dir);
   array_destroy (segments, process_segment_free, dir);
-  array_destroy (mregions, process_region_free, dir);
+  sorted_array_destroy (mregions, process_region_free, dir);
   return NULL;
 }

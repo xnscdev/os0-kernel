@@ -150,7 +150,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 {
   Elf32_Ehdr *ehdr;
   Array *segments;
-  Array *mregions;
+  SortedArray *mregions;
   Process *proc;
   int ret;
   int i;
@@ -163,7 +163,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       goto end;
     }
 
-  mregions = array_new (PROCESS_MREGION_LIMIT);
+  mregions = sorted_array_new (PROCESS_MREGION_LIMIT, process_mregion_cmp);
   if (unlikely (mregions == NULL))
     {
       ret = -ENOMEM;
@@ -250,7 +250,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 
   array_destroy (proc->p_segments, process_segment_free, curr_page_dir);
   proc->p_segments = segments;
-  array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
+  sorted_array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
   proc->p_mregions = mregions;
   kfree (ehdr);
   __asm__ volatile ("sti");
@@ -258,7 +258,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 
  end:
   array_destroy (segments, process_segment_free, curr_page_dir);
-  array_destroy (mregions, process_region_free, curr_page_dir);
+  sorted_array_destroy (mregions, process_region_free, curr_page_dir);
   kfree (ehdr);
   __asm__ volatile ("sti");
   return ret;
@@ -281,7 +281,8 @@ process_free (pid_t pid)
   proc = &process_table[pid];
   array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
   proc->p_segments = NULL;
-  array_destroy (proc->p_mregions, process_region_free, proc->p_task->t_pgdir);
+  sorted_array_destroy (proc->p_mregions, process_region_free,
+			proc->p_task->t_pgdir);
   proc->p_mregions = NULL;
   ppid = proc->p_task->t_ppid;
   task_free ((ProcessTask *) proc->p_task);
@@ -447,6 +448,14 @@ process_set_break (uint32_t addr)
   memset ((void *) proc->p_break, 0, addr - proc->p_break);
   proc->p_break = addr;
   return proc->p_break;
+}
+
+int
+process_mregion_cmp (const void *a, const void *b)
+{
+  uint32_t ba = ((const ProcessMemoryRegion *) a)->pm_base;
+  uint32_t bb = ((const ProcessMemoryRegion *) b)->pm_base;
+  return ba < bb;
 }
 
 void

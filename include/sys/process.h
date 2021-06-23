@@ -28,7 +28,8 @@
 #include <sys/task.h>
 #include <termios.h>
 
-#define PROCESS_BREAK_LIMIT      0xb0000000
+#define PROCESS_BREAK_LIMIT 0xb0000000
+#define MMAP_START_ADDR     0x10000000
 
 typedef struct
 {
@@ -52,6 +53,7 @@ typedef struct
   uint32_t pm_len;  /* Length of memory region */
   int pm_prot;      /* Memory protection options */
   int pm_flags;     /* Flags set by mmap(2) */
+  VFSInode *pm_ino; /* Inode used for mapping */
 } ProcessMemoryRegion;
 
 typedef struct
@@ -62,7 +64,7 @@ typedef struct
   sigset_t p_sigpending;                     /* Signal pending mask */
   volatile ProcessTask *p_task;              /* Scheduler task */
   Array *p_segments;                         /* List of segments in memory */
-  Array *p_mregions;                         /* List of mmap'd regions */
+  SortedArray *p_mregions;                   /* List of mmap'd regions */
   VFSInode *p_cwd;                           /* Working directory */
   char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */
@@ -98,6 +100,7 @@ void process_segment_free (void *elem, void *data);
 void process_region_free (void *elem, void *data);
 int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
+int process_mregion_cmp (const void *a, const void *b);
 void process_add_rusage (struct rusage *usage, const Process *proc);
 int process_terminated (pid_t pid);
 int process_send_signal (pid_t pid, int sig);
