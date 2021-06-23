@@ -72,7 +72,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
       for (addr = phdr->p_vaddr & 0xfffff000;
 	   addr < phdr->p_vaddr + phdr->p_memsz; addr += PAGE_SIZE)
 	{
-	  uint32_t paddr = get_paddr (curr_page_dir, addr);
+	  uint32_t paddr = get_paddr (curr_page_dir, (void *) addr);
 	  map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
 	  vm_page_inval (paddr);

@@ -19,10 +19,6 @@
 #ifndef _BITS_SYSCALL_H
 #define _BITS_SYSCALL_H
 
-#ifndef _SYS_SYSCALL_H
-#error  "<bits/syscall.h> should not be included directly"
-#endif
-
 #define SYS_exit          1
 #define SYS_fork          2
 #define SYS_read          3

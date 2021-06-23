@@ -18,6 +18,8 @@
 
 #define _ASM
 
+#include <bits/signal.h>
+#include <bits/syscall.h>
 #include <i386/paging.h>
 #include <i386/pic.h>
 #include <sys/cmos.h>
@@ -298,11 +300,25 @@ rtld_setup_dynamic_linker:
 	/* ESI is the address of the dynamic link info structure upon entry
 	   to this routine */
 
+	/* Call dynamic linker */
 	pushl	20(%esi) /* Dynamic structure */
 	pushl	4(%esi)  /* Address of program ELF header */
 	call	*12(%esi)
 	add	$8, %esp
 
+	test	%eax, %eax
+	jz	1f
+
+	/* Dynamic linker failed to execute, abort the program */
+	pushl	$SIGABRT
+	mov	$SYS_getpid, %eax
+	int	$0x80
+	mov	%eax, %ebx
+	mov	$SYS_kill, %eax
+	mov	$SIGABRT, %ecx
+	int	$0x80
+
+1:
 	/* Dynamic linker finished executing, jump to real executable start */
 	jmp	*8(%esi)
 

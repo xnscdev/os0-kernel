@@ -57,7 +57,7 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
       for (vaddr = LD_SO_LOAD_ADDR; vaddr < LD_SO_LOAD_ADDR + phdr->p_memsz;
 	   vaddr += PAGE_SIZE)
 	{
-	  uint32_t paddr = get_paddr (curr_page_dir, vaddr);
+	  uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
 	  map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
 #ifdef INVLPG_SUPPORT
 	  vm_page_inval (paddr);
