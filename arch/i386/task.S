@@ -193,9 +193,7 @@ task_fork:
 
 	/* Setup fake interrupt stack frame */
 	pushl	-12(%ebp)
-	mov	%cs, %ax
-	cwtl
-	push	%eax
+	push	%cs
 	pushl	$.child
 	pusha
 
@@ -222,9 +220,7 @@ task_fork:
 	.type task_yield, @function
 task_yield:
 	pushf
-	mov	%cs, %ax
-	cwtl
-	push	%eax
+	push	%cs
 	call	irq8
 	ret
 
@@ -239,9 +235,7 @@ task_exec:
 	mov	16(%esp), %esi
 	cli
 	pushf
-	mov	%cs, %ax
-	cwtl
-	push	%eax
+	push	%cs
 	push	$1f
 	jmp	irq8
 

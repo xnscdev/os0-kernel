@@ -61,9 +61,7 @@ sys_exit_halt:
 	/* This does the same thing as `sti' (sets IF) without causing
 	   a general protection fault in user mode */
 	pushf
-	pop	%eax
-	or	$0x200, %eax
-	push	%eax
+	orl	$0x200, (%esp)
 	popf
 1:
 	jmp	1b /* Loop until next task switch */
