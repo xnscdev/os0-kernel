@@ -164,12 +164,13 @@ sys_munmap (void *addr, size_t len)
   if (addr == NULL || (uint32_t) addr & (PAGE_SIZE - 1))
     return -EINVAL;
 
-  /* Search for the memory region with the given base */
+  /* Search for the memory region containing the given address */
   while (first <= last)
     {
       mid = (first + last) / 2;
       region = proc->p_mregions->sa_elems[mid];
-      if (region->pm_base == (uint32_t) addr)
+      if (region->pm_base <= (uint32_t) addr
+	  && (uint32_t) addr < region->pm_base + region->pm_len)
 	goto unmap;
       else if (region->pm_base > (uint32_t) addr)
 	last = mid - 1;
@@ -180,8 +181,8 @@ sys_munmap (void *addr, size_t len)
   return -EINVAL;
 
  unmap:
-  for (first = region->pm_base; first < region->pm_base + region->pm_len;
-       first += PAGE_SIZE)
+  last = (uint32_t) addr;
+  for (first = last; first < (uint32_t) addr + len; first += PAGE_SIZE)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) first);
       free_page (paddr);
@@ -194,7 +195,32 @@ sys_munmap (void *addr, size_t len)
   vm_tlb_reset ();
 #endif
 
-  /* Remove region from array and return */
-  sorted_array_remove (proc->p_mregions, mid);
+  /* If there are more pages beyond the unmapped region, mark them as part
+     of a separate region */
+  if (first < region->pm_base + region->pm_len)
+    {
+      ProcessMemoryRegion *new = kmalloc (sizeof (ProcessMemoryRegion));
+      if (unlikely (new == NULL))
+	return -ENOMEM;
+      new->pm_base = first;
+      new->pm_len = region->pm_base + region->pm_len - first;
+      new->pm_prot = region->pm_prot;
+      new->pm_flags = region->pm_flags;
+      new->pm_ino = region->pm_ino;
+      vfs_ref_inode (new->pm_ino);
+      sorted_array_insert (proc->p_mregions, new);
+    }
+
+  /* If there are pages beneath the unmapped region, update the length
+     of the region accordingly, otherwise remove the entry from the array */
+  if (last > region->pm_base)
+    region->pm_len = last - region->pm_base;
+  else
+    {
+      sorted_array_remove (proc->p_mregions, mid);
+      vfs_unref_inode (region->pm_ino);
+      kfree (region);
+    }
+
   return 0;
 }
