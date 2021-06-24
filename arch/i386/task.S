@@ -300,19 +300,6 @@ rtld_setup_dynamic_linker:
 	call	*12(%esi)
 	add	$8, %esp
 
-	test	%eax, %eax
-	jz	1f
-
-	/* Dynamic linker failed to execute, abort the program */
-	pushl	$SIGABRT
-	mov	$SYS_getpid, %eax
-	int	$0x80
-	mov	%eax, %ebx
-	mov	$SYS_kill, %eax
-	mov	$SIGABRT, %ecx
-	int	$0x80
-
-1:
 	/* Dynamic linker finished executing, jump to real executable start */
 	jmp	*8(%esi)
 
