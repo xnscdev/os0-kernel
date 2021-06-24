@@ -361,8 +361,6 @@ rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo,
 int
 rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo)
 {
-  if (dlinfo->dl_rel.r_table == NULL && dlinfo->dl_rela.ra_table == NULL)
-    return -ENOEXEC;
   if (dlinfo->dl_rel.r_table != NULL)
     {
       if (rtld_perform_rel (dlinfo) != 0)
