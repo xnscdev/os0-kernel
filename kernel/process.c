@@ -250,6 +250,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       proc->p_break &= 0xfffff000;
       proc->p_break += PAGE_SIZE;
     }
+  proc->p_initbreak = proc->p_break;
 
   array_destroy (proc->p_segments, process_segment_free, curr_page_dir);
   proc->p_segments = segments;
@@ -278,6 +279,7 @@ process_free (pid_t pid)
 {
   Process *proc;
   pid_t ppid;
+  uint32_t vaddr;
   int i;
   if (!process_valid (pid))
     return;
@@ -288,6 +290,15 @@ process_free (pid_t pid)
 			proc->p_task->t_pgdir);
   proc->p_mregions = NULL;
   ppid = proc->p_task->t_ppid;
+
+  /* Free process heap */
+  for (vaddr = proc->p_initbreak; vaddr < proc->p_break; vaddr += PAGE_SIZE)
+    {
+      uint32_t paddr = get_paddr (proc->p_task->t_pgdir, (void *) vaddr);
+      if (paddr != 0)
+	free_page (paddr);
+    }
+
   task_free ((ProcessTask *) proc->p_task);
   proc->p_task = NULL;
 
@@ -301,6 +312,7 @@ process_free (pid_t pid)
   proc->p_cwdpath = NULL;
 
   /* Reset process data */
+  proc->p_initbreak = 0;
   proc->p_break = 0;
   proc->p_pause = 0;
   proc->p_sig = 0;

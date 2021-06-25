@@ -69,6 +69,7 @@ typedef struct
   VFSInode *p_cwd;                           /* Working directory */
   char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */
+  uint32_t p_initbreak;                      /* Starting address of break */
   struct rusage p_rusage;                    /* Resource usage */
   struct rusage p_cusage;                    /* Resourge usage of child
 						processes */
