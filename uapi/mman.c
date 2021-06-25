@@ -35,6 +35,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
   int first = 0;
   int last = proc->p_mregions->sa_size - 1;
   int pgflags = flags != PROT_NONE ? PAGE_FLAG_USER : 0;
+  size_t bytes = len;
 
   /* Make sure arguments are valid */
   if (!(flags & MAP_ANONYMOUS))
@@ -43,6 +44,8 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
       if (unlikely (inode == NULL || !S_ISREG (inode->vi_mode)))
 	return (void *) -EBADF;
       if (offset & (PAGE_SIZE - 1))
+	return (void *) -EINVAL;
+      else if (offset > inode->vi_size)
 	return (void *) -EINVAL;
     }
   if (len == 0)
@@ -132,14 +135,12 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
       /* Read file into memory area if specified
 	 TODO Support MAP_SHARED flag */
       int ret;
-      size_t bytes =
-	offset + len > inode->vi_size ? inode->vi_size - offset : len;
       ret = vfs_read (inode, (void *) base, bytes, offset);
       if (ret < 0)
 	return (void *) ret;
       /* Zero remaining bytes in region unless requested to be uninitialized */
       if (!(flags & MAP_UNINITIALIZED))
-	memset ((void *) (base + bytes), 0, len - bytes);
+	memset ((void *) (base + bytes), 0, len - ret);
     }
 
   /* Remap memory region with requested protection */
