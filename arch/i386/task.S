@@ -300,7 +300,10 @@ rtld_setup_dynamic_linker:
 	call	*12(%esi)
 	add	$8, %esp
 
-	/* Dynamic linker finished executing, jump to real executable start */
+	/* Remap all non-writable segments */
+	call	rtld_remap_segments
+
+	/* Begin execution at real entry point */
 	jmp	*8(%esi)
 
 	.size rtld_setup_dynamic_linker, . - rtld_setup_dynamic_linker

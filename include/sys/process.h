@@ -44,6 +44,7 @@ typedef struct
 {
   uint32_t ps_addr; /* Address of first page */
   uint32_t ps_size; /* Size of segment */
+  int ps_write;     /* Set if segment has write access */
 } ProcessSegment;
 
 typedef struct
@@ -101,6 +102,7 @@ int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
 int process_mregion_cmp (const void *a, const void *b);
 void process_add_rusage (struct rusage *usage, const Process *proc);
+void process_remap_segments (Array *segments);
 int process_terminated (pid_t pid);
 int process_send_signal (pid_t pid, int sig);
 void process_clear_sighandlers (void);

@@ -34,7 +34,7 @@
 #endif
 
 #define LD_SO_LOAD_ADDR    0x00008000
-#define LD_SO_ENTRY_SYMBOL "__rtld_main"
+#define LD_SO_ENTRY_SYMBOL "rtld_main"
 
 typedef struct
 {
@@ -77,7 +77,7 @@ typedef struct
   void *dl_rtldentry;       /* Entry point of dynamic linker */
   char *dl_interp;          /* ELF interpreter path */
   Elf32_Dyn *dl_dynamic;    /* Address of ELF .dynamic section */
-  void *dl_pltgot;          /* Address of PLT/GOT */
+  Elf32_Addr *dl_pltgot;          /* Address of PLT/GOT */
   Elf32_Word *dl_hash;      /* Symbol hash table */
   ELFStringTable dl_strtab; /* Symbol string table */
   ELFSymbolTable dl_symtab; /* Dynamic symbol table */
@@ -95,6 +95,7 @@ int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
 int rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments,
 		      DynamicLinkInfo *dlinfo, DynamicLinkInfo *interp_dlinfo);
 int rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo);
+void rtld_remap_segments (void);
 void rtld_setup_dynamic_linker (void);
 
 __END_DECLS

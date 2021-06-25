@@ -55,6 +55,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
     return -ENOMEM;
   segment->ps_addr = phdr->p_vaddr & 0xfffff000;
   segment->ps_size = phdr->p_memsz;
+  segment->ps_write = phdr->p_flags & PF_W ? 1 : 0;
   array_append (segments, segment);
 
   if (phdr->p_filesz > 0)
@@ -239,6 +240,8 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       dlinfo->dl_rtldentry = (void *) *entry;
       *entry = (uint32_t) rtld_setup_dynamic_linker;
     }
+  else
+    process_remap_segments (segments);
 
   /* Setup program break */
   proc->p_break = ret;
@@ -488,6 +491,34 @@ process_add_rusage (struct rusage *usage, const Process *proc)
     proc->p_cusage.ru_nsignals;
   usage->ru_nvcsw += proc->p_rusage.ru_nvcsw + proc->p_cusage.ru_nvcsw;
   usage->ru_nivcsw += proc->p_rusage.ru_nivcsw + proc->p_cusage.ru_nivcsw;
+}
+
+void
+process_remap_segments (Array *segments)
+{
+  uint32_t vaddr;
+  int i;
+  for (i = 0; i < segments->a_size; i++)
+    {
+      ProcessSegment *segment = segments->a_elems[i];
+      if (!segment->ps_write)
+	{
+	  /* Segment is not writable, remap segment memory region without
+	     write permission */
+	  for (vaddr = LD_SO_LOAD_ADDR;
+	       vaddr < LD_SO_LOAD_ADDR + segment->ps_size; vaddr += PAGE_SIZE)
+	    {
+	      uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
+	      map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
+#ifdef INVLPG_SUPPORT
+	      vm_page_inval (paddr);
+#endif
+	    }
+	}
+    }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
 }
 
 int

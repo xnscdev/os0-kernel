@@ -21,6 +21,13 @@
 #include <vm/heap.h>
 #include <vm/paging.h>
 
+static inline Elf32_Sym *
+rtld_get_symbol (DynamicLinkInfo *dlinfo, Elf32_Word index)
+{
+  return (Elf32_Sym *) ((uint32_t) dlinfo->dl_symtab.sym_table +
+			index * dlinfo->dl_symtab.sym_entsize);
+}
+
 static void *
 rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 {
@@ -39,10 +46,11 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 	        PAGE_FLAG_USER | PAGE_FLAG_WRITE);
 #ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#else
-      vm_tlb_reset ();
 #endif
     }
+#ifndef INVLPG_SUPPORT
+  vm_tlb_reset ();
+#endif
 
   if (phdr->p_filesz > 0)
     {
@@ -51,27 +59,12 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
     }
   memset (start + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
 
-  if (!(phdr->p_flags & PF_W))
-    {
-      /* Segment is not writable, remap all pages without write permission */
-      for (vaddr = LD_SO_LOAD_ADDR; vaddr < LD_SO_LOAD_ADDR + phdr->p_memsz;
-	   vaddr += PAGE_SIZE)
-	{
-	  uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
-	  map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
-	  vm_page_inval (paddr);
-#else
-	  vm_tlb_reset ();
-#endif
-	}
-    }
-
   segment = kmalloc (sizeof (ProcessSegment));
   if (unlikely (segment == NULL))
     goto err;
   segment->ps_addr = (uint32_t) start;
   segment->ps_size = phdr->p_memsz;
+  segment->ps_write = phdr->p_flags & PF_W ? 1 : 0;
   array_append (segments, segment);
   return start;
 
@@ -100,7 +93,8 @@ rtld_load_interp_dynamic (Elf32_Dyn *dynamic, DynamicLinkInfo *dlinfo)
 	  dlinfo->dl_pltrel.pt_size = entry->d_un.d_val;
 	  break;
 	case DT_PLTGOT:
-	  dlinfo->dl_pltgot = (void *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
+	  dlinfo->dl_pltgot =
+	    (Elf32_Addr *) (entry->d_un.d_ptr + LD_SO_LOAD_ADDR);
 	  break;
 	case DT_HASH:
 	  dlinfo->dl_hash =
@@ -208,42 +202,33 @@ rtld_load_interp_phdrs (VFSInode *inode, Elf32_Ehdr *ehdr, Array *segments,
   return -ENOEXEC;
 }
 
-static int
-rtld_perform_rel (DynamicLinkInfo *dlinfo)
+static void
+rtld_perform_rel (Elf32_Rel *entry, DynamicLinkInfo *dlinfo, Elf32_Sword addend)
 {
-  size_t size;
-  for (size = 0; size < dlinfo->dl_rel.r_size; size += dlinfo->dl_rel.r_entsize)
+  Elf32_Sym *symbol = rtld_get_symbol (dlinfo, ELF32_R_SYM (entry->r_info));
+  switch (ELF32_R_TYPE (entry->r_info))
     {
-      Elf32_Rel *entry =
-	(Elf32_Rel *) ((uint32_t) dlinfo->dl_rel.r_table + size);
-      switch (ELF32_R_TYPE (entry->r_info))
-	{
-	case R_386_RELATIVE:
-	  *((uint32_t *) (LD_SO_LOAD_ADDR + entry->r_offset)) +=
-	    LD_SO_LOAD_ADDR;
-	  break;
-	}
+#define REL_OFFSET ((Elf32_Addr *) (LD_SO_LOAD_ADDR + entry->r_offset))
+    case R_386_GLOB_DAT:
+    case R_386_JMP_SLOT:
+      addend = 0;
+    case R_386_32:
+      *REL_OFFSET = LD_SO_LOAD_ADDR + symbol->st_value + addend;
+      break;
+    case R_386_PC32:
+      *REL_OFFSET = symbol->st_value - entry->r_offset - 4 + addend;
+      break;
+    case R_386_RELATIVE:
+      *REL_OFFSET += LD_SO_LOAD_ADDR + addend;
+      break;
+    case R_386_GOTOFF:
+      *REL_OFFSET = symbol->st_value - (uint32_t) dlinfo->dl_pltgot + addend;
+      break;
+    case R_386_GOTPC:
+      *REL_OFFSET = (uint32_t) dlinfo->dl_pltgot - entry->r_offset - 4 + addend;
+      break;
+#undef REL_OFFSET
     }
-  return 0;
-}
-
-static int
-rtld_perform_rela (DynamicLinkInfo *dlinfo)
-{
-  size_t size;
-  for (size = 0; size < dlinfo->dl_rel.r_size; size += dlinfo->dl_rel.r_entsize)
-    {
-      Elf32_Rela *entry =
-	(Elf32_Rela *) ((uint32_t) dlinfo->dl_rel.r_table + size);
-      switch (ELF32_R_TYPE (entry->r_info))
-	{
-	case R_386_RELATIVE:
-	  *((uint32_t *) (LD_SO_LOAD_ADDR + entry->r_offset)) +=
-	    LD_SO_LOAD_ADDR + entry->r_addend;
-	  break;
-	}
-    }
-  return 0;
 }
 
 static unsigned long
@@ -361,15 +346,51 @@ rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo,
 int
 rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo)
 {
+  size_t size;
   if (dlinfo->dl_rel.r_table != NULL)
     {
-      if (rtld_perform_rel (dlinfo) != 0)
-	return -ENOEXEC;
+      for (size = 0; size < dlinfo->dl_rel.r_size;
+	   size += dlinfo->dl_rel.r_entsize)
+	{
+	  Elf32_Rel *entry =
+	    (Elf32_Rel *) ((uint32_t) dlinfo->dl_rel.r_table + size);
+	  rtld_perform_rel (entry, dlinfo, 0);
+	}
     }
   if (dlinfo->dl_rela.ra_table != NULL)
     {
-      if (rtld_perform_rela (dlinfo) != 0)
-	return -ENOEXEC;
+      for (size = 0; size < dlinfo->dl_rela.ra_size;
+	   size += dlinfo->dl_rela.ra_entsize)
+	{
+	  Elf32_Rela *entry =
+	    (Elf32_Rela *) ((uint32_t) dlinfo->dl_rela.ra_table + size);
+	  rtld_perform_rel ((Elf32_Rel *) entry, dlinfo, entry->r_addend);
+	}
+    }
+
+  if (dlinfo->dl_pltrel.pt_type == DT_REL)
+    {
+      for (size = 0; size < dlinfo->dl_pltrel.pt_size / sizeof (Elf32_Rel);
+	   size++)
+	{
+	  Elf32_Rel *entry = (Elf32_Rel *) dlinfo->dl_pltrel.pt_table + size;
+	  rtld_perform_rel (entry, dlinfo, 0);
+	}
+    }
+  else
+    {
+      for (size = 0; size < dlinfo->dl_pltrel.pt_size / sizeof (Elf32_Rela);
+	   size++)
+	{
+	  Elf32_Rela *entry = (Elf32_Rela *) dlinfo->dl_pltrel.pt_table + size;
+	  rtld_perform_rel ((Elf32_Rel *) entry, dlinfo, entry->r_addend);
+	}
     }
   return 0;
+}
+
+void
+rtld_remap_segments (void)
+{
+  process_remap_segments (process_table[task_getpid ()].p_segments);
 }
