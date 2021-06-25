@@ -61,6 +61,8 @@
 
 #define TASK_LOCAL_BOUND 0xf0000000
 
+#define PAGE_ALIGN(addr) (((addr - 1) | (PAGE_SIZE - 1)) + 1)
+
 #ifndef _ASM
 
 __BEGIN_DECLS

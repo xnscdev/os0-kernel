@@ -54,6 +54,7 @@ typedef struct
   int pm_prot;      /* Memory protection options */
   int pm_flags;     /* Flags set by mmap(2) */
   VFSInode *pm_ino; /* Inode used for mapping */
+  off_t pm_offset;  /* Offset into inode */
 } ProcessMemoryRegion;
 
 typedef struct

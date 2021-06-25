@@ -23,19 +23,20 @@
 #define PROT_WRITE 2
 #define PROT_EXEC  1
 #define PROT_NONE  0
+#define __PROT_MASK 7
 
-#define MAP_SHARED        0x0000
-#define MAP_PRIVATE       0x0001
-#define MAP_ANONYMOUS     0x0002
+#define MAP_SHARED        0x0001
+#define MAP_PRIVATE       0x0002
+#define MAP_ANONYMOUS     0x0004
 #define MAP_ANON          MAP_ANONYMOUS
-#define MAP_DENYWRITE     0x0004
-#define MAP_EXECUTABLE    0x0008
-#define MAP_FILE          0x0010
-#define MAP_FIXED         0x0020
-#define MAP_GROWSDOWN     0x0040
-#define MAP_NORESERVE     0x0080
-#define MAP_STACK         0x0100
-#define MAP_UNINITIALIZED 0x0200
+#define MAP_DENYWRITE     0x0008
+#define MAP_EXECUTABLE    0x0010
+#define MAP_FILE          0x0020
+#define MAP_FIXED         0x0040
+#define MAP_GROWSDOWN     0x0080
+#define MAP_NORESERVE     0x0100
+#define MAP_STACK         0x0200
+#define MAP_UNINITIALIZED 0x0400
 
 #define MAP_FAILED ((void *) -1)
 
