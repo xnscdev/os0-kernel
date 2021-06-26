@@ -332,7 +332,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 	}
       memcpy (buffer, temp + blksize - start_diff, len);
       kfree (temp);
-      return 0;
+      return len;
     }
 
   for (i = 0; i < blocks; i++)
@@ -450,7 +450,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
       memcpy (temp + blksize - start_diff, buffer, len);
       ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
       kfree (temp);
-      return ret;
+      return len;
     }
 
   for (i = 0; i < blocks; i++)

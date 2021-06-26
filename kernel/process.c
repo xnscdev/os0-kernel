@@ -218,6 +218,15 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
   if (process_setup_std_streams (task_getpid ()) != 0)
     goto end;
 
+  /* Setup program break */
+  proc->p_break = ret;
+  if (proc->p_break & (PAGE_SIZE - 1))
+    {
+      proc->p_break &= 0xfffff000;
+      proc->p_break += PAGE_SIZE;
+    }
+  proc->p_initbreak = proc->p_break;
+
   if (dlinfo->dl_active)
     {
       /* Require a program header to have loaded the ELF header into memory,
@@ -242,15 +251,6 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
     }
   else
     process_remap_segments (segments);
-
-  /* Setup program break */
-  proc->p_break = ret;
-  if (proc->p_break & (PAGE_SIZE - 1))
-    {
-      proc->p_break &= 0xfffff000;
-      proc->p_break += PAGE_SIZE;
-    }
-  proc->p_initbreak = proc->p_break;
 
   array_destroy (proc->p_segments, process_segment_free, curr_page_dir);
   proc->p_segments = segments;

@@ -183,6 +183,7 @@ sys_close (int fd)
   vfs_destroy_dir (file->pf_dir);
   file->pf_dir = NULL;
   kfree (file->pf_path);
+  file->pf_path = NULL;
   file->pf_mode = 0;
   file->pf_offset = 0;
   return 0;

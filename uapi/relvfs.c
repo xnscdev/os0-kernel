@@ -26,6 +26,7 @@ sys_openat (int fd, const char *path, int flags, mode_t mode)
 {
   Process *proc = &process_table[task_getpid ()];
   VFSInode *cwd = proc->p_cwd;
+  char *cwdpath = proc->p_cwdpath;
   int ret;
   if (fd != AT_FDCWD)
     {
@@ -33,9 +34,11 @@ sys_openat (int fd, const char *path, int flags, mode_t mode)
 	  || proc->p_files[fd].pf_inode == NULL)
 	return -EBADF;
       proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwdpath = proc->p_files[fd].pf_path;
     }
   ret = sys_open (path, flags, mode);
   proc->p_cwd = cwd;
+  proc->p_cwdpath = cwdpath;
   return ret;
 }
 
