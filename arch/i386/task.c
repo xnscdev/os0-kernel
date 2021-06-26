@@ -150,7 +150,6 @@ _task_fork (void)
 {
   volatile ProcessTask *temp;
   ProcessTask *task;
-  Array *segments;
   SortedArray *mregions;
   Process *proc;
   Process *parent;
@@ -247,25 +246,8 @@ _task_fork (void)
   memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
   memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
 
-  /* Copy memory region arrays */
-  segments = array_new (PROCESS_SEGMENT_LIMIT);
-  if (unlikely (segments == NULL))
-    goto err;
-  if (parent->p_segments != NULL)
-    {
-      for (i = 0; i < parent->p_segments->a_size; i++)
-	{
-	  ProcessSegment *segment = kmalloc (sizeof (ProcessSegment));
-	  ProcessSegment *pseg;
-	  if (unlikely (segment == NULL))
-	    goto err;
-	  pseg = parent->p_segments->a_elems[i];
-	  segment->ps_addr = pseg->ps_addr;
-	  segment->ps_size = pseg->ps_size;
-	  array_append (segments, segment);
-	}
-    }
-  mregions = sorted_array_new (PROCESS_MREGION_LIMIT, process_mregion_cmp);
+  /* Copy memory region array */
+  mregions = sorted_array_new (PROCESS_MMAP_LIMIT, process_mregion_cmp);
   if (parent->p_mregions != NULL)
     {
       for (i = 0; i < parent->p_mregions->sa_size; i++)
@@ -290,7 +272,6 @@ _task_fork (void)
   task->t_prev = temp;
   temp->t_next = task;
   task_queue->t_prev = task;
-  proc->p_segments = segments;
   proc->p_mregions = mregions;
   return task;
 
@@ -303,7 +284,6 @@ _task_fork (void)
 	free_page (paddr);
     }
   page_dir_free (dir);
-  array_destroy (segments, process_segment_free, dir);
   sorted_array_destroy (mregions, process_region_free, dir);
   return NULL;
 }

@@ -90,12 +90,11 @@ typedef struct
 
 __BEGIN_DECLS
 
-int rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
+int rtld_setup (Elf32_Ehdr *ehdr, SortedArray *mregions, uint32_t *entry,
 		DynamicLinkInfo *dlinfo);
-int rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments,
+int rtld_load_interp (Elf32_Ehdr *ehdr, SortedArray *mregions,
 		      DynamicLinkInfo *dlinfo, DynamicLinkInfo *interp_dlinfo);
 int rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo);
-void rtld_remap_segments (void);
 void rtld_setup_dynamic_linker (void);
 
 __END_DECLS

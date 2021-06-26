@@ -18,6 +18,7 @@
 
 #include <kconfig.h>
 
+#include <bits/mman.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <video/vga.h>
@@ -30,10 +31,11 @@ int process_signal;
 int exit_task;
 
 static int
-process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
+process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 {
   uint32_t addr;
-  ProcessSegment *segment;
+  ProcessMemoryRegion *segment;
+  int prot;
 
   for (addr = phdr->p_vaddr & 0xfffff000; addr < phdr->p_vaddr + phdr->p_memsz;
        addr += PAGE_SIZE)
@@ -50,13 +52,24 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 #endif
     }
 
-  segment = kmalloc (sizeof (ProcessSegment));
+  prot = 0;
+  if (phdr->p_flags & PF_R)
+    prot |= PROT_READ;
+  if (phdr->p_flags & PF_W)
+    prot |= PROT_WRITE;
+  if (phdr->p_flags & PF_X)
+    prot |= PROT_EXEC;
+
+  segment = kmalloc (sizeof (ProcessMemoryRegion));
   if (segment == NULL)
     return -ENOMEM;
-  segment->ps_addr = phdr->p_vaddr & 0xfffff000;
-  segment->ps_size = phdr->p_memsz;
-  segment->ps_write = phdr->p_flags & PF_W ? 1 : 0;
-  array_append (segments, segment);
+  segment->pm_base = phdr->p_vaddr & 0xfffff000;
+  segment->pm_len = phdr->p_memsz;
+  segment->pm_prot = prot;
+  segment->pm_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  segment->pm_ino = NULL;
+  segment->pm_offset = 0;
+  sorted_array_insert (mregions, segment);
 
   if (phdr->p_filesz > 0)
     {
@@ -86,7 +99,7 @@ process_load_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
 }
 
 static int
-process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Ehdr *ehdr,
+process_load_phdrs (VFSInode *inode, SortedArray *mregions, Elf32_Ehdr *ehdr,
 		    DynamicLinkInfo *dlinfo)
 {
   Elf32_Phdr *phdr;
@@ -111,7 +124,7 @@ process_load_phdrs (VFSInode *inode, Array *segments, Elf32_Ehdr *ehdr,
 	{
 	case PT_LOAD:
 	  /* Load the segment into memory */
-	  ret = process_load_segment (inode, segments, phdr);
+	  ret = process_load_segment (inode, mregions, phdr);
 	  if (ret < 0)
 	    {
 	      kfree (phdr);
@@ -150,21 +163,13 @@ int
 process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 {
   Elf32_Ehdr *ehdr;
-  Array *segments;
   SortedArray *mregions;
   Process *proc;
   int ret;
   int i;
   __asm__ volatile ("cli");
 
-  segments = array_new (PROCESS_SEGMENT_LIMIT);
-  if (unlikely (segments == NULL))
-    {
-      ret = -ENOMEM;
-      goto end;
-    }
-
-  mregions = sorted_array_new (PROCESS_MREGION_LIMIT, process_mregion_cmp);
+  mregions = sorted_array_new (PROCESS_MMAP_LIMIT, process_mregion_cmp);
   if (unlikely (mregions == NULL))
     {
       ret = -ENOMEM;
@@ -201,7 +206,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
     }
 
   /* Load program headers and set entry point */
-  ret = process_load_phdrs (inode, segments, ehdr, dlinfo);
+  ret = process_load_phdrs (inode, mregions, ehdr, dlinfo);
   if (ret < 0)
     goto end;
   *entry = ehdr->e_entry;
@@ -239,7 +244,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
 
       /* Load interpreter into memory */
       dlinfo->dl_entry = (void *) *entry;
-      ret = rtld_setup (ehdr, segments, entry, dlinfo);
+      ret = rtld_setup (ehdr, mregions, entry, dlinfo);
       if (ret < 0)
 	goto end;
 
@@ -250,10 +255,8 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       *entry = (uint32_t) rtld_setup_dynamic_linker;
     }
   else
-    process_remap_segments (segments);
+    process_remap_segments (mregions);
 
-  array_destroy (proc->p_segments, process_segment_free, curr_page_dir);
-  proc->p_segments = segments;
   sorted_array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
   proc->p_mregions = mregions;
   kfree (ehdr);
@@ -261,7 +264,6 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
   return 0;
 
  end:
-  array_destroy (segments, process_segment_free, curr_page_dir);
   sorted_array_destroy (mregions, process_region_free, curr_page_dir);
   kfree (ehdr);
   __asm__ volatile ("sti");
@@ -284,8 +286,6 @@ process_free (pid_t pid)
   if (!process_valid (pid))
     return;
   proc = &process_table[pid];
-  array_destroy (proc->p_segments, process_segment_free, proc->p_task->t_pgdir);
-  proc->p_segments = NULL;
   sorted_array_destroy (proc->p_mregions, process_region_free,
 			proc->p_task->t_pgdir);
   proc->p_mregions = NULL;
@@ -342,21 +342,6 @@ process_free (pid_t pid)
   memset (&proc->p_sigblocked, 0, sizeof (sigset_t));
   memset (&proc->p_sigpending, 0, sizeof (sigset_t));
   memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
-}
-
-void
-process_segment_free (void *elem, void *data)
-{
-  ProcessSegment *segment = elem;
-  uint32_t addr;
-  for (addr = segment->ps_addr; addr < segment->ps_addr + segment->ps_size;
-       addr += PAGE_SIZE)
-    {
-      uint32_t paddr = get_paddr (data, (void *) addr);
-      if (paddr != 0)
-	free_page (paddr);
-    }
-  kfree (segment);
 }
 
 void
@@ -506,19 +491,19 @@ process_add_rusage (struct rusage *usage, const Process *proc)
 }
 
 void
-process_remap_segments (Array *segments)
+process_remap_segments (SortedArray *mregions)
 {
   uint32_t vaddr;
   int i;
-  for (i = 0; i < segments->a_size; i++)
+  for (i = 0; i < mregions->sa_size; i++)
     {
-      ProcessSegment *segment = segments->a_elems[i];
-      if (!segment->ps_write)
+      ProcessMemoryRegion *segment = mregions->sa_elems[i];
+      if (!(segment->pm_prot & PROT_WRITE))
 	{
 	  /* Segment is not writable, remap segment memory region without
 	     write permission */
 	  for (vaddr = LD_SO_LOAD_ADDR;
-	       vaddr < LD_SO_LOAD_ADDR + segment->ps_size; vaddr += PAGE_SIZE)
+	       vaddr < LD_SO_LOAD_ADDR + segment->pm_len; vaddr += PAGE_SIZE)
 	    {
 	      uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
 	      map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);

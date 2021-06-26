@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <bits/mman.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <vm/heap.h>
@@ -29,12 +30,14 @@ rtld_get_symbol (DynamicLinkInfo *dlinfo, Elf32_Word index)
 }
 
 static void *
-rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
+rtld_load_interp_segment (VFSInode *inode, SortedArray *mregions,
+			  Elf32_Phdr *phdr)
 {
   uint32_t vaddr;
-  ProcessSegment *segment;
+  ProcessMemoryRegion *segment;
   void *start = (void *) (LD_SO_LOAD_ADDR + phdr->p_vaddr);
   uint32_t i;
+  int prot = 0;
 
   for (vaddr = LD_SO_LOAD_ADDR; vaddr < LD_SO_LOAD_ADDR + phdr->p_memsz;
        vaddr += PAGE_SIZE)
@@ -59,13 +62,23 @@ rtld_load_interp_segment (VFSInode *inode, Array *segments, Elf32_Phdr *phdr)
     }
   memset (start + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
 
-  segment = kmalloc (sizeof (ProcessSegment));
+  if (phdr->p_flags & PF_R)
+    prot |= PROT_READ;
+  if (phdr->p_flags & PF_W)
+    prot |= PROT_WRITE;
+  if (phdr->p_flags & PF_X)
+    prot |= PROT_EXEC;
+
+  segment = kmalloc (sizeof (ProcessMemoryRegion));
   if (unlikely (segment == NULL))
     goto err;
-  segment->ps_addr = (uint32_t) start;
-  segment->ps_size = phdr->p_memsz;
-  segment->ps_write = phdr->p_flags & PF_W ? 1 : 0;
-  array_append (segments, segment);
+  segment->pm_base = (uint32_t) start;
+  segment->pm_len = phdr->p_memsz;
+  segment->pm_prot = prot;
+  segment->pm_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+  segment->pm_ino = NULL;
+  segment->pm_offset = 0;
+  sorted_array_insert (mregions, segment);
   return start;
 
  err:
@@ -165,8 +178,8 @@ rtld_load_interp_dynamic (Elf32_Dyn *dynamic, DynamicLinkInfo *dlinfo)
 }
 
 static int
-rtld_load_interp_phdrs (VFSInode *inode, Elf32_Ehdr *ehdr, Array *segments,
-			DynamicLinkInfo *dlinfo,
+rtld_load_interp_phdrs (VFSInode *inode, Elf32_Ehdr *ehdr,
+			SortedArray *mregions, DynamicLinkInfo *dlinfo,
 			DynamicLinkInfo *interp_dlinfo)
 {
   Elf32_Phdr *phdr = kmalloc (sizeof (Elf32_Phdr));
@@ -182,7 +195,7 @@ rtld_load_interp_phdrs (VFSInode *inode, Elf32_Ehdr *ehdr, Array *segments,
 	goto err;
       if (phdr->p_type == PT_LOAD)
 	{
-	  if (rtld_load_interp_segment (inode, segments, phdr) == NULL)
+	  if (rtld_load_interp_segment (inode, mregions, phdr) == NULL)
 	    goto err;
 	}
       else if (phdr->p_type == PT_DYNAMIC)
@@ -277,7 +290,7 @@ rtld_get_entry_point (DynamicLinkInfo *dlinfo)
 }
 
 int
-rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
+rtld_setup (Elf32_Ehdr *ehdr, SortedArray *mregions, uint32_t *entry,
 	    DynamicLinkInfo *dlinfo)
 {
   DynamicLinkInfo interp_dlinfo;
@@ -286,7 +299,7 @@ rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
 
   /* Load ELF interpreter */
   memset (&interp_dlinfo, 0, sizeof (DynamicLinkInfo));
-  ret = rtld_load_interp (ehdr, segments, dlinfo, &interp_dlinfo);
+  ret = rtld_load_interp (ehdr, mregions, dlinfo, &interp_dlinfo);
   if (unlikely (ret < 0))
     return ret;
 
@@ -304,8 +317,8 @@ rtld_setup (Elf32_Ehdr *ehdr, Array *segments, uint32_t *entry,
 }
 
 int
-rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo,
-		  DynamicLinkInfo *interp_dlinfo)
+rtld_load_interp (Elf32_Ehdr *ehdr, SortedArray *mregions,
+		  DynamicLinkInfo *dlinfo, DynamicLinkInfo *interp_dlinfo)
 {
   VFSInode *inode;
   int ret = vfs_open_file (&inode, dlinfo->dl_interp, 1);
@@ -336,7 +349,7 @@ rtld_load_interp (Elf32_Ehdr *ehdr, Array *segments, DynamicLinkInfo *dlinfo,
     }
 
   /* Load program headers */
-  ret = rtld_load_interp_phdrs (inode, ehdr, segments, dlinfo, interp_dlinfo);
+  ret = rtld_load_interp_phdrs (inode, ehdr, mregions, dlinfo, interp_dlinfo);
 
  end:
   vfs_unref_inode (inode);
@@ -387,10 +400,4 @@ rtld_perform_interp_reloc (DynamicLinkInfo *dlinfo)
 	}
     }
   return 0;
-}
-
-void
-rtld_remap_segments (void)
-{
-  process_remap_segments (process_table[task_getpid ()].p_segments);
 }

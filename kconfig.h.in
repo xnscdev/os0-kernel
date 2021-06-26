@@ -29,7 +29,6 @@
 
 #mesondefine PROCESS_LIMIT
 #mesondefine PROCESS_FILE_LIMIT
-#mesondefine PROCESS_SEGMENT_LIMIT
-#mesondefine PROCESS_MREGION_LIMIT
+#mesondefine PROCESS_MMAP_LIMIT
 
 #endif

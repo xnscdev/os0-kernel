@@ -50,7 +50,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     }
   if (len == 0)
     return (void *) -EINVAL;
-  if (proc->p_mregions->sa_size >= PROCESS_MREGION_LIMIT)
+  if (proc->p_mregions->sa_size >= PROCESS_MMAP_LIMIT)
     return (void *) -ENOMEM;
   if (inode != NULL)
     {
@@ -63,7 +63,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     }
   if (!(flags & MAP_SHARED) && !(flags & MAP_PRIVATE))
     return (void *) -EINVAL;
-  len = PAGE_ALIGN (len);
+  len = ((len - 1) | (PAGE_SIZE - 1)) + 1;
   prot &= __PROT_MASK;
 
   /* Determine the address to place the mapping, considering the address
@@ -100,10 +100,13 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     }
   else
     vaddr = base;
-  for (i = last + 1; region = proc->p_mregions->sa_elems[i],
-	 region->pm_base - vaddr < len && i < proc->p_mregions->sa_size;
+  for (i = last + 1; i < proc->p_mregions->sa_size;
        vaddr = region->pm_base + region->pm_len, i++)
-    ;
+    {
+      region = proc->p_mregions->sa_elems[i];
+      if (region->pm_base - vaddr >= len)
+	break;
+    }
   base = vaddr;
 
  map:
@@ -193,7 +196,7 @@ sys_munmap (void *addr, size_t len)
   /* Require the address to be page aligned */
   if (addr == NULL || (uint32_t) addr & (PAGE_SIZE - 1))
     return -EINVAL;
-  len = PAGE_ALIGN (len);
+  len = ((len - 1) | (PAGE_SIZE - 1)) + 1;
 
   /* Search for the memory region containing the given address */
   while (first <= last)
@@ -281,7 +284,7 @@ sys_mprotect (void *addr, size_t len, int prot)
     return -EINVAL;
   if (len == 0)
     return -EINVAL;
-  len = PAGE_ALIGN (len);
+  len = ((len - 1) | (PAGE_SIZE - 1)) + 1;
   prot &= __PROT_MASK;
 
   /* Search for the memory region containing the given address */

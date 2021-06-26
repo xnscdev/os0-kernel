@@ -33,8 +33,7 @@ endif
 
 kernel_conf.set('PROCESS_LIMIT', get_option('process_limit'))
 kernel_conf.set('PROCESS_FILE_LIMIT', get_option('fd_limit'))
-kernel_conf.set('PROCESS_SEGMENT_LIMIT', get_option('segment_limit'))
-kernel_conf.set('PROCESS_MREGION_LIMIT', get_option('mregion_limit'))
+kernel_conf.set('PROCESS_MMAP_LIMIT', get_option('mmap_limit'))
 
 configure_file(input: 'kconfig.h.in', output: 'kconfig.h',
 	       configuration: kernel_conf)
