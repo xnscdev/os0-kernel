@@ -35,7 +35,7 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 {
   uint32_t addr;
   ProcessMemoryRegion *segment;
-  int prot;
+  int prot = 0;
 
   for (addr = phdr->p_vaddr & 0xfffff000; addr < phdr->p_vaddr + phdr->p_memsz;
        addr += PAGE_SIZE)
@@ -52,7 +52,6 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 #endif
     }
 
-  prot = 0;
   if (phdr->p_flags & PF_R)
     prot |= PROT_READ;
   if (phdr->p_flags & PF_W)
@@ -64,7 +63,7 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
   if (segment == NULL)
     return -ENOMEM;
   segment->pm_base = phdr->p_vaddr & 0xfffff000;
-  segment->pm_len = phdr->p_memsz;
+  segment->pm_len = ((phdr->p_memsz - 1) | (PAGE_SIZE - 1)) + 1;
   segment->pm_prot = prot;
   segment->pm_flags = MAP_PRIVATE | MAP_ANONYMOUS;
   segment->pm_ino = NULL;
@@ -255,7 +254,7 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
       *entry = (uint32_t) rtld_setup_dynamic_linker;
     }
   else
-    process_remap_segments (mregions);
+    process_remap_segments (dlinfo->dl_loadbase, mregions);
 
   sorted_array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
   proc->p_mregions = mregions;
@@ -491,7 +490,7 @@ process_add_rusage (struct rusage *usage, const Process *proc)
 }
 
 void
-process_remap_segments (SortedArray *mregions)
+process_remap_segments (void *base, SortedArray *mregions)
 {
   uint32_t vaddr;
   int i;

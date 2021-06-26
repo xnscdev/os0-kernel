@@ -93,7 +93,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 
   /* Search each mapped region until we find a gap between regions at least
      len bytes long */
-  if (last > 0)
+  if (last < proc->p_mregions->sa_size - 1)
     {
       ProcessMemoryRegion *before = proc->p_mregions->sa_elems[last];
       vaddr = before->pm_base + before->pm_len;
@@ -316,8 +316,8 @@ sys_mprotect (void *addr, size_t len, int prot)
       len -= rem;
     }
 
-  if (region->pm_prot == prot)
-    return 0; /* Already has requested protection */
+  if ((region->pm_prot | PROT_EXEC) == (prot | PROT_EXEC))
+    return 0; /* Already has requested protection (PROT_EXEC is ignored) */
 
   /* Remap memory region with requested protection */
   if (prot & PROT_WRITE)

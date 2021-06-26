@@ -95,7 +95,7 @@ int process_setup_std_streams (pid_t pid);
 uint32_t process_set_break (uint32_t addr);
 int process_mregion_cmp (const void *a, const void *b);
 void process_add_rusage (struct rusage *usage, const Process *proc);
-void process_remap_segments (SortedArray *mregions);
+void process_remap_segments (void *base, SortedArray *mregions);
 int process_terminated (pid_t pid);
 int process_send_signal (pid_t pid, int sig);
 void process_clear_sighandlers (void);

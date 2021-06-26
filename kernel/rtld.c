@@ -73,7 +73,7 @@ rtld_load_interp_segment (VFSInode *inode, SortedArray *mregions,
   if (unlikely (segment == NULL))
     goto err;
   segment->pm_base = (uint32_t) start;
-  segment->pm_len = phdr->p_memsz;
+  segment->pm_len = ((phdr->p_memsz - 1) | (PAGE_SIZE - 1)) + 1;
   segment->pm_prot = prot;
   segment->pm_flags = MAP_PRIVATE | MAP_ANONYMOUS;
   segment->pm_ino = NULL;

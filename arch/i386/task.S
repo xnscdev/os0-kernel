@@ -232,7 +232,7 @@ task_exec:
 	mov	4(%esp), %ecx
 	mov	8(%esp), %esi
 	mov	12(%esp), %edi
-	mov	16(%esp), %esi
+	mov	16(%esp), %ebx
 	cli
 	pushf
 	push	%cs
@@ -291,16 +291,17 @@ signal_trampoline:
 	.global rtld_setup_dynamic_linker
 	.type rtld_setup_dynamic_linker, @function
 rtld_setup_dynamic_linker:
-	/* ESI is the address of the dynamic link info structure upon entry
+	/* EBX is the address of the dynamic link info structure upon entry
 	   to this routine */
 
 	/* Call dynamic linker */
-	pushl	20(%esi) /* Dynamic structure */
-	pushl	4(%esi)  /* Address of program ELF header */
-	call	*12(%esi)
-	add	$8, %esp
+	push	%edi     /* Environment */
+	pushl	20(%ebx) /* Dynamic structure */
+	pushl	4(%ebx)  /* Address of program ELF header */
+	call	*12(%ebx)
+	add	$12, %esp
 
 	/* Begin execution at real entry point */
-	jmp	*8(%esi)
+	jmp	*8(%ebx)
 
 	.size rtld_setup_dynamic_linker, . - rtld_setup_dynamic_linker
