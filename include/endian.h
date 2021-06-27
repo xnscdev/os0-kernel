@@ -1,5 +1,5 @@
 /*************************************************************************
- * syscall.S -- This file is part of OS/0.                               *
+ * endian.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,64 +16,24 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#define _ASM
+#ifndef _ENDIAN_H
+#define _ENDIAN_H
 
-#include <sys/memory.h>
-#include <sys/task.h>
+#include <byteswap.h>
 
-	.section .text
-	.align 16
-	.global syscall
-	.type syscall, @function
-syscall:
-	push	%ebp
-	push	%edi
-	push	%esi
-	push	%edx
-	push	%ecx
-	push	%ebx
+#define htobe16(x) bswap_16 (x)
+#define htole16(x) (x)
+#define be16toh(x) bswap_16 (x)
+#define le16toh(x) (x)
 
-	mov	%eax, %ebx
-	mov	syscall_table(,%ebx,4), %ecx
-	call	*%ecx
+#define htobe32(x) bswap_32 (x)
+#define htole32(x) (x)
+#define be32toh(x) bswap_32 (x)
+#define le32toh(x) (x)
 
-	cmp	$1, %ebx
-	jne	1f
+#define htobe64(x) bswap_64 (x)
+#define htole64(x) (x)
+#define be64toh(x) bswap_64 (x)
+#define le64toh(x) (x)
 
-	/* exit(2) was called, first call the finalizer functions of all
-	   loaded shared objects, if there were any. Finally, change the
-	   return address to point to a busy-wait loop until the next
-	   task switch occurs */
-	mov	task_current, %ecx
-	mov	20(%ecx), %edx
-	test	%edx, %edx
-	jz	1f
-	call	*%edx
-
-	movl	$TASK_EXIT_PAGE, 24(%esp)
-
-1:
-	pop	%ebx
-	pop	%ecx
-	pop	%edx
-	pop	%esi
-	pop	%edi
-	pop	%ebp
-	iret
-
-	.size syscall, . - syscall
-
-	.align PAGE_SIZE
-	.global sys_exit_halt
-	.type sys_exit_halt, @function
-sys_exit_halt:
-	/* This does the same thing as `sti' (sets IF) without causing
-	   a general protection fault in user mode */
-	pushf
-	orl	$0x200, (%esp)
-	popf
-
-1:
-	jmp	1b /* Loop until next task switch */
-
-	.size sys_exit_halt, . - sys_exit_halt
+#endif

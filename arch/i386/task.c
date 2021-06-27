@@ -45,6 +45,7 @@ scheduler_init (void)
   task_current->t_esp = 0;
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
+  task_current->t_fini = NULL;
   task_current->t_prev = task_current;
   task_current->t_next = NULL;
 
@@ -215,6 +216,7 @@ _task_fork (void)
   task->t_ppid = task_getpid ();
   task->t_eip = 0;
   task->t_pgdir = dir;
+  task->t_fini = NULL;
   task->t_next = NULL;
 
   proc = &process_table[pid];

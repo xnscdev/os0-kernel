@@ -88,7 +88,7 @@ irq8:
 
 1:
 	/* Switch to next task */
-	mov	20(%edi), %edi
+	mov	28(%edi), %edi
 	test	%edi, %edi
 	jnz	2f
 	mov	task_queue, %edi
@@ -291,15 +291,15 @@ signal_trampoline:
 	.global rtld_setup_dynamic_linker
 	.type rtld_setup_dynamic_linker, @function
 rtld_setup_dynamic_linker:
-	/* EBX is the address of the dynamic link info structure upon entry
-	   to this routine */
-
 	/* Call dynamic linker */
 	push	%edi     /* Environment */
 	pushl	20(%ebx) /* Dynamic structure */
 	pushl	4(%ebx)  /* Address of program ELF header */
 	call	*12(%ebx)
 	add	$12, %esp
+
+	mov	task_current, %ecx
+	mov	%eax, 20(%ecx)
 
 	/* Begin execution at real entry point */
 	jmp	*8(%ebx)

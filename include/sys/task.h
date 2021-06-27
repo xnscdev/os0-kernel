@@ -43,6 +43,7 @@ typedef struct _ProcessTask
   uint32_t t_esp;
   uint32_t t_eip;
   uint32_t *t_pgdir;
+  void (*t_fini) (void);
   volatile struct _ProcessTask *t_prev;
   volatile struct _ProcessTask *t_next;
 } ProcessTask;
