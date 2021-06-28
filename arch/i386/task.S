@@ -88,7 +88,7 @@ irq8:
 
 1:
 	/* Switch to next task */
-	mov	28(%edi), %edi
+	mov	24(%edi), %edi
 	test	%edi, %edi
 	jnz	2f
 	mov	task_queue, %edi
@@ -263,6 +263,28 @@ task_exec:
 	push	%ecx
 	iret
 
+	.size task_exec, . - task_exec
+
+	.global task_set_fini_funcs
+	.type task_set_fini_funcs, @function
+task_set_fini_funcs:
+	push	%edi
+	push	%esi
+	push	%ebp
+	push	%ebx
+
+	push	%eax
+	call	_task_set_fini_funcs
+	add	$4, %esp
+
+	pop	%ebx
+	pop	%ebp
+	pop	%esi
+	pop	%edi
+	iret
+
+	.size task_set_fini_funcs, . - task_set_fini_funcs
+
 	.align PAGE_SIZE
 	.global signal_trampoline
 	.type signal_trampoline, @function
@@ -298,8 +320,8 @@ rtld_setup_dynamic_linker:
 	call	*12(%ebx)
 	add	$12, %esp
 
-	mov	task_current, %ecx
-	mov	%eax, 20(%ecx)
+	/* Set task finalizer functions */
+	int	$0x81
 
 	/* Begin execution at real entry point */
 	jmp	*8(%ebx)

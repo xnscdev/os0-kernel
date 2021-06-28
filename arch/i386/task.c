@@ -289,3 +289,9 @@ _task_fork (void)
   sorted_array_destroy (mregions, process_region_free, dir);
   return NULL;
 }
+
+void
+_task_set_fini_funcs (void (*func) (void))
+{
+  task_current->t_fini = func;
+}

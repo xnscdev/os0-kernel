@@ -45,7 +45,7 @@ syscall:
 	   return address to point to a busy-wait loop until the next
 	   task switch occurs */
 	mov	task_current, %ecx
-	mov	20(%ecx), %edx
+	mov	16(%ecx), %edx
 	test	%edx, %edx
 	jz	1f
 	call	*%edx

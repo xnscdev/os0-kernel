@@ -30,6 +30,7 @@ static DTPtr idt;
 #undef IRQ
 
 void syscall (void);
+void task_set_fini_funcs (void);
 
 static void
 idt_set_gate (uint32_t n, uint32_t addr, uint32_t sel, uint8_t dpl,
@@ -67,6 +68,7 @@ idt_init (void)
 #undef EXC
 #undef IRQ
   idt_set_gate (0x80, (uint32_t) syscall, 0x08, 3, IDT_GATE_TRAP);
+  idt_set_gate (0x81, (uint32_t) task_set_fini_funcs, 0x08, 3, IDT_GATE_TRAP);
 
   idt_load ((uint32_t) &idt);
 }
