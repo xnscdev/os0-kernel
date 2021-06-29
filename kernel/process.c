@@ -566,7 +566,7 @@ void
 process_clear_sighandlers (void)
 {
   memset (process_table[task_getpid ()].p_sigactions, 0,
-	  sizeof (struct sigaction) * NR_signals);
+	  sizeof (struct sigaction) * NSIG);
 }
 
 void

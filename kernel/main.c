@@ -169,8 +169,7 @@ init (void)
       if (WIFEXITED (status))
 	panic ("/sbin/init exited with status %d", WEXITSTATUS (status));
       else if (WIFSIGNALED (status))
-	panic ("/sbin/init received signal %s",
-	       sys_signames[WTERMSIG (status)]);
+	panic ("/sbin/init received signal %s", sys_signame[WTERMSIG (status)]);
     }
 }
 

@@ -41,7 +41,7 @@ typedef int sig_atomic_t;
 
 typedef struct
 {
-  char sig[NR_signals / CHAR_BIT];
+  char sig[NSIG / CHAR_BIT];
 } sigset_t;
 
 union sigval
@@ -73,7 +73,8 @@ struct sigaction
 
 __BEGIN_DECLS
 
-extern const char *const sys_signames[NR_signals];
+extern const char *const sys_siglist[NSIG];
+extern const char *const sys_signame[NSIG];
 
 int sigemptyset (sigset_t *set);
 int sigfillset (sigset_t *set);

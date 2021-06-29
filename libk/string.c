@@ -122,9 +122,43 @@ const char *const sys_errlist[] = {
   [EDQUOT] = "Disk quota exceeded"
 };
 
-const int sys_nerr = sizeof (sys_errlist) / sizeof (sys_errlist[0]);
+const int sys_nerr = __NR_errno;
 
-const char *const sys_signames[NR_signals] = {
+const char *const sys_siglist[NSIG] = {
+  NULL,
+  "Hangup",
+  "Interrupt",
+  "Quit",
+  "Illegal instruction",
+  "Trace/breakpoint trap",
+  "Aborted",
+  "Bus error",
+  "Floating point exception",
+  "Killed",
+  "User defined signal 1",
+  "Segmentation fault",
+  "User defined signal 2",
+  "Broken pipe",
+  "Alarm clock",
+  "Stack fault",
+  "Child exited",
+  "Continued",
+  "Stopped (signal)",
+  "Stopped",
+  "Stopped (tty input)",
+  "Stopped (tty output)",
+  "Urgent I/O condition",
+  "CPU time limit exceeded",
+  "File size limit exceeded",
+  "Virtual timer expired",
+  "Profiling timer expired",
+  "Window changed",
+  "I/O possible",
+  "Power failure",
+  "Bad system call"
+};
+
+const char *const sys_signame[NSIG] = {
   NULL,
   "SIGHUP",
   "SIGINT",

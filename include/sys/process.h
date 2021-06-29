@@ -53,7 +53,7 @@ typedef struct
 typedef struct
 {
   ProcessFile p_files[PROCESS_FILE_LIMIT];   /* File descriptor table */
-  struct sigaction p_sigactions[NR_signals]; /* Signal handler table */
+  struct sigaction p_sigactions[NSIG];       /* Signal handler table */
   sigset_t p_sigblocked;                     /* Signal block mask */
   sigset_t p_sigpending;                     /* Signal pending mask */
   volatile ProcessTask *p_task;              /* Scheduler task */

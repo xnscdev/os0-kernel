@@ -371,11 +371,14 @@ sys_access (const char *path, int mode)
     case F_OK:
       break; /* The file exists at this point */
     case X_OK:
-      return vfs_perm_check_exec (inode, 1);
+      ret = vfs_perm_check_exec (inode, 1);
+      break;
     case R_OK:
-      return vfs_perm_check_read (inode, 1);
+      ret = vfs_perm_check_read (inode, 1);
+      break;
     case W_OK:
-      return vfs_perm_check_write (inode, 1);
+      ret = vfs_perm_check_write (inode, 1);
+      break;
     default:
       ret = -EINVAL;
     }

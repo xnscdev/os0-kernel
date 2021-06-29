@@ -32,7 +32,7 @@ sys_kill (pid_t pid, int sig)
     pid = -pid;
   if (!process_valid (pid))
     return -ESRCH;
-  if (sig < 0 || sig >= NR_signals)
+  if (sig < 0 || sig >= NSIG)
     return -EINVAL;
   if (process_table[currpid].p_euid != 0
       && process_table[currpid].p_euid != process_table[pid].p_euid)
@@ -63,7 +63,7 @@ sys_signal (int sig, sig_t func)
 {
   struct sigaction old;
   struct sigaction act;
-  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
+  if (sig < 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP)
     return SIG_ERR;
   act.sa_handler = func;
   act.sa_sigaction = NULL;
@@ -79,7 +79,7 @@ sys_sigaction (int sig, const struct sigaction *__restrict act,
 	       struct sigaction *__restrict old)
 {
   Process *proc;
-  if (sig < 0 || sig >= NR_signals || sig == SIGKILL || sig == SIGSTOP)
+  if (sig < 0 || sig >= NSIG || sig == SIGKILL || sig == SIGSTOP)
     return -EINVAL;
   proc = &process_table[task_getpid ()];
   if (old != NULL)

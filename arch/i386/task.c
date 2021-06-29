@@ -51,7 +51,7 @@ scheduler_init (void)
 
   task_queue = task_current;
   process_table[0].p_task = task_current;
-  for (i = 0; i < NR_signals; i++)
+  for (i = 0; i < NSIG; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
   __asm__ volatile ("sti");
 }
@@ -225,7 +225,7 @@ _task_fork (void)
   memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
   /* Reset signal handlers */
-  memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NR_signals);
+  memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NSIG);
 
   /* Inherit parent working directory, real/effective/saved UID/GID,
      process group ID, session ID, and blocked signal mask */
