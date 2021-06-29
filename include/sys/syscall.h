@@ -75,6 +75,7 @@ gid_t sys_getegid (void);
 int sys_ioctl (int fd, unsigned long req, void *data);
 int sys_fcntl (int fd, int cmd, int arg);
 int sys_setpgid (pid_t pid, pid_t pgid);
+mode_t sys_umask (mode_t mask);
 int sys_dup2 (int fd1, int fd2);
 pid_t sys_getppid (void);
 pid_t sys_getpgrp (void);

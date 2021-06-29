@@ -60,6 +60,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_ioctl] = sys_ioctl,
   [SYS_fcntl] = sys_fcntl,
   [SYS_setpgid] = sys_setpgid,
+  [SYS_umask] = sys_umask,
   [SYS_dup2] = sys_dup2,
   [SYS_getppid] = sys_getppid,
   [SYS_getpgrp] = sys_getpgrp,

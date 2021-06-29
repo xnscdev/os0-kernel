@@ -73,6 +73,7 @@ sys_open (const char *path, int flags, mode_t mode)
   Process *proc = &process_table[task_getpid ()];
   ProcessFile *files = proc->p_files;
   int i;
+  mode &= ~proc->p_umask;
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
       if (files[i].pf_inode == NULL)
@@ -431,7 +432,7 @@ sys_mkdir (const char *path, mode_t mode)
       return -EEXIST;
     }
 
-  ret = vfs_mkdir (dir, name, mode);
+  ret = vfs_mkdir (dir, name, mode & ~process_table[task_getpid ()].p_umask);
   vfs_unref_inode (dir);
   kfree (name);
   return ret;
@@ -449,6 +450,15 @@ sys_rmdir (const char *path)
   vfs_unref_inode (dir);
   kfree (name);
   return ret;
+}
+
+mode_t
+sys_umask (mode_t mask)
+{
+  Process *proc = &process_table[task_getpid ()];
+  mode_t old = proc->p_umask;
+  proc->p_umask = mask;
+  return old;
 }
 
 int

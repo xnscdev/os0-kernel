@@ -317,6 +317,7 @@ process_free (pid_t pid)
   proc->p_sig = 0;
   proc->p_term = 0;
   proc->p_waitstat = 0;
+  proc->p_umask = 0;
   proc->p_uid = 0;
   proc->p_euid = 0;
   proc->p_suid = 0;

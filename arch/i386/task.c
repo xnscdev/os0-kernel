@@ -53,6 +53,7 @@ scheduler_init (void)
   process_table[0].p_task = task_current;
   for (i = 0; i < NSIG; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
+  process_table[0].p_umask = S_IWGRP | S_IWOTH;
   __asm__ volatile ("sti");
 }
 

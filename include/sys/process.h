@@ -70,6 +70,7 @@ typedef struct
   siginfo_t p_siginfo;                       /* Signal info */
   int p_term;                                /* If process is terminated */
   int p_waitstat;                            /* Value to set wait status to */
+  mode_t p_umask;                            /* File creation mask */
   uid_t p_uid;                               /* Real user id */
   uid_t p_euid;                              /* Effective user id */
   uid_t p_suid;                              /* Saved set-user-id */
