@@ -21,8 +21,20 @@
 	.type sys_fork, @function
 sys_fork:
 	cli
+	pushl	$1
 	call	task_fork
+	add	$4, %esp
 	sti
 	ret
 
 	.size sys_fork, . - sys_fork
+
+	.global sys_vfork
+	.type sys_vfork, @function
+sys_vfork:
+	cli
+	pushl	$0
+	call	task_fork
+	add	$4, %esp
+	sti
+	ret

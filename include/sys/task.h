@@ -44,6 +44,7 @@ typedef struct _ProcessTask
   uint32_t t_eip;
   uint32_t *t_pgdir;
   void (*t_fini) (void);
+  int t_pgcopied;
   volatile struct _ProcessTask *t_prev;
   volatile struct _ProcessTask *t_next;
 } ProcessTask;
@@ -52,7 +53,7 @@ __BEGIN_DECLS
 
 void scheduler_init (void);
 void task_timer_tick (void);
-int task_fork (void);
+int task_fork (int copy_pgdir);
 void task_yield (void);
 int task_new (uint32_t eip);
 void task_exec (uint32_t eip, char *const *argv, char *const *envp,

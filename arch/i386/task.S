@@ -88,7 +88,7 @@ irq8:
 
 1:
 	/* Switch to next task */
-	mov	24(%edi), %edi
+	mov	28(%edi), %edi
 	test	%edi, %edi
 	jnz	2f
 	mov	task_queue, %edi
@@ -168,7 +168,9 @@ task_fork:
 	mov	%eax, -4(%ebp)
 
 	/* Create new task */
+	pushl	8(%ebp)
 	call	_task_fork
+	add	$4, %esp
 	test	%eax, %eax
 	jnz	2f
 

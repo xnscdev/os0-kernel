@@ -127,6 +127,7 @@
 #define SYS_getresgid     171
 #define SYS_chown         182
 #define SYS_getcwd        183
+#define SYS_vfork         190
 #define SYS_setxattr      226
 #define SYS_lsetxattr     227
 #define SYS_fsetxattr     228

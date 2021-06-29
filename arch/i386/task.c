@@ -131,7 +131,8 @@ task_free (ProcessTask *task)
 	free_page (paddr);
     }
 
-  page_dir_free (task->t_pgdir);
+  if (task->t_pgcopied)
+    page_dir_free (task->t_pgdir);
   kfree (task);
 }
 
@@ -148,7 +149,7 @@ task_getppid (void)
 }
 
 ProcessTask *
-_task_fork (void)
+_task_fork (int copy_pgdir)
 {
   volatile ProcessTask *temp;
   ProcessTask *task;
@@ -168,9 +169,14 @@ _task_fork (void)
   return NULL;
 
  found:
-  dir = page_dir_clone (task_current->t_pgdir);
-  if (dir == NULL)
-    return NULL;
+  if (copy_pgdir)
+    {
+      dir = page_dir_clone (task_current->t_pgdir);
+      if (dir == NULL)
+	return NULL;
+    }
+  else
+    dir = task_current->t_pgdir;
 
   /* Allocate and copy the stack */
   for (i = 0; i < TASK_STACK_SIZE; i += PAGE_SIZE)
@@ -218,6 +224,7 @@ _task_fork (void)
   task->t_eip = 0;
   task->t_pgdir = dir;
   task->t_fini = NULL;
+  task->t_pgcopied = copy_pgdir;
   task->t_next = NULL;
 
   proc = &process_table[pid];
@@ -286,7 +293,8 @@ _task_fork (void)
       if (paddr != 0)
 	free_page (paddr);
     }
-  page_dir_free (dir);
+  if (copy_pgdir)
+    page_dir_free (dir);
   sorted_array_destroy (mregions, process_region_free, dir);
   return NULL;
 }
