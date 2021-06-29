@@ -16,10 +16,13 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <bits/mman.h>
+#include <fs/pipe.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <vm/heap.h>
 
 extern int exit_task;
 
@@ -62,6 +65,86 @@ int
 sys_dup (int fd)
 {
   return fcntl (fd, F_DUPFD, 0);
+}
+
+int
+sys_pipe (int fd[2])
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *read_inode;
+  VFSInode *write_inode;
+  Pipe *pipe;
+  int ret;
+  int i;
+
+  /* Allocate pipe inodes and structure */
+  read_inode = vfs_alloc_inode (&pipe_sb);
+  write_inode = vfs_alloc_inode (&pipe_sb);
+  pipe = kmalloc (sizeof (Pipe));
+  if (unlikely (read_inode == NULL || write_inode == NULL || pipe == NULL))
+    {
+      ret = -ENOMEM;
+      goto err;
+    }
+  write_inode->vi_flags |= PIPE_WRITE_END;
+  read_inode->vi_private = pipe;
+  write_inode->vi_private = pipe;
+
+  /* Allocate memory for pipe */
+  pipe->p_data = sys_mmap (NULL, PIPE_LENGTH, PROT_READ | PROT_WRITE,
+			   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (unlikely ((uintptr_t) pipe->p_data >= UINTPTR_MAX - __NR_errno))
+    {
+      ret = UINTPTR_MAX - (uintptr_t) pipe->p_data;
+      goto err;
+    }
+
+  /* Allocate file descriptor for read inode */
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      if (proc->p_files[i].pf_inode == NULL)
+	{
+	  proc->p_files[i].pf_inode = read_inode;
+	  proc->p_files[i].pf_dir = NULL;
+	  proc->p_files[i].pf_path = NULL;
+	  proc->p_files[i].pf_mode = O_RDONLY;
+	  proc->p_files[i].pf_flags = 0;
+	  proc->p_files[i].pf_offset = 0;
+	  fd[0] = i;
+	  break;
+	}
+    }
+  if (unlikely (i == PROCESS_FILE_LIMIT))
+    {
+      sys_munmap (pipe->p_data, PIPE_LENGTH);
+      ret = -ENFILE;
+      goto err;
+    }
+
+  /* Allocate file descriptor for write inode */
+  for (; i < PROCESS_FILE_LIMIT; i++)
+    {
+      if (proc->p_files[i].pf_inode == NULL)
+	{
+	  proc->p_files[i].pf_inode = write_inode;
+	  proc->p_files[i].pf_dir = NULL;
+	  proc->p_files[i].pf_path = NULL;
+	  proc->p_files[i].pf_mode = O_WRONLY;
+	  proc->p_files[i].pf_flags = 0;
+	  proc->p_files[i].pf_offset = 0;
+	  fd[1] = i;
+	  return 0;
+	}
+    }
+  memset (&proc->p_files[fd[0]], 0, sizeof (ProcessFile));
+  sys_munmap (pipe->p_data, PIPE_LENGTH);
+  ret = -ENFILE;
+
+ err:
+  vfs_unref_inode (read_inode);
+  vfs_unref_inode (write_inode);
+  kfree (pipe);
+  return ret;
 }
 
 int

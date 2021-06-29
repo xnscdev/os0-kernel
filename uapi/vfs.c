@@ -252,6 +252,11 @@ sys_chdir (const char *path)
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
+  if (!S_ISDIR (inode->vi_mode))
+    {
+      vfs_unref_inode (inode);
+      return -ENOTDIR;
+    }
   cwd = vfs_path_resolve (path);
   if (cwd == NULL)
     {
@@ -589,11 +594,16 @@ int
 sys_fchdir (int fd)
 {
   Process *proc = &process_table[task_getpid ()];
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  if (!S_ISDIR (inode->vi_mode))
+    return -ENOTDIR;
   proc->p_cwdpath = strdup (proc->p_files[fd].pf_path);
   if (proc->p_cwdpath == NULL)
     return -ENOMEM;
   vfs_unref_inode (proc->p_cwd);
-  proc->p_cwd = proc->p_files[fd].pf_inode;
+  proc->p_cwd = inode;
   vfs_ref_inode (proc->p_cwd);
   return 0;
 }

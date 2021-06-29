@@ -6,6 +6,7 @@ fs_src = [
   'fsguess.c',
   'path.c',
   'perm.c',
+  'pipe.c',
   'vfs.c'
 ]
 

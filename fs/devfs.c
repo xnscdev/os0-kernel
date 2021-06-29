@@ -26,7 +26,7 @@
 
 const VFSSuperblockOps devfs_sops = {
   .sb_alloc_inode = devfs_alloc_inode,
-  .sb_destroy_inode = devfs_destroy_inode,
+  .sb_destroy_inode = (void (*) (VFSInode *)) kfree,
   .sb_alloc_dir = devfs_alloc_dir,
   .sb_destroy_dir = (void (*) (VFSDirectory *)) kfree,
   .sb_free = devfs_free
@@ -86,7 +86,6 @@ devfs_alloc_inode (VFSSuperblock *sb)
     return NULL;
   inode->vi_ops = &devfs_iops;
   inode->vi_sb = sb;
-  inode->vi_refcnt = 1;
 
   /* Set reasonable defaults */
   t = time (NULL);
@@ -102,12 +101,6 @@ devfs_alloc_inode (VFSSuperblock *sb)
   inode->vi_ctime.tv_nsec = 0;
   inode->vi_blocks = 0;
   return inode;
-}
-
-void
-devfs_destroy_inode (VFSInode *inode)
-{
-  kfree (inode);
 }
 
 VFSDirectory *

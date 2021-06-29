@@ -49,6 +49,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_mkdir] = sys_mkdir,
   [SYS_rmdir] = sys_rmdir,
   [SYS_dup] = sys_dup,
+  [SYS_pipe] = sys_pipe,
   [SYS_times] = sys_times,
   [SYS_brk] = sys_brk,
   [SYS_setgid] = sys_setgid,

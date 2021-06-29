@@ -120,4 +120,6 @@
 #define EREMOTEIO       121
 #define EDQUOT          122
 
+#define __NR_errno 128
+
 #endif

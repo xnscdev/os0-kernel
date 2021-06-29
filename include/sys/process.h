@@ -28,7 +28,7 @@
 #include <sys/task.h>
 #include <termios.h>
 
-#define PROCESS_BREAK_LIMIT 0x40000000
+#define PROCESS_BREAK_LIMIT    0x40000000
 
 typedef struct
 {

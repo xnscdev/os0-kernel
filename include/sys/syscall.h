@@ -64,6 +64,7 @@ int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);
 int sys_rmdir (const char *path);
 int sys_dup (int fd);
+int sys_pipe (int fd[2]);
 clock_t sys_times (struct tms *tms);
 int sys_brk (void *ptr);
 int sys_setgid (gid_t gid);

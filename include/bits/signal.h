@@ -56,6 +56,7 @@
 #define SIGUNUSED SIGSYS
 
 #define NR_signals 48
+#define NSIG       NR_signals
 #define SIGRTMIN   32
 #define SIGRTMAX   NR_signals
 
