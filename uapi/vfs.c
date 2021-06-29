@@ -318,11 +318,12 @@ sys_lseek (int fd, off_t offset, int whence)
 {
   ProcessFile *file;
   off_t real_offset;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
     return -EBADF;
   file = &process_table[task_getpid ()].p_files[fd];
-  if (file->pf_inode == NULL)
-    return -EBADF;
+  if (S_ISSOCK (inode->vi_mode) || S_ISFIFO (inode->vi_mode))
+    return -ESPIPE;
   switch (whence)
     {
     case SEEK_SET:
@@ -332,7 +333,7 @@ sys_lseek (int fd, off_t offset, int whence)
       real_offset = file->pf_offset + offset;
       break;
     case SEEK_END:
-      real_offset = file->pf_inode->vi_size + offset;
+      real_offset = inode->vi_size + offset;
       break;
     default:
       return -EINVAL;
@@ -341,13 +342,7 @@ sys_lseek (int fd, off_t offset, int whence)
     return -EINVAL;
   file->pf_offset = real_offset;
 
-  if (S_ISDIR (file->pf_inode->vi_mode))
-    {
-      vfs_destroy_dir (file->pf_dir);
-      file->pf_dir = vfs_alloc_dir (file->pf_inode, file->pf_inode->vi_sb);
-      if (unlikely (file->pf_dir == NULL))
-	return -EIO;
-    }
+  /* TODO Update directory structure on seek */
   return real_offset;
 }
 
