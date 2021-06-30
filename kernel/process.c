@@ -422,16 +422,9 @@ process_set_break (uint32_t addr)
   if (addr < proc->p_break || addr >= PROCESS_BREAK_LIMIT)
     return proc->p_break;
 
-  /* Page align starting address */
-  i = proc->p_break;
-  if (i & (PAGE_SIZE - 1))
-    {
-      i &= 0xfffff000;
-      i += PAGE_SIZE;
-    }
-
   /* Map pages until the new program break is reached */
-  for (; i <= addr; i += PAGE_SIZE)
+  for (i = ((proc->p_break - 1) | (PAGE_SIZE - 1)) + 1; i < addr;
+       i += PAGE_SIZE)
     {
       uint32_t paddr = alloc_page ();
       if (paddr == 0)
@@ -444,8 +437,8 @@ process_set_break (uint32_t addr)
 #ifndef INVLPG_SUPPORT
   vm_tlb_reset ();
 #endif
-
   memset ((void *) proc->p_break, 0, addr - proc->p_break);
+
   proc->p_break = addr;
   return proc->p_break;
 }

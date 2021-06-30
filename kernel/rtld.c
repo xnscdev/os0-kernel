@@ -234,12 +234,6 @@ rtld_perform_rel (Elf32_Rel *entry, DynamicLinkInfo *dlinfo, Elf32_Sword addend)
     case R_386_RELATIVE:
       *REL_OFFSET += LD_SO_LOAD_ADDR + addend;
       break;
-    case R_386_GOTOFF:
-      *REL_OFFSET = symbol->st_value - (uint32_t) dlinfo->dl_pltgot + addend;
-      break;
-    case R_386_GOTPC:
-      *REL_OFFSET = (uint32_t) dlinfo->dl_pltgot - entry->r_offset - 4 + addend;
-      break;
 #undef REL_OFFSET
     }
 }
