@@ -189,7 +189,7 @@ int vfs_perm_check_exec (VFSInode *inode, int real);
 
 int vfs_create (VFSInode *dir, const char *name, mode_t mode);
 int vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-		const char *name, int follow_symlinks);
+		const char *name, int symcount);
 int vfs_link (VFSInode *old, VFSInode *dir, const char *new);
 int vfs_unlink (VFSInode *dir, const char *name);
 int vfs_symlink (VFSInode *dir, const char *old, const char *new);

@@ -1,5 +1,5 @@
 /*************************************************************************
- * perm.c -- This file is part of OS/0.                                  *
+ * path.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -20,6 +20,48 @@
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <vm/heap.h>
+
+/* Replace starting directory if it is the root inode of a mounted filesystem */
+
+#define CHECK_ROOT_MOUNT do						\
+    {									\
+      for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)			\
+	{								\
+	  VFSInode *mpt = mount_table[i].vfs_mntpoint;			\
+	  if (mpt == NULL)						\
+	    continue;							\
+	  if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)	\
+	    {								\
+	      vfs_unref_inode (dir);					\
+	      dir = mount_table[i].vfs_sb.sb_root;			\
+	      vfs_ref_inode (dir);					\
+	      dont_unref = 1;						\
+	      goto search;						\
+	    }								\
+	}								\
+    }									\
+  while (0)
+
+/* Check if the inode is the root of a mounted filesystem and replace
+   it with the root inode of the mount if it is */
+
+#define CHECK_PATH_MOUNT do						\
+    {									\
+      for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)			\
+	{								\
+	  VFSInode *mpt = mount_table[i].vfs_mntpoint;			\
+	  if (mpt == NULL)						\
+	    continue;							\
+	  if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)	\
+	    {								\
+	      vfs_unref_inode (dir);					\
+	      dir = mount_table[i].vfs_sb.sb_root;			\
+	      vfs_ref_inode (dir);					\
+	      break;							\
+	    }								\
+	}								\
+    }									\
+  while (0)
 
 int
 vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
@@ -43,20 +85,7 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
       ptr = buffer;
     }
 
-  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
-    {
-      VFSInode *mpt = mount_table[i].vfs_mntpoint;
-      if (mpt == NULL)
-	continue;
-      if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)
-	{
-	  vfs_unref_inode (dir);
-	  dir = mount_table[i].vfs_sb.sb_root;
-	  vfs_ref_inode (dir);
-	  dont_unref = 1;
-	  goto search;
-	}
-    }
+  CHECK_ROOT_MOUNT;
   vfs_ref_inode (dir);
 
  search:
@@ -88,21 +117,7 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
 	      return -ENOTDIR;
 	    }
 
-	  /* Check if the inode is the root of a mounted filesystem and replace
-	     it with the root inode of the mount if it is */
-	  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
-	    {
-	      VFSInode *mpt = mount_table[i].vfs_mntpoint;
-	      if (mpt == NULL)
-		continue;
-	      if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)
-		{
-		  vfs_unref_inode (dir);
-		  dir = mount_table[i].vfs_sb.sb_root;
-		  vfs_ref_inode (dir);
-		  break;
-		}
-	    }
+	  CHECK_PATH_MOUNT;
 	}
 
       if (end == NULL)

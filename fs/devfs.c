@@ -20,6 +20,7 @@
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/process.h>
+#include <sys/syscall.h>
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
 #include <errno.h>
@@ -121,7 +122,7 @@ devfs_free (VFSSuperblock *sb)
 
 int
 devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-	      const char *name, int follow_symlinks)
+	      const char *name, int symcount)
 {
   int i;
   if (!S_ISDIR (dir->vi_mode))
@@ -163,7 +164,7 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
     }
   else if (dir->vi_ino == DEVFS_FD_INODE)
     {
-      if (follow_symlinks)
+      if (symcount != -1)
 	{
 	  int fd = 0;
 	  /* Convert string to file descriptor */
@@ -175,7 +176,9 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	    }
 	  if (*name != '\0')
 	    return -ENOENT;
-	  *inode = process_table[task_getpid ()].p_files[fd].pf_inode;
+	  *inode = inode_from_fd (fd);
+	  if (unlikely (*inode == NULL))
+	    return -ENOENT;
 	  vfs_ref_inode (*inode);
 	  return 0;
 	}

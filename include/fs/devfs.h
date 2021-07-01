@@ -49,7 +49,7 @@ VFSDirectory *devfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
 void devfs_free (VFSSuperblock *sb);
 
 int devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-		  const char *name, int follow_symlinks);
+		  const char *name, int symcount);
 int devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 int devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);

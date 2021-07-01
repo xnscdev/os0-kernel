@@ -194,7 +194,7 @@ int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int ext2_create (VFSInode *dir, const char *name, mode_t mode);
 int ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-		 const char *name, int follow_symlinks);
+		 const char *name, int symcount);
 int ext2_link (VFSInode *old, VFSInode *dir, const char *new);
 int ext2_unlink (VFSInode *dir, const char *name);
 int ext2_symlink (VFSInode *dir, const char *old, const char *new);

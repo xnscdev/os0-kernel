@@ -103,7 +103,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
 
 int
 ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-	     const char *name, int follow_symlinks)
+	     const char *name, int symcount)
 {
   VFSDirEntry *entry;
   VFSDirectory *d = ext2_alloc_dir (dir, sb);
@@ -129,14 +129,14 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  VFSInode *cwd;
 	  char *buffer;
 	  VFSInode *i = entry->d_inode;
-	  int count = 0;
+	  VFSInode *temp;
 	  int ret;
 
 	  kfree (entry->d_name);
 	  kfree (entry);
 
 	  /* If not a symlink, return the inode that was found */
-	  if (!follow_symlinks || !S_ISLNK (i->vi_mode))
+	  if (symcount < 0 || !S_ISLNK (i->vi_mode))
 	    {
 	      *inode = i;
 	      ext2_destroy_dir (d);
@@ -157,35 +157,22 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	      return -ENOMEM;
 	    }
 
-	  while (S_ISLNK (i->vi_mode))
-	    {
-	      VFSInode *temp;
-	      if (count > MAXSYMLINKS)
-		{
-		  /* Too many symbolic links, probably an infinite loop */
-		  ret = -ELOOP;
-		  goto err;
-		}
+	  /* Read symlink path */
+	  memset (buffer, 0, PATH_MAX);
+	  ret = ext2_readlink (i, buffer, PATH_MAX);
+	  if (ret < 0)
+	    goto err;
 
-	      /* Read symlink path */
-	      memset (buffer, 0, PATH_MAX);
-	      ret = ext2_readlink (i, buffer, PATH_MAX);
-	      if (ret < 0)
-	        goto err;
+	  /* Open symlink path */
+	  ret = vfs_open_file (&temp, buffer, 0);
+	  if (ret < 0)
+	    goto err;
 
-	      /* Open symlink path */
-	      ret = vfs_open_file (&temp, buffer, 0);
-	      if (ret < 0)
-	        goto err;
-
-	      vfs_unref_inode (i);
-	      i = temp;
-	    }
-
+	  vfs_unref_inode (i);
 	  kfree (buffer);
 	  ext2_destroy_dir (d);
 	  proc->p_cwd = cwd;
-	  *inode = i;
+	  *inode = temp;
 	  return 0;
 
 	err:

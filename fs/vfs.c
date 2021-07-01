@@ -20,6 +20,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <libk/libk.h>
+#include <sys/param.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
 #include <vm/heap.h>
@@ -30,7 +31,7 @@ VFSInode *vfs_root_inode;
 
 static int vfs_default_lookup (VFSInode **inode, VFSInode *dir,
 			       VFSSuperblock *sb, const char *name,
-			       int follow_symlinks);
+			       int symcount);
 static int vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir,
 				VFSSuperblock *sb);
 
@@ -49,7 +50,7 @@ static VFSSuperblock vfs_default_sb = {
 
 static int
 vfs_default_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-		    const char *name, int follow_symlinks)
+		    const char *name, int symcount)
 {
   /* Must be root directory */
   if (dir->vi_ino != 0)
@@ -83,7 +84,7 @@ vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
       dirent = kzalloc (sizeof (VFSDirEntry));
       if (dirent == NULL)
 	return -ENOMEM;
-      ret = vfs_default_lookup (&dirent->d_inode, dir->vd_inode, sb, "dev", 0);
+      ret = vfs_default_lookup (&dirent->d_inode, dir->vd_inode, sb, "dev", -1);
       if (ret != 0)
 	return ret;
       dirent->d_name = strdup ("dev");
@@ -292,16 +293,18 @@ vfs_create (VFSInode *dir, const char *name, mode_t mode)
 
 int
 vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
-	    const char *name, int follow_symlinks)
+	    const char *name, int symcount)
 {
   int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
+  if (symcount >= MAXSYMLINKS)
+    return -ELOOP;
   ret = vfs_perm_check_read (dir, 0);
   if (ret != 0)
     return ret;
   if (dir->vi_ops->vfs_lookup != NULL)
-    return dir->vi_ops->vfs_lookup (inode, dir, sb, name, follow_symlinks);
+    return dir->vi_ops->vfs_lookup (inode, dir, sb, name, symcount);
   return -ENOSYS;
 }
 
