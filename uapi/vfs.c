@@ -323,7 +323,7 @@ sys_lseek (int fd, off_t offset, int whence)
   if (inode == NULL)
     return -EBADF;
   file = &process_table[task_getpid ()].p_files[fd];
-  if (S_ISSOCK (inode->vi_mode) || S_ISFIFO (inode->vi_mode))
+  if (!vfs_can_seek (inode))
     return -ESPIPE;
   switch (whence)
     {

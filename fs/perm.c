@@ -94,3 +94,13 @@ vfs_perm_check_exec (VFSInode *inode, int real)
     return -EACCES;
   return 0;
 }
+
+int
+vfs_can_seek (VFSInode *inode)
+{
+  if (S_ISCHR (inode->vi_mode)
+      || S_ISSOCK (inode->vi_mode)
+      || S_ISFIFO (inode->vi_mode))
+    return 0;
+  return 1;
+}

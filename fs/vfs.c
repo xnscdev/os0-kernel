@@ -356,10 +356,13 @@ vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
-  if (offset > inode->vi_size)
-    return -EINVAL;
-  else if (offset + len > inode->vi_size)
-    len = inode->vi_size - offset;
+  if (vfs_can_seek (inode))
+    {
+      if (offset > inode->vi_size)
+	return -EINVAL;
+      else if (offset + len > inode->vi_size)
+	len = inode->vi_size - offset;
+    }
   if (inode->vi_ops->vfs_read != NULL)
     return inode->vi_ops->vfs_read (inode, buffer, len, offset);
   return -ENOSYS;

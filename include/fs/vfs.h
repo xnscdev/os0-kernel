@@ -186,6 +186,7 @@ int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 int vfs_perm_check_read (VFSInode *inode, int real);
 int vfs_perm_check_write (VFSInode *inode, int real);
 int vfs_perm_check_exec (VFSInode *inode, int real);
+int vfs_can_seek (VFSInode *inode);
 
 int vfs_create (VFSInode *dir, const char *name, mode_t mode);
 int vfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
