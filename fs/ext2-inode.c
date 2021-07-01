@@ -132,6 +132,7 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  VFSInode *temp;
 	  int ret;
 
+	  i->vi_refcnt = 1;
 	  kfree (entry->d_name);
 	  kfree (entry);
 

@@ -165,8 +165,10 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
   SortedArray *mregions;
   Process *proc;
   int ret;
-  int i;
-  __asm__ volatile ("cli");
+  pid_t pid = task_getpid ();
+
+  /* Clear existing process data */
+  process_clear (pid, 1);
 
   mregions = sorted_array_new (PROCESS_MMAP_LIMIT, process_mregion_cmp);
   if (unlikely (mregions == NULL))
@@ -210,19 +212,15 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
     goto end;
   *entry = ehdr->e_entry;
 
-  /* Clear all open file descriptors and open std streams */
-  proc = &process_table[task_getpid ()];
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+  /* Setup standard streams */
+  if (process_setup_std_streams (pid) != 0)
     {
-      VFSInode *fdi = proc->p_files[i].pf_inode;
-      if (fdi != NULL)
-	vfs_unref_inode (fdi);
+      ret = -ENOMEM;
+      goto end;
     }
-  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-  if (process_setup_std_streams (task_getpid ()) != 0)
-    goto end;
 
   /* Setup program break */
+  proc = &process_table[pid];
   proc->p_break = ret;
   if (proc->p_break & (PAGE_SIZE - 1))
     {
@@ -256,16 +254,13 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
   else
     process_remap_segments (dlinfo->dl_loadbase, mregions);
 
-  sorted_array_destroy (proc->p_mregions, process_region_free, curr_page_dir);
   proc->p_mregions = mregions;
   kfree (ehdr);
-  __asm__ volatile ("sti");
   return 0;
 
  end:
   sorted_array_destroy (mregions, process_region_free, curr_page_dir);
   kfree (ehdr);
-  __asm__ volatile ("sti");
   return ret;
 }
 
@@ -276,19 +271,14 @@ process_valid (pid_t pid)
 }
 
 void
-process_free (pid_t pid)
+process_clear (pid_t pid, int partial)
 {
-  Process *proc;
-  pid_t ppid;
+  Process *proc = &process_table[pid];
   uint32_t vaddr;
   int i;
-  if (!process_valid (pid))
-    return;
-  proc = &process_table[pid];
   sorted_array_destroy (proc->p_mregions, process_region_free,
 			proc->p_task->t_pgdir);
   proc->p_mregions = NULL;
-  ppid = proc->p_task->t_ppid;
 
   /* Free process heap */
   for (vaddr = proc->p_initbreak; vaddr < proc->p_break; vaddr += PAGE_SIZE)
@@ -298,17 +288,14 @@ process_free (pid_t pid)
 	free_page (paddr);
     }
 
-  task_free ((ProcessTask *) proc->p_task);
-  proc->p_task = NULL;
-
-  /* Add self rusage values to parent's child rusage */
-  process_add_rusage (&process_table[ppid].p_cusage, proc);
-
-  /* Reset working directory */
-  vfs_unref_inode (proc->p_cwd);
-  proc->p_cwd = NULL;
-  kfree (proc->p_cwdpath);
-  proc->p_cwdpath = NULL;
+  if (partial)
+    page_dir_exec_free (proc->p_task->t_pgdir);
+  else
+    {
+      /* Remove scheduler task */
+      task_free ((ProcessTask *) proc->p_task);
+      proc->p_task = NULL;
+    }
 
   /* Reset process data */
   proc->p_initbreak = 0;
@@ -345,6 +332,23 @@ process_free (pid_t pid)
 }
 
 void
+process_free (pid_t pid)
+{
+  pid_t ppid;
+  if (!process_valid (pid))
+    return;
+  ppid = process_table[pid].p_task->t_ppid;
+
+  /* Add self rusage values to parent's child rusage */
+  process_add_rusage (&process_table[ppid].p_cusage, &process_table[pid]);
+
+  /* Clear process data */
+  process_clear (pid, 0);
+  vfs_unref_inode (process_table[pid].p_cwd);
+  kfree (process_table[pid].p_cwdpath);
+}
+
+void
 process_region_free (void *elem, void *data)
 {
   ProcessMemoryRegion *region = elem;
@@ -368,10 +372,7 @@ process_region_free (void *elem, void *data)
 int
 process_setup_std_streams (pid_t pid)
 {
-  Process *proc;
-  if (!process_valid (pid))
-    return -ESRCH;
-  proc = &process_table[pid];
+  Process *proc = &process_table[pid];
   if (proc->p_files[STDIN_FILENO].pf_inode != NULL
       || proc->p_files[STDOUT_FILENO].pf_inode != NULL
       || proc->p_files[STDERR_FILENO].pf_inode != NULL)

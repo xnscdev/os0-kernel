@@ -274,3 +274,23 @@ page_dir_free (uint32_t *dir)
   kfree (vmap);
   kfree (dir);
 }
+
+/* Similar to the standard free function above, but does not free
+   pages corresponding to kernel data */
+
+void
+page_dir_exec_free (uint32_t *dir)
+{
+  uint32_t *vmap = (uint32_t *) dir[PAGE_DIR_SIZE - 1];
+  int i;
+  for (i = 0; i < RELOC_VADDR >> 22; i++)
+    {
+      /* If page table is on kernel heap, free it */
+      if (vmap[i] >= kernel_heap.mh_addr
+	  && vmap[i] < kernel_heap.mh_addr + kernel_heap.mh_size)
+        kfree ((uint32_t *) vmap[i]);
+      dir[i] = 0;
+      vmap[i] = 0;
+    }
+  vm_tlb_reset ();
+}

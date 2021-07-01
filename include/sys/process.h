@@ -92,6 +92,7 @@ extern Process process_table[PROCESS_LIMIT];
 
 int process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo);
 int process_valid (pid_t pid);
+void process_clear (pid_t pid, int partial);
 void process_free (pid_t pid);
 void process_region_free (void *elem, void *data);
 int process_setup_std_streams (pid_t pid);

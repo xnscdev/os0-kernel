@@ -235,7 +235,6 @@ task_exec:
 	mov	8(%esp), %esi
 	mov	12(%esp), %edi
 	mov	16(%esp), %ebx
-	cli
 	pushf
 	push	%cs
 	push	$1f

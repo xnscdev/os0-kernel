@@ -126,6 +126,7 @@ kbd_await_press (int key)
 {
   while (!kbd_key_pressed (key))
     ;
+  kbd_press_map[key] = 0;
 }
 
 int

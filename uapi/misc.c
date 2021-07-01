@@ -54,6 +54,7 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
   if (ret != 0)
     return ret;
   memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
+  __asm__ volatile ("cli");
   ret = process_exec (inode, &eip, &dlinfo);
   vfs_unref_inode (inode);
   if (ret != 0)

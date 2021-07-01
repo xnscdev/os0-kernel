@@ -57,6 +57,7 @@ void vm_page_inval (uint32_t vaddr);
 uint32_t *page_table_clone (uint32_t index, uint32_t *orig);
 uint32_t *page_dir_clone (uint32_t *orig);
 void page_dir_free (uint32_t *dir);
+void page_dir_exec_free (uint32_t *dir);
 
 __END_DECLS
 
