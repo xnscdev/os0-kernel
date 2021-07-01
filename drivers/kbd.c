@@ -137,23 +137,34 @@ kbd_key_pressed (int key)
 int
 kbd_get_input (void *buffer, size_t len, int block)
 {
+  /* TODO Don't allow background processes to receive keyboard input */
   KbdBuffer *kbdbuf = &CURRENT_TERMINAL->vt_kbdbuf;
-  char *check = strchr (kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, '\n');
-  if (check == NULL)
-    goto wait;
-  while (kbdbuf->kbd_bufpos < kbdbuf->kbd_currpos + len)
+  int await = 0;
+  if (CURRENT_TERMINAL->vt_termios.c_lflag & ICANON)
     {
-    wait:
+      char *check = strchr (kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, '\n');
+      if (check == NULL)
+	await = 1;
+    }
+  else if (kbdbuf->kbd_bufpos <= kbdbuf->kbd_currpos)
+    await = 1;
+  if (await)
+    {
       if (block)
         {
-	  __asm__ volatile ("sti");
-	  kbd_await_press (KEY_ENTER);
-	  __asm__ volatile ("cli");
+	  if (CURRENT_TERMINAL->vt_termios.c_lflag & ICANON)
+	    kbd_await_press (KEY_ENTER);
+	  else
+	    {
+	      while (kbdbuf->kbd_bufpos <= kbdbuf->kbd_currpos)
+		;
+	    }
+	  len = kbdbuf->kbd_bufpos - kbdbuf->kbd_currpos;
 	}
       else
 	return -EAGAIN;
     }
   memcpy (buffer, kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, len);
   kbdbuf->kbd_currpos += len;
-  return 0;
+  return len;
 }

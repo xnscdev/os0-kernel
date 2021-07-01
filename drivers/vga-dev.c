@@ -53,8 +53,7 @@ vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 {
   int nonblock =
     process_table[task_getpid ()].p_files[STDIN_FILENO].pf_flags & O_NONBLOCK;
-  int ret = kbd_get_input (buffer, len, !nonblock);
-  return ret < 0 ? ret : len;
+  return kbd_get_input (buffer, len, !nonblock);
 }
 
 int

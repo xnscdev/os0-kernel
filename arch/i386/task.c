@@ -230,10 +230,21 @@ _task_fork (int copy_pgdir)
   proc = &process_table[pid];
   parent = &process_table[task_getpid ()];
   proc->p_task = task;
-  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
 
-  /* Reset signal handlers */
-  memset (proc->p_sigactions, 0, sizeof (struct sigaction) * NSIG);
+  /* Copy file descriptors */
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      if (parent->p_files[i].pf_inode != NULL)
+	{
+	  proc->p_files[i].pf_inode = parent->p_files[i].pf_inode;
+	  vfs_ref_inode (proc->p_files[i].pf_inode);
+	  proc->p_files[i].pf_dir = parent->p_files[i].pf_dir;
+	  proc->p_files[i].pf_path = strdup (parent->p_files[i].pf_path);
+	  proc->p_files[i].pf_mode = parent->p_files[i].pf_mode;
+	  proc->p_files[i].pf_flags = parent->p_files[i].pf_flags;
+	  proc->p_files[i].pf_offset = parent->p_files[i].pf_offset;
+	}
+    }
 
   /* Inherit parent working directory, real/effective/saved UID/GID,
      process group ID, session ID, and blocked signal mask */

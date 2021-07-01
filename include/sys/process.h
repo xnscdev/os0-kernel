@@ -30,6 +30,8 @@
 
 #define PROCESS_BREAK_LIMIT    0x40000000
 
+/* XXX Process file descriptors are shared on fork */
+
 typedef struct
 {
   VFSInode *pf_inode;   /* File descriptor inode */

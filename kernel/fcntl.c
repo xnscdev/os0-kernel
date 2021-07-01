@@ -17,9 +17,8 @@
  *************************************************************************/
 
 #include <fs/vfs.h>
+#include <libk/libk.h>
 #include <sys/process.h>
-#include <errno.h>
-#include <fcntl.h>
 
 static int
 fcntl_dupfd (Process *proc, int fd, int arg, int cloexec)
@@ -33,6 +32,8 @@ fcntl_dupfd (Process *proc, int fd, int arg, int cloexec)
 	{
 	  proc->p_files[i].pf_inode = proc->p_files[fd].pf_inode;
 	  vfs_ref_inode (proc->p_files[i].pf_inode);
+	  proc->p_files[i].pf_dir = NULL;
+	  proc->p_files[i].pf_path = strdup (proc->p_files[fd].pf_path);
 	  proc->p_files[i].pf_mode = proc->p_files[fd].pf_mode;
 	  proc->p_files[i].pf_flags = cloexec ? FD_CLOEXEC : 0;
 	  proc->p_files[i].pf_offset = proc->p_files[fd].pf_offset;
