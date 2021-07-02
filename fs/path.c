@@ -32,7 +32,6 @@
 	    continue;							\
 	  if (dir->vi_ino == mpt->vi_ino && dir->vi_sb == mpt->vi_sb)	\
 	    {								\
-	      vfs_unref_inode (dir);					\
 	      dir = mount_table[i].vfs_sb.sb_root;			\
 	      vfs_ref_inode (dir);					\
 	      dont_unref = 1;						\

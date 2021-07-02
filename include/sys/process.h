@@ -34,12 +34,13 @@
 
 typedef struct
 {
-  VFSInode *pf_inode;   /* File descriptor inode */
-  VFSDirectory *pf_dir; /* Directory, for reading entries */
-  char *pf_path;        /* Path used to open fd */
-  int pf_mode;          /* Access mode */
-  int pf_flags;         /* Other flags */
-  off_t pf_offset;      /* Current offset position */
+  VFSInode *pf_inode;     /* File descriptor inode */
+  VFSDirectory *pf_dir;   /* Directory, for reading entries */
+  char *pf_path;          /* Path used to open fd */
+  int pf_mode;            /* Access mode */
+  int pf_flags;           /* Other flags */
+  off_t pf_offset;        /* Current offset position */
+  int pf_refcnt;          /* Reference count */
 } ProcessFile;
 
 typedef struct
@@ -54,7 +55,7 @@ typedef struct
 
 typedef struct
 {
-  ProcessFile p_files[PROCESS_FILE_LIMIT];   /* File descriptor table */
+  ProcessFile *p_files[PROCESS_FILE_LIMIT];  /* File descriptors */
   struct sigaction p_sigactions[NSIG];       /* Signal handler table */
   sigset_t p_sigblocked;                     /* Signal block mask */
   sigset_t p_sigpending;                     /* Signal pending mask */
@@ -89,6 +90,7 @@ typedef struct
 __BEGIN_DECLS
 
 extern Process process_table[PROCESS_LIMIT];
+extern ProcessFile process_fd_table[PROCESS_SYS_FILE_LIMIT];
 
 int process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo);
 int process_valid (pid_t pid);
@@ -100,6 +102,8 @@ uint32_t process_set_break (uint32_t addr);
 int process_mregion_cmp (const void *a, const void *b);
 void process_add_rusage (struct rusage *usage, const Process *proc);
 void process_remap_segments (void *base, SortedArray *mregions);
+int process_alloc_fd (Process *proc, int fd);
+int process_free_fd (Process *proc, int fd);
 int process_terminated (pid_t pid);
 int process_send_signal (pid_t pid, int sig);
 void process_clear_sighandlers (void);

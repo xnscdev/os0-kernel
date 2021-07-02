@@ -40,8 +40,8 @@ sys_read (int fd, void *buffer, size_t len)
   int ret;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return -EBADF;
-  file = &process_table[task_getpid ()].p_files[fd];
-  if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
     return -EBADF;
   ret = vfs_read (file->pf_inode, buffer, len, file->pf_offset);
   if (ret < 0)
@@ -57,8 +57,8 @@ sys_write (int fd, void *buffer, size_t len)
   int ret;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return -EBADF;
-  file = &process_table[task_getpid ()].p_files[fd];
-  if (file->pf_inode == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
     return -EBADF;
   ret = vfs_write (file->pf_inode, buffer, len, file->pf_offset);
   if (ret < 0)
@@ -71,123 +71,112 @@ int
 sys_open (const char *path, int flags, mode_t mode)
 {
   Process *proc = &process_table[task_getpid ()];
-  ProcessFile *files = proc->p_files;
-  int i;
+  int i = process_alloc_fd (proc, 0);
+  VFSInode *inode;
+  int ret;
   mode &= ~proc->p_umask;
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+  if (unlikely (i < 0))
+    return i;
+
+  ret = vfs_open_file (&inode, path, 1);
+  if (flags & O_CREAT)
     {
-      if (files[i].pf_inode == NULL)
+      if (flags & O_EXCL && ret == 0)
 	{
-	  VFSInode *inode;
-	  int ret = vfs_open_file (&inode, path, 1);
-
-	  if (flags & O_CREAT)
-	    {
-	      if (flags & O_EXCL && ret == 0)
-		{
-		  /* The file already exists */
-		  vfs_unref_inode (inode);
-		  return -EEXIST;
-		}
-	      if (ret == -ENOENT)
-		{
-		  /* Try to create a new file */
-		  VFSInode *dir;
-		  char *name;
-		  ret = sys_path_sep (path, &dir, &name);
-		  if (ret != 0)
-		    return ret;
-		  ret = vfs_create (dir, name, mode);
-		  if (ret != 0)
-		    {
-		      vfs_unref_inode (dir);
-		      kfree (name);
-		      return ret;
-		    }
-
-		  /* Try to open the file again */
-		  ret = vfs_lookup (&inode, dir, dir->vi_sb, name, 1);
-		  vfs_unref_inode (dir);
-		  kfree (name);
-		}
-	    }
+	  /* The file already exists */
+	  vfs_unref_inode (inode);
+	  process_free_fd (proc, i);
+	  return -EEXIST;
+	}
+      if (ret == -ENOENT)
+	{
+	  /* Try to create a new file */
+	  VFSInode *dir;
+	  char *name;
+	  ret = sys_path_sep (path, &dir, &name);
 	  if (ret != 0)
-	    return ret;
-
-	  files[i].pf_inode = inode;
-	  switch (flags & O_ACCMODE)
 	    {
-	    case O_RDONLY:
-	      if (S_ISDIR (files[i].pf_inode->vi_mode))
-		{
-		  files[i].pf_dir =
-		    vfs_alloc_dir (files[i].pf_inode, files[i].pf_inode->vi_sb);
-		  if (unlikely (files[i].pf_dir == NULL))
-		    {
-		      vfs_unref_inode (files[i].pf_inode);
-		      files[i].pf_inode = NULL;
-		      return -EIO;
-		    }
-		}
-	      files[i].pf_mode = O_RDONLY;
-	      break;
-	    case O_WRONLY:
-	      if (S_ISDIR (files[i].pf_inode->vi_mode))
-		{
-		  vfs_unref_inode (files[i].pf_inode);
-		  files[i].pf_inode = NULL;
-		  return -EISDIR;
-		}
-	      files[i].pf_mode = O_WRONLY;
-	      break;
-	    case O_RDWR:
-	      if (S_ISDIR (files[i].pf_inode->vi_mode))
-		{
-		  vfs_unref_inode (files[i].pf_inode);
-		  files[i].pf_inode = NULL;
-		  return -EISDIR;
-		}
-	      files[i].pf_mode = O_RDWR;
-	      break;
-	    default:
-	      vfs_unref_inode (files[i].pf_inode);
-	      files[i].pf_inode = NULL;
-	      return -EINVAL;
+	      process_free_fd (proc, i);
+	      return ret;
 	    }
-	  files[i].pf_offset =
-	    flags & O_APPEND ? files[i].pf_inode->vi_size : 0;
-
-	  files[i].pf_path = vfs_path_resolve (path);
-	  if (files[i].pf_path == NULL)
+	  ret = vfs_create (dir, name, mode);
+	  if (ret != 0)
 	    {
-	      vfs_unref_inode (files[i].pf_inode);
-	      files[i].pf_inode = NULL;
-	      return -ENOMEM;
+	      vfs_unref_inode (dir);
+	      kfree (name);
+	      process_free_fd (proc, i);
+	      return ret;
 	    }
-	  return i;
+
+	  /* Try to open the file again */
+	  ret = vfs_lookup (&inode, dir, dir->vi_sb, name, 1);
+	  vfs_unref_inode (dir);
+	  kfree (name);
 	}
     }
-  return -EMFILE; /* No more file descriptors available */
+  if (ret != 0)
+    return ret;
+
+  proc->p_files[i]->pf_inode = inode;
+  switch (flags & O_ACCMODE)
+    {
+    case O_RDONLY:
+      if (S_ISDIR (proc->p_files[i]->pf_inode->vi_mode))
+	{
+	  proc->p_files[i]->pf_dir =
+	    vfs_alloc_dir (proc->p_files[i]->pf_inode,
+			   proc->p_files[i]->pf_inode->vi_sb);
+	  if (unlikely (proc->p_files[i]->pf_dir == NULL))
+	    {
+	      vfs_unref_inode (proc->p_files[i]->pf_inode);
+	      process_free_fd (proc, i);
+	      return -EIO;
+	    }
+	}
+      proc->p_files[i]->pf_mode = O_RDONLY;
+      break;
+    case O_WRONLY:
+      if (S_ISDIR (proc->p_files[i]->pf_inode->vi_mode))
+	{
+	  vfs_unref_inode (proc->p_files[i]->pf_inode);
+	  process_free_fd (proc, i);
+	  return -EISDIR;
+	}
+      proc->p_files[i]->pf_mode = O_WRONLY;
+      break;
+    case O_RDWR:
+      if (S_ISDIR (proc->p_files[i]->pf_inode->vi_mode))
+	{
+	  vfs_unref_inode (proc->p_files[i]->pf_inode);
+	  process_free_fd (proc, i);
+	  return -EISDIR;
+	}
+      proc->p_files[i]->pf_mode = O_RDWR;
+      break;
+    default:
+      vfs_unref_inode (proc->p_files[i]->pf_inode);
+      process_free_fd (proc, i);
+      return -EINVAL;
+    }
+  proc->p_files[i]->pf_offset =
+    flags & O_APPEND ? proc->p_files[i]->pf_inode->vi_size : 0;
+
+  proc->p_files[i]->pf_path = vfs_path_resolve (path);
+  if (proc->p_files[i]->pf_path == NULL)
+    {
+      vfs_unref_inode (proc->p_files[i]->pf_inode);
+      process_free_fd (proc, i);
+      return -ENOMEM;
+    }
+  return i;
 }
 
 int
 sys_close (int fd)
 {
-  ProcessFile *file;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return -EBADF;
-  file = &process_table[task_getpid ()].p_files[fd];
-  if (file->pf_inode == NULL)
-    return -EBADF;
-  vfs_unref_inode (file->pf_inode);
-  file->pf_inode = NULL;
-  vfs_destroy_dir (file->pf_dir);
-  file->pf_dir = NULL;
-  kfree (file->pf_path);
-  file->pf_path = NULL;
-  file->pf_mode = 0;
-  file->pf_offset = 0;
-  return 0;
+  return process_free_fd (&process_table[task_getpid ()], fd);
 }
 
 int
@@ -322,7 +311,7 @@ sys_lseek (int fd, off_t offset, int whence)
   VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
-  file = &process_table[task_getpid ()].p_files[fd];
+  file = process_table[task_getpid ()].p_files[fd];
   if (!vfs_can_seek (inode))
     return -ESPIPE;
   switch (whence)
@@ -607,7 +596,7 @@ sys_fchdir (int fd)
     return -EBADF;
   if (!S_ISDIR (inode->vi_mode))
     return -ENOTDIR;
-  proc->p_cwdpath = strdup (proc->p_files[fd].pf_path);
+  proc->p_cwdpath = strdup (proc->p_files[fd]->pf_path);
   if (proc->p_cwdpath == NULL)
     return -ENOMEM;
   vfs_unref_inode (proc->p_cwd);
@@ -624,9 +613,9 @@ sys_getdents (int fd, struct dirent *dirp, unsigned int count)
   VFSDirEntry *entry;
   unsigned int i;
   int ret;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
     return -EBADF;
-  dir = proc->p_files[fd].pf_dir;
+  dir = proc->p_files[fd]->pf_dir;
   if (dir == NULL)
     return -ENOTDIR;
   for (i = 0; i < count; i++)

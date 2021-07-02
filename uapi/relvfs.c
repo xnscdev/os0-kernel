@@ -30,11 +30,10 @@ sys_openat (int fd, const char *path, int flags, mode_t mode)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
-      proc->p_cwdpath = proc->p_files[fd].pf_path;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
+      proc->p_cwdpath = proc->p_files[fd]->pf_path;
     }
   ret = sys_open (path, flags, mode);
   proc->p_cwd = cwd;
@@ -50,10 +49,9 @@ sys_mkdirat (int fd, const char *path, mode_t mode)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
   ret = sys_mkdir (path, mode);
   proc->p_cwd = cwd;
@@ -68,10 +66,9 @@ sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
   ret = sys_mknod (path, mode, dev);
   proc->p_cwd = cwd;
@@ -87,10 +84,9 @@ sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
@@ -110,10 +106,9 @@ sys_unlinkat (int fd, const char *path, int flags)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
   if (flags & AT_REMOVEDIR)
     ret = sys_rmdir (path);
@@ -137,9 +132,9 @@ sys_renameat (int oldfd, const char *old, int newfd, const char *new)
   if (oldfd != AT_FDCWD)
     {
       if (oldfd < 0 || oldfd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[oldfd].pf_inode == NULL)
+	  || proc->p_files[oldfd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[oldfd].pf_inode;
+      proc->p_cwd = proc->p_files[oldfd]->pf_inode;
     }
   ret = sys_path_sep (old, &old_inode, &old_name);
   if (ret != 0)
@@ -151,14 +146,14 @@ sys_renameat (int oldfd, const char *old, int newfd, const char *new)
   if (newfd != AT_FDCWD)
     {
       if (newfd < 0 || newfd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[newfd].pf_inode == NULL)
+	  || proc->p_files[newfd] == NULL)
 	{
 	  vfs_unref_inode (old_inode);
 	  kfree (old_name);
 	  proc->p_cwd = cwd;
 	  return -EBADF;
 	}
-      proc->p_cwd = proc->p_files[newfd].pf_inode;
+      proc->p_cwd = proc->p_files[newfd]->pf_inode;
     }
   ret = sys_path_sep (new, &new_inode, &new_name);
   if (ret != 0)
@@ -192,9 +187,9 @@ sys_linkat (int oldfd, const char *old, int newfd, const char *new, int flags)
   if (oldfd != AT_FDCWD)
     {
       if (oldfd < 0 || oldfd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[oldfd].pf_inode == NULL)
+	  || proc->p_files[oldfd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[oldfd].pf_inode;
+      proc->p_cwd = proc->p_files[oldfd]->pf_inode;
     }
   ret = vfs_open_file (&old_inode, old, flags & AT_SYMLINK_FOLLOW ? 1 : 0);
   if (ret != 0)
@@ -206,13 +201,13 @@ sys_linkat (int oldfd, const char *old, int newfd, const char *new, int flags)
   if (newfd != AT_FDCWD)
     {
       if (newfd < 0 || newfd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[newfd].pf_inode == NULL)
+	  || proc->p_files[newfd] == NULL)
 	{
 	  vfs_unref_inode (old_inode);
 	  proc->p_cwd = cwd;
 	  return -EBADF;
 	}
-      proc->p_cwd = proc->p_files[newfd].pf_inode;
+      proc->p_cwd = proc->p_files[newfd]->pf_inode;
     }
   ret = sys_path_sep (new, &new_inode, &name);
   if (ret != 0)
@@ -248,10 +243,9 @@ sys_symlinkat (const char *old, int fd, const char *new)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
   ret = sys_symlink (old, new);
   proc->p_cwd = cwd;
@@ -267,10 +261,9 @@ sys_readlinkat (int fd, const char *__restrict path, char *__restrict buffer,
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
   ret = sys_readlink (path, buffer, len);
   proc->p_cwd = cwd;
@@ -286,10 +279,9 @@ sys_fchmodat (int fd, const char *path, mode_t mode, int flags)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
@@ -311,10 +303,9 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
   int ret;
   if (fd != AT_FDCWD)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT
-	  || proc->p_files[fd].pf_inode == NULL)
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd].pf_inode;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
     }
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);

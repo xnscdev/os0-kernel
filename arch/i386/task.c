@@ -234,16 +234,9 @@ _task_fork (int copy_pgdir)
   /* Copy file descriptors */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     {
-      if (parent->p_files[i].pf_inode != NULL)
-	{
-	  proc->p_files[i].pf_inode = parent->p_files[i].pf_inode;
-	  vfs_ref_inode (proc->p_files[i].pf_inode);
-	  proc->p_files[i].pf_dir = parent->p_files[i].pf_dir;
-	  proc->p_files[i].pf_path = strdup (parent->p_files[i].pf_path);
-	  proc->p_files[i].pf_mode = parent->p_files[i].pf_mode;
-	  proc->p_files[i].pf_flags = parent->p_files[i].pf_flags;
-	  proc->p_files[i].pf_offset = parent->p_files[i].pf_offset;
-	}
+      proc->p_files[i] = parent->p_files[i];
+      if (proc->p_files[i] != NULL)
+	proc->p_files[i]->pf_refcnt++;
     }
 
   /* Inherit parent working directory, real/effective/saved UID/GID,

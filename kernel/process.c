@@ -26,6 +26,8 @@
 #include <vm/paging.h>
 
 Process process_table[PROCESS_LIMIT];
+ProcessFile process_fd_table[PROCESS_SYS_FILE_LIMIT];
+ProcessFile *process_fd_next = process_fd_table;
 void *process_signal_handler;
 int process_signal;
 int exit_task;
@@ -212,13 +214,6 @@ process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
     goto end;
   *entry = ehdr->e_entry;
 
-  /* Setup standard streams */
-  if (process_setup_std_streams (pid) != 0)
-    {
-      ret = -ENOMEM;
-      goto end;
-    }
-
   /* Setup program break */
   proc = &process_table[pid];
   proc->p_break = ret;
@@ -275,7 +270,6 @@ process_clear (pid_t pid, int partial)
 {
   Process *proc = &process_table[pid];
   uint32_t vaddr;
-  int i;
   sorted_array_destroy (proc->p_mregions, process_region_free,
 			proc->p_task->t_pgdir);
   proc->p_mregions = NULL;
@@ -289,7 +283,10 @@ process_clear (pid_t pid, int partial)
     }
 
   if (partial)
-    page_dir_exec_free (proc->p_task->t_pgdir);
+    {
+      if (proc->p_task->t_pgcopied)
+	page_dir_exec_free (proc->p_task->t_pgdir);
+    }
   else
     {
       /* Remove scheduler task */
@@ -316,14 +313,6 @@ process_clear (pid_t pid, int partial)
   memset (&proc->p_rusage, 0, sizeof (struct rusage));
   memset (&proc->p_cusage, 0, sizeof (struct rusage));
 
-  /* Clear all open file descriptors */
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
-    {
-      if (proc->p_files[i].pf_inode != NULL)
-        vfs_unref_inode (proc->p_files[i].pf_inode);
-    }
-  memset (proc->p_files, 0, sizeof (ProcessFile) * PROCESS_FILE_LIMIT);
-
   /* Clear all signal handlers and info */
   process_clear_sighandlers ();
   memset (&proc->p_sigblocked, 0, sizeof (sigset_t));
@@ -334,18 +323,24 @@ process_clear (pid_t pid, int partial)
 void
 process_free (pid_t pid)
 {
+  Process *proc = &process_table[pid];
   pid_t ppid;
+  int i;
   if (!process_valid (pid))
     return;
-  ppid = process_table[pid].p_task->t_ppid;
+  ppid = proc->p_task->t_ppid;
 
   /* Add self rusage values to parent's child rusage */
-  process_add_rusage (&process_table[ppid].p_cusage, &process_table[pid]);
+  process_add_rusage (&process_table[ppid].p_cusage, proc);
 
   /* Clear process data */
   process_clear (pid, 0);
-  vfs_unref_inode (process_table[pid].p_cwd);
-  kfree (process_table[pid].p_cwdpath);
+  vfs_unref_inode (proc->p_cwd);
+  kfree (proc->p_cwdpath);
+
+  /* Clear all open file descriptors */
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    process_free_fd (proc, i);
 }
 
 void
@@ -373,43 +368,46 @@ int
 process_setup_std_streams (pid_t pid)
 {
   Process *proc = &process_table[pid];
-  if (proc->p_files[STDIN_FILENO].pf_inode != NULL
-      || proc->p_files[STDOUT_FILENO].pf_inode != NULL
-      || proc->p_files[STDERR_FILENO].pf_inode != NULL)
+  if (proc->p_files[STDIN_FILENO] != NULL
+      || proc->p_files[STDOUT_FILENO] != NULL
+      || proc->p_files[STDERR_FILENO] != NULL)
     return -EINVAL; /* File descriptors for std streams are used */
 
   /* Create stdin */
-  proc->p_files[STDIN_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
-  proc->p_files[STDIN_FILENO].pf_inode->vi_private =
+  assert (process_alloc_fd (proc, STDIN_FILENO) == STDIN_FILENO);
+  proc->p_files[STDIN_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDIN_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDIN_FILENO);
-  proc->p_files[STDIN_FILENO].pf_path = strdup ("/dev/stdin");
-  if (proc->p_files[STDIN_FILENO].pf_path == NULL)
+  proc->p_files[STDIN_FILENO]->pf_path = strdup ("/dev/stdin");
+  if (proc->p_files[STDIN_FILENO]->pf_path == NULL)
     return -ENOMEM;
-  proc->p_files[STDIN_FILENO].pf_mode = O_RDONLY;
-  proc->p_files[STDIN_FILENO].pf_flags = 0;
-  proc->p_files[STDIN_FILENO].pf_offset = 0;
+  proc->p_files[STDIN_FILENO]->pf_mode = O_RDONLY;
+  proc->p_files[STDIN_FILENO]->pf_flags = 0;
+  proc->p_files[STDIN_FILENO]->pf_offset = 0;
 
   /* Create stdout */
-  proc->p_files[STDOUT_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
-  proc->p_files[STDOUT_FILENO].pf_inode->vi_private =
+  assert (process_alloc_fd (proc, STDOUT_FILENO) == STDOUT_FILENO);
+  proc->p_files[STDOUT_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDOUT_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDOUT_FILENO);
-  proc->p_files[STDOUT_FILENO].pf_path = strdup ("/dev/stdout");
-  if (proc->p_files[STDOUT_FILENO].pf_path == NULL)
+  proc->p_files[STDOUT_FILENO]->pf_path = strdup ("/dev/stdout");
+  if (proc->p_files[STDOUT_FILENO]->pf_path == NULL)
     return -ENOMEM;
-  proc->p_files[STDOUT_FILENO].pf_mode = O_WRONLY | O_APPEND;
-  proc->p_files[STDOUT_FILENO].pf_flags = 0;
-  proc->p_files[STDOUT_FILENO].pf_offset = 0;
+  proc->p_files[STDOUT_FILENO]->pf_mode = O_WRONLY | O_APPEND;
+  proc->p_files[STDOUT_FILENO]->pf_flags = 0;
+  proc->p_files[STDOUT_FILENO]->pf_offset = 0;
 
   /* Create stderr */
-  proc->p_files[STDERR_FILENO].pf_inode = vfs_alloc_inode (&vga_tty_sb);
-  proc->p_files[STDERR_FILENO].pf_inode->vi_private =
+  assert (process_alloc_fd (proc, STDERR_FILENO) == STDERR_FILENO);
+  proc->p_files[STDERR_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDERR_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDERR_FILENO);
-  proc->p_files[STDERR_FILENO].pf_path = strdup ("/dev/stderr");
-  if (proc->p_files[STDERR_FILENO].pf_path == NULL)
+  proc->p_files[STDERR_FILENO]->pf_path = strdup ("/dev/stderr");
+  if (proc->p_files[STDERR_FILENO]->pf_path == NULL)
     return -ENOMEM;
-  proc->p_files[STDERR_FILENO].pf_mode = O_WRONLY | O_APPEND;
-  proc->p_files[STDERR_FILENO].pf_flags = 0;
-  proc->p_files[STDERR_FILENO].pf_offset = 0;
+  proc->p_files[STDERR_FILENO]->pf_mode = O_WRONLY | O_APPEND;
+  proc->p_files[STDERR_FILENO]->pf_flags = 0;
+  proc->p_files[STDERR_FILENO]->pf_offset = 0;
   return 0;
 }
 
@@ -510,6 +508,56 @@ process_remap_segments (void *base, SortedArray *mregions)
 #ifndef INVLPG_SUPPORT
   vm_tlb_reset ();
 #endif
+}
+
+int
+process_alloc_fd (Process *proc, int fd)
+{
+  ProcessFile *file;
+  int nfd;
+  for (file = process_fd_next; file < process_fd_table + PROCESS_SYS_FILE_LIMIT;
+       file++)
+    {
+      if (file->pf_refcnt == 0)
+	goto found;
+    }
+  return -ENFILE; /* System file descriptor limit reached */
+
+ found:
+  for (nfd = fd; nfd < PROCESS_FILE_LIMIT; nfd++)
+    {
+      if (proc->p_files[nfd] == NULL)
+	break;
+    }
+  if (unlikely (nfd == PROCESS_FILE_LIMIT))
+    return -EMFILE; /* Process file descriptor limit reached */
+  proc->p_files[nfd] = file;
+  proc->p_files[nfd]->pf_refcnt = 1;
+  process_fd_next = file + 1; /* Start the next search after this nfd */
+  return nfd;
+}
+
+int
+process_free_fd (Process *proc, int fd)
+{
+  ProcessFile *file = proc->p_files[fd];
+  if (file == NULL)
+    return -EBADF;
+  proc->p_files[fd] = NULL;
+  if (--file->pf_refcnt == 0)
+    {
+      vfs_unref_inode (file->pf_inode);
+      file->pf_inode = NULL;
+      vfs_destroy_dir (file->pf_dir);
+      file->pf_dir = NULL;
+      kfree (file->pf_path);
+      file->pf_path = NULL;
+      file->pf_mode = 0;
+      file->pf_offset = 0;
+    }
+  if (file < process_fd_next)
+    process_fd_next = file; /* Start the next search at this fd */
+  return 0;
 }
 
 int

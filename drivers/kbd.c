@@ -78,7 +78,7 @@ kbd_handle (int scancode)
     case KEY_BACKSP:
       /* Remove character if backspace pressed */
       if (buffer->kbd_buffer[buffer->kbd_bufpos] != '\n'
-	  && buffer->kbd_bufpos > 0)
+	  && buffer->kbd_bufpos > buffer->kbd_currpos)
 	{
 	  buffer->kbd_bufpos--;
 	  if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)

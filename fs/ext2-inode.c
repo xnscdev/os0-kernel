@@ -35,7 +35,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   time_t newtime = time (NULL);
   int ret;
 
-  inode = ext2_alloc_inode (dir->vi_sb);
+  inode = vfs_alloc_inode (dir->vi_sb);
   if (unlikely (inode == NULL))
     return -ENOMEM;
   ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->esb_ipg);
@@ -552,7 +552,7 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 
       result = kmalloc (sizeof (VFSDirEntry));
       result->d_flags = 0;
-      result->d_inode = ext2_alloc_inode (sb);
+      result->d_inode = vfs_alloc_inode (sb);
       result->d_inode->vi_ino = guess->ed_inode;
       ext2_fill_inode (result->d_inode);
       result->d_mounted = 0;
@@ -599,7 +599,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   time_t newtime = time (NULL);
   int ret;
 
-  inode = ext2_alloc_inode (dir->vi_sb);
+  inode = vfs_alloc_inode (dir->vi_sb);
   if (unlikely (inode == NULL))
     return -ENOMEM;
   ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->esb_ipg);

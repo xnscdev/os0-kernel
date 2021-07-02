@@ -55,10 +55,10 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
   if (inode != NULL)
     {
       if (!(prot & PROT_WRITE)
-	  && (proc->p_files[fd].pf_mode & O_ACCMODE) == O_WRONLY)
+	  && (proc->p_files[fd]->pf_mode & O_ACCMODE) == O_WRONLY)
 	return (void *) -EACCES;
       if (!(prot & PROT_READ)
-	  && ((proc->p_files[fd].pf_mode & O_ACCMODE) == O_RDONLY))
+	  && ((proc->p_files[fd]->pf_mode & O_ACCMODE) == O_RDONLY))
 	return (void *) -EACCES;
     }
   if (!(flags & MAP_SHARED) && !(flags & MAP_PRIVATE))

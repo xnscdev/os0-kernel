@@ -23,31 +23,26 @@
 static int
 fcntl_dupfd (Process *proc, int fd, int arg, int cloexec)
 {
-  int i;
+  int nfd;
   if (arg < 0 || arg >= PROCESS_FILE_LIMIT)
     return -EINVAL;
-  for (i = arg; i < PROCESS_FILE_LIMIT; i++)
+  for (nfd = arg; nfd < PROCESS_FILE_LIMIT; nfd++)
     {
-      if (proc->p_files[i].pf_inode == NULL)
-	{
-	  proc->p_files[i].pf_inode = proc->p_files[fd].pf_inode;
-	  vfs_ref_inode (proc->p_files[i].pf_inode);
-	  proc->p_files[i].pf_dir = NULL;
-	  proc->p_files[i].pf_path = strdup (proc->p_files[fd].pf_path);
-	  proc->p_files[i].pf_mode = proc->p_files[fd].pf_mode;
-	  proc->p_files[i].pf_flags = cloexec ? FD_CLOEXEC : 0;
-	  proc->p_files[i].pf_offset = proc->p_files[fd].pf_offset;
-	  return i;
-	}
+      if (proc->p_files[nfd] == NULL)
+	break;
     }
-  return -EMFILE;
+  if (unlikely (nfd == PROCESS_FILE_LIMIT))
+    return -EMFILE;
+  proc->p_files[nfd] = proc->p_files[fd];
+  vfs_ref_inode (proc->p_files[nfd]->pf_inode);
+  return nfd;
 }
 
 int
 fcntl (int fd, int cmd, int arg)
 {
   Process *proc = &process_table[task_getpid ()];
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd].pf_inode == NULL)
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
     return -EBADF;
   switch (cmd)
     {
@@ -56,14 +51,14 @@ fcntl (int fd, int cmd, int arg)
     case F_DUPFD_CLOEXEC:
       return fcntl_dupfd (proc, fd, arg, 1);
     case F_GETFD:
-      return proc->p_files[fd].pf_flags;
+      return proc->p_files[fd]->pf_flags;
     case F_SETFD:
-      proc->p_files[fd].pf_flags = arg;
+      proc->p_files[fd]->pf_flags = arg;
       return 0;
     case F_GETFL:
-      return proc->p_files[fd].pf_mode;
+      return proc->p_files[fd]->pf_mode;
     case F_SETFL:
-      proc->p_files[fd].pf_mode = arg;
+      proc->p_files[fd]->pf_mode = arg;
       return 0;
     default:
       return -EINVAL;

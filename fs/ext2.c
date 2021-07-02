@@ -179,7 +179,7 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   if (ret != 0)
     return ret;
 
-  mp->vfs_sb.sb_root = ext2_alloc_inode (&mp->vfs_sb);
+  mp->vfs_sb.sb_root = vfs_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))
     return -ENOMEM;
   mp->vfs_sb.sb_root->vi_ino = EXT2_ROOT_INODE;

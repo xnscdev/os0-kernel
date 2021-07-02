@@ -85,7 +85,7 @@ int
 ioctl (int fd, unsigned long req, void *data)
 {
   Process *proc = &process_table[task_getpid ()];
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd].pf_inode == NULL)
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
     return -EBADF;
   switch (req)
     {

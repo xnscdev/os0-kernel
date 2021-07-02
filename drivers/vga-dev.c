@@ -51,8 +51,9 @@ VFSSuperblock vga_tty_sb = {
 int
 vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 {
+  /* XXX Fails if stdin is dup'd to a different fd and the original is closed */
   int nonblock =
-    process_table[task_getpid ()].p_files[STDIN_FILENO].pf_flags & O_NONBLOCK;
+    process_table[task_getpid ()].p_files[STDIN_FILENO]->pf_flags & O_NONBLOCK;
   return kbd_get_input (buffer, len, !nonblock);
 }
 

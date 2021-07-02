@@ -70,7 +70,9 @@ sys_path_sep (const char *path, VFSInode **dir, char **name)
 VFSInode *
 inode_from_fd (int fd)
 {
+  ProcessFile *file;
   if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
     return NULL;
-  return process_table[task_getpid ()].p_files[fd].pf_inode;
+  file = process_table[task_getpid ()].p_files[fd];
+  return file == NULL ? NULL : file->pf_inode;
 }

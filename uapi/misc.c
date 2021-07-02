@@ -74,9 +74,10 @@ sys_pipe (int fd[2])
   Process *proc = &process_table[task_getpid ()];
   VFSInode *read_inode;
   VFSInode *write_inode;
+  int read_fd;
+  int write_fd;
   Pipe *pipe;
   int ret;
-  int i;
 
   /* Allocate pipe inodes and structure */
   read_inode = vfs_alloc_inode (&pipe_sb);
@@ -100,46 +101,39 @@ sys_pipe (int fd[2])
       goto err;
     }
 
-  /* Allocate file descriptor for read inode */
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
-    {
-      if (proc->p_files[i].pf_inode == NULL)
-	{
-	  proc->p_files[i].pf_inode = read_inode;
-	  proc->p_files[i].pf_dir = NULL;
-	  proc->p_files[i].pf_path = NULL;
-	  proc->p_files[i].pf_mode = O_RDONLY;
-	  proc->p_files[i].pf_flags = 0;
-	  proc->p_files[i].pf_offset = 0;
-	  fd[0] = i;
-	  break;
-	}
-    }
-  if (unlikely (i == PROCESS_FILE_LIMIT))
+  /* Allocate file descriptors */
+  read_fd = process_alloc_fd (proc, 0);
+  if (unlikely (read_fd < 0))
     {
       sys_munmap (pipe->p_data, PIPE_LENGTH);
       ret = -ENFILE;
       goto err;
     }
-
-  /* Allocate file descriptor for write inode */
-  for (; i < PROCESS_FILE_LIMIT; i++)
+  write_fd = process_alloc_fd (proc, 0);
+  if (unlikely (write_fd < 0))
     {
-      if (proc->p_files[i].pf_inode == NULL)
-	{
-	  proc->p_files[i].pf_inode = write_inode;
-	  proc->p_files[i].pf_dir = NULL;
-	  proc->p_files[i].pf_path = NULL;
-	  proc->p_files[i].pf_mode = O_WRONLY;
-	  proc->p_files[i].pf_flags = 0;
-	  proc->p_files[i].pf_offset = 0;
-	  fd[1] = i;
-	  return 0;
-	}
+      process_free_fd (proc, read_fd);
+      sys_munmap (pipe->p_data, PIPE_LENGTH);
+      ret = -ENFILE;
     }
-  memset (&proc->p_files[fd[0]], 0, sizeof (ProcessFile));
-  sys_munmap (pipe->p_data, PIPE_LENGTH);
-  ret = -ENFILE;
+
+  /* Fill file descriptors */
+  proc->p_files[read_fd]->pf_inode = read_inode;
+  proc->p_files[read_fd]->pf_dir = NULL;
+  proc->p_files[read_fd]->pf_path = NULL;
+  proc->p_files[read_fd]->pf_mode = O_RDONLY;
+  proc->p_files[read_fd]->pf_flags = 0;
+  proc->p_files[read_fd]->pf_offset = 0;
+  fd[0] = read_fd;
+
+  proc->p_files[write_fd]->pf_inode = write_inode;
+  proc->p_files[write_fd]->pf_dir = NULL;
+  proc->p_files[write_fd]->pf_path = NULL;
+  proc->p_files[write_fd]->pf_mode = O_WRONLY;
+  proc->p_files[write_fd]->pf_flags = 0;
+  proc->p_files[write_fd]->pf_offset = 0;
+  fd[1] = write_fd;
+  return 0;
 
  err:
   vfs_unref_inode (read_inode);
