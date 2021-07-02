@@ -161,13 +161,18 @@ process_load_phdrs (VFSInode *inode, SortedArray *mregions, Elf32_Ehdr *ehdr,
 }
 
 int
-process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo)
+process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
+	      char *const *envp, DynamicLinkInfo *dlinfo)
 {
   Elf32_Ehdr *ehdr;
   SortedArray *mregions;
   Process *proc;
   int ret;
   pid_t pid = task_getpid ();
+
+  ret = task_setup_exec (argv, envp);
+  if (ret < 0)
+    return ret;
 
   /* Clear existing process data */
   process_clear (pid, 1);

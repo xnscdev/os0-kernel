@@ -27,28 +27,6 @@
 #include <sys/task.h>
 #include <errno.h>
 
-	.section .data
-	.align PAGE_SIZE
-	.global init_argv
-	.type init_argv, @object
-init_argv:
-	.long .argv
-.argv:
-	.long .arg0
-	.long 0
-.arg0:
-	.asciz "/sbin/init"
-
-	.global init_envp
-	.type init_envp, @object
-init_envp:
-	.long .envp
-.envp:
-	.long .env0
-	.long 0
-.env0:
-	.asciz "TERM=xterm"
-
 	.section .bss
 	.type signal_return_addr, @object
 	.size signal_return_addr, 16
@@ -235,6 +213,8 @@ task_exec:
 	mov	8(%esp), %esi
 	mov	12(%esp), %edi
 	mov	16(%esp), %ebx
+	push	%ecx
+
 	pushf
 	push	%cs
 	push	$1f
@@ -246,10 +226,11 @@ task_exec:
 
 	cmp	$SYSCALL_STACK_ADDR, %esp
 	jna	2f
-	jmp	*%ecx
+	ret
 
 2:
 	/* Switch to user mode and reenable interrupts */
+	pop	%ecx
 	mov	$0x23, %ax
 	mov	%ax, %ds
 	mov	%ax, %es

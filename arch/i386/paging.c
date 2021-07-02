@@ -103,10 +103,16 @@ paging_init (uint32_t stack)
        i++, addr += PAGE_SIZE)
     page_stack_table[i] = addr | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE;
 
-  /* Map kernel stack */
+  /* Map kernel stack and exec data pages */
   for (i = 0, addr = 0; addr < TASK_STACK_SIZE; i++, addr += PAGE_SIZE)
     kernel_stack_table[i] = (stack + addr - RELOC_VADDR)
       | PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
+  for (addr = 0; addr < EXEC_DATA_LEN; i++, addr += PAGE_SIZE)
+    {
+      uint32_t pti = addr >> 12 & (PAGE_DIR_SIZE - 1);
+      kernel_stack_table[pti] = (addr + EXEC_DATA_PADDR)
+	| PAGE_FLAG_PRESENT | PAGE_FLAG_WRITE | PAGE_FLAG_USER;
+    }
 
   /* Map last page table to page directory virtual addresses */
   kernel_page_dir[PAGE_DIR_SIZE - 1] = (uint32_t) kernel_vmap;

@@ -92,7 +92,8 @@ __BEGIN_DECLS
 extern Process process_table[PROCESS_LIMIT];
 extern ProcessFile process_fd_table[PROCESS_SYS_FILE_LIMIT];
 
-int process_exec (VFSInode *inode, uint32_t *entry, DynamicLinkInfo *dlinfo);
+int process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
+		  char *const *envp, DynamicLinkInfo *dlinfo);
 int process_valid (pid_t pid);
 void process_clear (pid_t pid, int partial);
 void process_free (pid_t pid);

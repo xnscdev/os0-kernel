@@ -148,6 +148,47 @@ task_getppid (void)
   return task_current->t_ppid;
 }
 
+int
+task_setup_exec (char *const *argv, char *const *envp)
+{
+  void *data = (void *) EXEC_DATA_VADDR + sizeof (void *) * 2;
+  char *ptr;
+  size_t len = 0;
+  size_t narg;
+  size_t nenv;
+  size_t i;
+
+  for (narg = 0; argv[narg] != NULL; narg++)
+    len += strlen (argv[narg]) + 1;
+  for (nenv = 0; envp[nenv] != NULL; nenv++)
+    len += strlen (envp[nenv]) + 1;
+
+  if (len + sizeof (void *) * (narg + nenv + 4) >= ARG_MAX)
+    return -E2BIG;
+
+  /* Copy argv data and pointers */
+  ((void **) EXEC_DATA_VADDR)[0] = (void **) EXEC_DATA_VADDR + 2;
+  ptr = data + sizeof (void *) * (narg + 1);
+  for (i = 0; i < narg; i++)
+    {
+      ((char **) data)[i] = ptr;
+      ptr = stpcpy (ptr, argv[i]) + 1;
+    }
+  ((char **) data)[i] = NULL;
+
+  /* Copy envp data and pointers */
+  data = (void *) (((uintptr_t) ptr - 1) | (PAGE_SIZE - 1)) + 1;
+  ((void **) EXEC_DATA_VADDR)[1] = data;
+  ptr = data + sizeof (void *) * (nenv + 1);
+  for (i = 0; i < nenv; i++)
+    {
+      ((char **) data)[i] = ptr;
+      ptr = stpcpy (ptr, envp[i]) + 1;
+    }
+  ((char **) data)[i] = NULL;
+  return 0;
+}
+
 ProcessTask *
 _task_fork (int copy_pgdir)
 {

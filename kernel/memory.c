@@ -30,8 +30,8 @@ void
 mem_init (uint32_t mem)
 {
   printk ("Detected %luK of available upper memory\n", mem);
-  if (mem < 524288)
-    panic ("Too little memory available, at least 512K is required");
+  if (mem < MIN_MEMORY)
+    panic ("Too little memory available, at least 512M is required");
   mem_maxaddr = mem * 1024 + KERNEL_PADDR;
   page_stack = stack_place ((void *) PAGE_STACK_VADDR, PAGE_STACK_NELEM);
   if (unlikely (page_stack == NULL))

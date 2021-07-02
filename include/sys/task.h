@@ -61,6 +61,7 @@ void task_exec (uint32_t eip, char *const *argv, char *const *envp,
 void task_free (ProcessTask *task);
 pid_t task_getpid (void);
 pid_t task_getppid (void);
+int task_setup_exec (char *const *argv, char *const *envp);
 
 __END_DECLS
 

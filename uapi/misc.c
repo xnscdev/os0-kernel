@@ -50,16 +50,18 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
   DynamicLinkInfo dlinfo;
   uint32_t eip;
   VFSInode *inode;
+  char **nenvp;
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
   memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
   __asm__ volatile ("cli");
-  ret = process_exec (inode, &eip, &dlinfo);
+  ret = process_exec (inode, &eip, argv, envp, &dlinfo);
   vfs_unref_inode (inode);
   if (ret != 0)
     return ret;
-  task_exec (eip, argv, envp, &dlinfo);
+  nenvp = envp == NULL ? NULL : ((char ***) EXEC_DATA_VADDR)[1];
+  task_exec (eip, ((char ***) EXEC_DATA_VADDR)[0], nenvp, &dlinfo);
 }
 
 int

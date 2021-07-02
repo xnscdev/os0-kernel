@@ -34,8 +34,16 @@
 
 BootOptions boot_options;
 
-extern char **init_argv __attribute__ ((aligned (PAGE_SIZE)));
-extern char **init_envp;
+static char *init_argv[] = {
+  "/sbin/init",
+  NULL
+};
+
+static char *init_envp[] = {
+  "PWD=/",
+  "TERM=xterm",
+  NULL
+};
 
 static struct
 {
@@ -148,18 +156,7 @@ init (void)
     panic ("Failed to fork kernel process");
   else if (pid == 0)
     {
-      int ret;
-      uint32_t argv = get_paddr (curr_page_dir, init_argv);
-      /* Map the page containing the arguments/environment to /sbin/init
-	 as user mode and writeable */
-      map_page (curr_page_dir, argv, (uint32_t) init_argv,
-		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval (argv);
-#else
-      vm_tlb_reset ();
-#endif
-      ret = sys_execve ("/sbin/init", init_argv, init_envp);
+      int ret = sys_execve ("/sbin/init", init_argv, init_envp);
       panic ("Failed to execute /sbin/init: %s", strerror (ret));
     }
   else

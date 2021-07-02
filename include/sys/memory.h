@@ -57,7 +57,13 @@
 #define PAGE_STACK_LEN   (PAGE_STACK_NELEM * sizeof (void *))
 #endif
 
+#define EXEC_DATA_PADDR 0x10908000
+#define EXEC_DATA_VADDR 0xff410000
+#define EXEC_DATA_LEN   ARG_MAX
+
 #define MEM_ALLOC_START 0x1c000000
+
+#define MIN_MEMORY 524288
 
 #define TASK_LOCAL_BOUND 0xf0000000
 
