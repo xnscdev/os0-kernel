@@ -31,6 +31,8 @@ ProcessFile *process_fd_next = process_fd_table;
 void *process_signal_handler;
 int process_signal;
 
+extern int exit_task;
+
 static int
 process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 {
@@ -329,10 +331,20 @@ process_free (pid_t pid)
 {
   Process *proc = &process_table[pid];
   pid_t ppid;
+  pid_t temp;
   int i;
   if (!process_valid (pid))
     return;
   ppid = proc->p_task->t_ppid;
+
+  /* Decrement child process count of all parent processes */
+  temp = ppid;
+  while (temp != 0)
+    {
+      process_table[temp].p_children--;
+      temp = process_table[temp].p_task->t_ppid;
+    }
+  process_table[0].p_children--;
 
   /* Add self rusage values to parent's child rusage */
   process_add_rusage (&process_table[ppid].p_cusage, proc);
@@ -599,8 +611,12 @@ process_send_signal (pid_t pid, int sig)
 
   if (exit)
     {
+      pid_t ppid = process_table[pid].p_task->t_ppid;
       process_table[pid].p_term = 1;
       process_table[pid].p_waitstat = sig;
+      exit_task = pid;
+      if (!(process_table[ppid].p_sigactions[SIGCHLD].sa_flags & SA_NOCLDSTOP))
+	process_send_signal (ppid, SIGCHLD);
     }
 
   process_table[pid].p_sig = sig;

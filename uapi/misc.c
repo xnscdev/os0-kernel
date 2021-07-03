@@ -30,11 +30,14 @@ void
 sys_exit (int code)
 {
   pid_t pid = task_getpid ();
+  pid_t ppid = process_table[pid].p_task->t_ppid;
   if (pid == 0)
     panic ("Attempted to exit from kernel task");
   process_table[pid].p_term = 1;
   process_table[pid].p_waitstat = (code & 0xff) << 8;
   exit_task = pid;
+  if (!(process_table[ppid].p_sigactions[SIGCHLD].sa_flags & SA_NOCLDSTOP))
+    process_send_signal (ppid, SIGCHLD);
 }
 
 pid_t

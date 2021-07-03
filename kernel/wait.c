@@ -53,16 +53,7 @@ wait_get_status (pid_t pid, int *status, struct rusage *usage)
   if (usage != NULL)
     memcpy (usage, &process_table[temp].p_rusage, sizeof (struct rusage));
   *status = process_table[temp].p_waitstat;
-
-  pid = temp;
-  temp = process_table[temp].p_task->t_ppid;
-  while (temp != 0)
-    {
-      process_table[temp].p_children--;
-      temp = process_table[temp].p_task->t_ppid;
-    }
-  process_table[0].p_children--;
-  return pid;
+  return temp;
 }
 
 pid_t

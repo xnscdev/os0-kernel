@@ -42,8 +42,8 @@
 #define DEFAULT_CFLAG (B9600 | CREAD | CS7 | PARENB | HUPCL)
 #define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
 
-#define VT_FLAG_OVERFLOW 0x0001
-#define VT_FLAG_NUM      0x0002
+#define VT_FLAG_ERR 0x0001
+#define VT_FLAG_NUM 0x0002
 
 typedef enum
 {
@@ -67,13 +67,14 @@ typedef enum
 
 typedef enum
 {
-  TERMINAL_ESC_SEQ_ESC = 0, /* Initial state, ESC just pressed */
+  TERMINAL_ESC_SEQ_ESC = 0, /* Initial state */
   TERMINAL_ESC_SEQ_CSI      /* Control sequence */
 } TerminalEscSeqMode;
 
 typedef struct
 {
   unsigned int vte_flags;
+  unsigned int vte_curr;
   unsigned int vte_num[4];
   TerminalEscSeqMode vte_mode;
 } TerminalEscSeqState;
