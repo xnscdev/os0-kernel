@@ -34,8 +34,7 @@ sys_exit (int code)
     panic ("Attempted to exit from kernel task");
   process_table[pid].p_term = 1;
   process_table[pid].p_waitstat = (code & 0xff) << 8;
-  if (process_table[pid].p_refcnt == 0)
-    exit_task = pid;
+  exit_task = pid;
 }
 
 pid_t

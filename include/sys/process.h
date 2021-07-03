@@ -71,6 +71,7 @@ typedef struct
   int p_pause;                               /* If process is paused */
   int p_sig;                                 /* Signal to be handled */
   siginfo_t p_siginfo;                       /* Signal info */
+  size_t p_children;                         /* Number of child processes */
   int p_term;                                /* If process is terminated */
   int p_waitstat;                            /* Value to set wait status to */
   mode_t p_umask;                            /* File creation mask */
@@ -83,8 +84,6 @@ typedef struct
   pid_t p_pgid;                              /* Process group id */
   pid_t p_sid;                               /* Session id */
   struct itimerval p_itimers[__NR_itimers];  /* Interval timers */
-  volatile unsigned int p_refcnt;            /* Reference count, used by wait
-						to postpone freeing a process */
 } Process;
 
 __BEGIN_DECLS

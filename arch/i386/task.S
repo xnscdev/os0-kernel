@@ -28,8 +28,9 @@
 #include <errno.h>
 
 	.section .bss
+	.align 4
 	.type signal_return_addr, @object
-	.size signal_return_addr, 16
+	.size signal_return_addr, 4
 signal_return_addr:
 	.skip 4
 
@@ -73,13 +74,24 @@ irq8:
 
 2:
 	/* If this process is terminated, skip it */
-	movzw	(%edi), %eax
-	push	%eax
+	movzw	(%edi), %ebx
+	push	%ebx
 	call	process_terminated
 	add	$4, %esp
 	test	%eax, %eax
-	jnz	1b
+	jz	3f
 
+	/* Free the process if it matches the saved exited process */
+	cmp	%ebx, exit_task
+	jne	1b
+
+	push	%ebx
+	call	process_free
+	add	$4, %esp
+	movl	$0, exit_task
+	jmp	1b
+
+3:
 	mov	%edi, task_current
 	mov	4(%edi), %ebx
 	mov	12(%edi), %esi
@@ -92,10 +104,10 @@ irq8:
 	mov	%esi, curr_page_dir
 	mov	%cr3, %ecx
 	cmp	%ecx, %eax
-	je	3f
+	je	4f
 	mov	%eax, %cr3
 
-3:
+4:
 	/* Switch stack and jump to new task EIP */
 	mov	%ebx, %esp
 	mov	task_current, %edi
@@ -104,17 +116,6 @@ irq8:
 	jmp	*%ecx
 
 .next_start:
-	/* Free exited process, if any */
-	mov	exit_task, %eax
-	test	%eax, %eax
-	jz	4f
-
-	push	%eax
-	call	process_free
-	add	$4, %esp
-	movl	$0, exit_task
-
-4:
 	call	process_handle_signal
 	mov	process_signal, %ecx
 	test	%ecx, %ecx

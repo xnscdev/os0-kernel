@@ -30,7 +30,6 @@ ProcessFile process_fd_table[PROCESS_SYS_FILE_LIMIT];
 ProcessFile *process_fd_next = process_fd_table;
 void *process_signal_handler;
 int process_signal;
-int exit_task;
 
 static int
 process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)

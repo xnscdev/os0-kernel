@@ -197,9 +197,11 @@ _task_fork (int copy_pgdir)
   SortedArray *mregions;
   Process *proc;
   Process *parent;
+  char *cwdpath;
   uint32_t *dir;
   uint32_t paddr;
   uint32_t i;
+  pid_t tpid;
   pid_t pid;
 
   for (pid = 1; pid < PROCESS_LIMIT; pid++)
@@ -270,36 +272,6 @@ _task_fork (int copy_pgdir)
 
   proc = &process_table[pid];
   parent = &process_table[task_getpid ()];
-  proc->p_task = task;
-
-  /* Copy file descriptors */
-  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
-    {
-      proc->p_files[i] = parent->p_files[i];
-      if (proc->p_files[i] != NULL)
-	proc->p_files[i]->pf_refcnt++;
-    }
-
-  /* Inherit parent working directory, real/effective/saved UID/GID,
-     process group ID, session ID, and blocked signal mask */
-  proc->p_cwd = parent->p_cwd;
-  proc->p_cwdpath = strdup (parent->p_cwdpath);
-  if (unlikely (proc->p_cwdpath == NULL))
-    {
-      kfree (task);
-      goto err;
-    }
-  vfs_ref_inode (proc->p_cwd);
-  proc->p_uid = parent->p_uid;
-  proc->p_euid = parent->p_euid;
-  proc->p_suid = parent->p_suid;
-  proc->p_gid = parent->p_gid;
-  proc->p_egid = parent->p_egid;
-  proc->p_sgid = parent->p_sgid;
-  proc->p_pgid = parent->p_pgid;
-  proc->p_sid = parent->p_sid;
-  memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
-  memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
 
   /* Copy memory region array */
   mregions = sorted_array_new (PROCESS_MMAP_LIMIT, process_mregion_cmp);
@@ -322,12 +294,53 @@ _task_fork (int copy_pgdir)
 	}
     }
 
+  cwdpath = strdup (parent->p_cwdpath);
+  if (unlikely (cwdpath == NULL))
+    {
+      kfree (task);
+      goto err;
+    }
+
+  /* Copy file descriptors */
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      proc->p_files[i] = parent->p_files[i];
+      if (proc->p_files[i] != NULL)
+	proc->p_files[i]->pf_refcnt++;
+    }
+
+  /* Add one to child count of each parent process */
+  tpid = parent->p_task->t_pid;
+  while (tpid != 0)
+    {
+      process_table[tpid].p_children++;
+      tpid = process_table[tpid].p_task->t_ppid;
+    }
+  process_table[0].p_children++;
+
+  /* Inherit parent working directory, real/effective/saved UID/GID,
+     process group ID, session ID, and blocked signal mask */
+  proc->p_cwd = parent->p_cwd;
+  proc->p_cwdpath = cwdpath;
+  vfs_ref_inode (proc->p_cwd);
+  proc->p_uid = parent->p_uid;
+  proc->p_euid = parent->p_euid;
+  proc->p_suid = parent->p_suid;
+  proc->p_gid = parent->p_gid;
+  proc->p_egid = parent->p_egid;
+  proc->p_sgid = parent->p_sgid;
+  proc->p_pgid = parent->p_pgid;
+  proc->p_sid = parent->p_sid;
+  memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
+  memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
+
   for (temp = task_queue; temp->t_next != NULL; temp = temp->t_next)
     ;
   task->t_prev = temp;
   temp->t_next = task;
   task_queue->t_prev = task;
   proc->p_mregions = mregions;
+  proc->p_task = task;
   return task;
 
  err:
