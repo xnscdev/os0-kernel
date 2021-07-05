@@ -326,6 +326,17 @@ vga_init (void)
   default_terminal.vt_termios.c_oflag = DEFAULT_OFLAG;
   default_terminal.vt_termios.c_cflag = DEFAULT_CFLAG;
   default_terminal.vt_termios.c_lflag = DEFAULT_LFLAG;
+  default_terminal.vt_termios.c_cc[VINTR] = '\3';
+  default_terminal.vt_termios.c_cc[VQUIT] = '\34';
+  default_terminal.vt_termios.c_cc[VERASE] = '\37';
+  default_terminal.vt_termios.c_cc[VKILL] = '\25';
+  default_terminal.vt_termios.c_cc[VEOF] = '\4';
+  default_terminal.vt_termios.c_cc[VTIME] = 0;
+  default_terminal.vt_termios.c_cc[VMIN] = 1;
+  default_terminal.vt_termios.c_cc[VSTART] = '\21';
+  default_terminal.vt_termios.c_cc[VSTOP] = '\23';
+  default_terminal.vt_termios.c_cc[VSUSP] = '\32';
+  default_terminal.vt_termios.c_cc[VEOL] = 0xff;
   default_terminal.vt_termios.c_ispeed = B9600;
   default_terminal.vt_termios.c_ospeed = B9600;
 }

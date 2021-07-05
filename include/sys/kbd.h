@@ -41,6 +41,11 @@
 
 #define KEY_EXTENDED 0xe0
 
+#define SHIFT_DOWN							\
+  (kbd_key_pressed (KEY_LSHIFT) || kbd_key_pressed (KEY_RSHIFT))
+#define CAPSLOCK_DOWN kbd_key_pressed (KEY_CAPSLOCK)
+#define CTRL_DOWN     kbd_key_pressed (KEY_LCTRL)
+
 typedef struct
 {
   unsigned char kbd_buffer[KBD_BUFSIZ];

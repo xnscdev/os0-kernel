@@ -78,17 +78,30 @@ vga_display_putchar (Terminal *term, char c)
   active = term == CURRENT_TERMINAL;
   DISABLE_TASK_SWITCH;
 
-  if (c == '\n')
-    goto wrap;
-  if (c == '\t')
-    term->vt_column |= 7;
-  else
-    vga_putentry (term, c, term->vt_column, term->vt_row);
+  switch (c)
+    {
+    case '\n':
+      term->vt_column = 0;
+    case '\v':
+    case '\f':
+      goto wrap;
+    case '\r':
+      term->vt_column = 0;
+      goto end;
+    case '\t':
+      term->vt_column |= 7;
+      break;
+    case '\b':
+      vga_delchar (term);
+      goto end;
+    default:
+      vga_putentry (term, c, term->vt_column, term->vt_row);
+    }
 
   if (++term->vt_column == VGA_SCREEN_WIDTH)
     {
-    wrap:
       term->vt_column = 0;
+    wrap:
       if (++term->vt_row == VGA_SCREEN_HEIGHT)
 	{
 	  size_t i;
@@ -104,6 +117,7 @@ vga_display_putchar (Terminal *term, char c)
 	}
     }
 
+ end:
   vga_setcurs (term->vt_column, term->vt_row);
   ENABLE_TASK_SWITCH;
 }

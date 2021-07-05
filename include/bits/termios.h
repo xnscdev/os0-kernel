@@ -48,16 +48,10 @@ struct termios
 #define VEOF     4
 #define VTIME    5
 #define VMIN     6
-#define VSWTC    7
-#define VSTART   8
-#define VSTOP    9
-#define VSUSP    10
-#define VEOL     11
-#define VREPRINT 12
-#define VDISCARD 13
-#define VWERASE  14
-#define VLNEXT   15
-#define VEOL2    16
+#define VSTART   7
+#define VSTOP    8
+#define VSUSP    9
+#define VEOL     10
 
 #define IGNBRK   0x0001
 #define BRKINT   0x0002
