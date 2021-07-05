@@ -34,16 +34,24 @@
 #define VGA_PORT_DATA 0x3d5
 
 #define vga_mkcolor(fg, bg) ((unsigned char) (fg | bg << 4))
+#define vga_setfg(color, fg) ((unsigned char) ((color & 0xf0) | fg))
+#define vga_setbg(color, bg) ((unsigned char) ((color & 0x0f) | (bg << 4)))
 #define vga_mkentry(c, color) ((uint16_t) c | (uint16_t) color << 8)
 #define vga_getindex(x, y) (y * VGA_SCREEN_WIDTH + x)
+
+#define VGA_DEFAULT_FG    VGA_COLOR_LIGHT_GREY
+#define VGA_DEFAULT_BG    VGA_COLOR_BLACK
+#define VGA_DEFAULT_COLOR vga_mkcolor (VGA_DEFAULT_FG, VGA_DEFAULT_BG)
 
 #define DEFAULT_IFLAG (BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY)
 #define DEFAULT_OFLAG (OPOST | ONLCR | XTABS)
 #define DEFAULT_CFLAG (B9600 | CREAD | CS7 | PARENB | HUPCL)
 #define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
 
-#define VT_FLAG_ERR 0x0001
-#define VT_FLAG_NUM 0x0002
+#define VT_FLAG_REVERSE 0x0001
+
+#define VTE_FLAG_ERR 0x0001
+#define VTE_FLAG_NUM 0x0002
 
 typedef enum
 {
@@ -61,7 +69,7 @@ typedef enum
   VGA_COLOR_LIGHT_CYAN,
   VGA_COLOR_LIGHT_RED,
   VGA_COLOR_LIGHT_MAGENTA,
-  VGA_COLOR_LIGHT_BROWN,
+  VGA_COLOR_YELLOW,
   VGA_COLOR_WHITE
 } VGAColor;
 
@@ -90,6 +98,7 @@ typedef struct
   size_t vt_saved_col;           /* Saved cursor column */
   pid_t vt_fgpgid;               /* Foreground process group ID */
   unsigned char vt_color;        /* Current color */
+  unsigned int vt_flags;
   struct termios vt_termios;     /* Termios structure */
 } Terminal;
 

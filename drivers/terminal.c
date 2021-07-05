@@ -31,7 +31,7 @@ int parsing_escseq;
 static void
 vga_csi_cursor_up (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] == 0)
     term->vt_escseq.vte_num[0] = 1;
@@ -45,7 +45,7 @@ vga_csi_cursor_up (Terminal *term)
 static void
 vga_csi_cursor_down (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] == 0)
     term->vt_escseq.vte_num[0] = 1;
@@ -59,7 +59,7 @@ vga_csi_cursor_down (Terminal *term)
 static void
 vga_csi_cursor_right (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] == 0)
     term->vt_escseq.vte_num[0] = 1;
@@ -73,7 +73,7 @@ vga_csi_cursor_right (Terminal *term)
 static void
 vga_csi_cursor_left (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] == 0)
     term->vt_escseq.vte_num[0] = 1;
@@ -87,7 +87,7 @@ vga_csi_cursor_left (Terminal *term)
 static void
 vga_csi_cursor_col_set (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] > VGA_SCREEN_WIDTH)
     term->vt_escseq.vte_num[0] = VGA_SCREEN_WIDTH - 1;
@@ -100,7 +100,7 @@ vga_csi_cursor_col_set (Terminal *term)
 static void
 vga_csi_cursor_pos_set (Terminal *term)
 {
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] > VGA_SCREEN_WIDTH)
     term->vt_escseq.vte_num[0] = VGA_SCREEN_WIDTH - 1;
@@ -119,7 +119,7 @@ static void
 vga_csi_cursor_tab (Terminal *term)
 {
   int i;
-  if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+  if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
     return;
   if (term->vt_escseq.vte_num[0] > VGA_SCREEN_WIDTH / 8)
     term->vt_escseq.vte_num[0] = VGA_SCREEN_WIDTH / 8;
@@ -200,11 +200,84 @@ vga_erase_display (Terminal *term)
 }
 
 static void
+vga_csi_set_sgr (Terminal *term)
+{
+  int i;
+  for (i = 0; i <= term->vt_escseq.vte_curr; i++)
+    {
+      switch (term->vt_escseq.vte_num[i])
+	{
+	case 0:
+	case 100:
+	  term->vt_color = VGA_DEFAULT_COLOR;
+	  break;
+	case 7:
+	  term->vt_flags |= VT_FLAG_REVERSE;
+	  break;
+	case 30:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_BLACK);
+	  break;
+	case 31:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_RED);
+	  break;
+	case 32:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_GREEN);
+	  break;
+	case 33:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_YELLOW);
+	  break;
+	case 34:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_BLUE);
+	  break;
+	case 35:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_MAGENTA);
+	  break;
+	case 36:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_CYAN);
+	  break;
+	case 37:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_COLOR_LIGHT_GREY);
+	  break;
+	case 39:
+	  term->vt_color = vga_setfg (term->vt_color, VGA_DEFAULT_FG);
+	  break;
+	case 40:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_BLACK);
+	  break;
+	case 41:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_RED);
+	  break;
+	case 42:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_GREEN);
+	  break;
+	case 43:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_YELLOW);
+	  break;
+	case 44:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_BLUE);
+	  break;
+	case 45:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_MAGENTA);
+	  break;
+	case 46:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_CYAN);
+	  break;
+	case 47:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_COLOR_LIGHT_GREY);
+	  break;
+	case 49:
+	  term->vt_color = vga_setbg (term->vt_color, VGA_DEFAULT_BG);
+	  break;
+	}
+    }
+}
+
+static void
 vga_csi_parse_nums (Terminal *term)
 {
   if (++term->vt_escseq.vte_curr == 4)
     {
-      term->vt_escseq.vte_flags |= VT_FLAG_ERR;
+      term->vt_escseq.vte_flags |= VTE_FLAG_ERR;
       term->vt_escseq.vte_curr = 0;
     }
 }
@@ -247,22 +320,22 @@ vga_terminal_parse_escseq_csi (Terminal *term, char c)
 {
   if (isdigit (c))
     {
-      if (term->vt_escseq.vte_flags & VT_FLAG_ERR)
+      if (term->vt_escseq.vte_flags & VTE_FLAG_ERR)
 	return;
       if (term->vt_escseq.vte_num[term->vt_escseq.vte_curr] > UINT_MAX / 10)
 	{
-	  term->vt_escseq.vte_flags |= VT_FLAG_ERR;
+	  term->vt_escseq.vte_flags |= VTE_FLAG_ERR;
 	  return;
 	}
       term->vt_escseq.vte_num[term->vt_escseq.vte_curr] *= 10;
       if (term->vt_escseq.vte_num[term->vt_escseq.vte_curr] >
 	  UINT_MAX - c + '0')
 	{
-	  term->vt_escseq.vte_flags |= VT_FLAG_ERR;
+	  term->vt_escseq.vte_flags |= VTE_FLAG_ERR;
 	  return;
 	}
       term->vt_escseq.vte_num[term->vt_escseq.vte_curr] += c - '0';
-      term->vt_escseq.vte_flags |= VT_FLAG_NUM;
+      term->vt_escseq.vte_flags |= VTE_FLAG_NUM;
       return;
     }
 
@@ -297,6 +370,9 @@ vga_terminal_parse_escseq_csi (Terminal *term, char c)
     case 'K':
       vga_erase_line (term);
       break;
+    case 'm':
+      vga_csi_set_sgr (term);
+      break;
     case ';':
       vga_csi_parse_nums (term);
       break;
@@ -310,8 +386,7 @@ vga_init (void)
   size_t x;
   size_t y;
 
-  default_terminal.vt_color =
-    vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+  default_terminal.vt_color = VGA_DEFAULT_COLOR;
   for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
     {
       for (x = 0; x < VGA_SCREEN_WIDTH; x++)

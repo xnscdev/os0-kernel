@@ -248,6 +248,9 @@ kbd_handle (int scancode)
 	  if (kbd_parse_ctlseq (c))
 	    return;
 	}
+
+      if (CURRENT_TERMINAL->vt_termios.c_iflag & ISTRIP)
+	c &= 0x7f;
       kbd_write_char (c);
     }
 }

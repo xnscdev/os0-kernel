@@ -19,6 +19,7 @@
 #include <sys/io.h>
 #include <sys/task.h>
 #include <video/vga.h>
+#include <byteswap.h>
 #include <string.h>
 
 uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
@@ -26,9 +27,11 @@ uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
 void
 vga_putentry (Terminal *term, char c, size_t x, size_t y)
 {
-  term->vt_data[vga_getindex (x, y)] = vga_mkentry (c, term->vt_color);
+  uint16_t color = term->vt_flags & VT_FLAG_REVERSE ?
+    bswap_16 (term->vt_color) : term->vt_color;
+  term->vt_data[vga_getindex (x, y)] = vga_mkentry (c, color);
   if (term == CURRENT_TERMINAL)
-    vga_hdw_buf[vga_getindex (x, y)] = vga_mkentry (c, term->vt_color);
+    vga_hdw_buf[vga_getindex (x, y)] = vga_mkentry (c, color);
 }
 
 void
@@ -105,6 +108,7 @@ vga_puts (Terminal *term, const char *s)
 void
 vga_display_putchar (Terminal *term, char c)
 {
+  tcflag_t iflag = CURRENT_TERMINAL->vt_termios.c_iflag;
   int active;
   if (c == '\0')
     return;
@@ -113,14 +117,23 @@ vga_display_putchar (Terminal *term, char c)
 
   switch (c)
     {
+    case '\a':
+      goto end; /* TODO Sound the system bell */
     case '\n':
       term->vt_column = 0;
+      if (iflag & INLCR)
+	goto end;
     case '\v':
     case '\f':
       goto wrap;
     case '\r':
+      if (iflag & IGNCR)
+	goto end;
       term->vt_column = 0;
-      goto end;
+      if (iflag & ICRNL)
+	goto wrap;
+      else
+	goto end;
     case '\t':
       term->vt_column |= 7;
       break;
