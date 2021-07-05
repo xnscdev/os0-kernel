@@ -138,9 +138,9 @@ kbd_key_pressed (int key)
 int
 kbd_get_input (void *buffer, size_t len, int block)
 {
-  /* TODO Don't allow background processes to receive keyboard input */
   KbdBuffer *kbdbuf = &CURRENT_TERMINAL->vt_kbdbuf;
   int await = 0;
+
   if (CURRENT_TERMINAL->vt_termios.c_lflag & ICANON)
     {
       char *check = strchr (kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, '\n');
@@ -148,7 +148,8 @@ kbd_get_input (void *buffer, size_t len, int block)
 	await = 1;
     }
   else if (kbdbuf->kbd_bufpos <= kbdbuf->kbd_currpos)
-    await = 1;
+    await = 1; /* TODO Support VTIME and VMIN */
+
   if (await)
     {
       if (block)

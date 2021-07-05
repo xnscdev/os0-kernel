@@ -168,6 +168,8 @@ sys_open (const char *path, int flags, mode_t mode)
       process_free_fd (proc, i);
       return -ENOMEM;
     }
+  if (flags & O_NONBLOCK)
+    proc->p_files[i]->pf_inode->vi_flags |= VI_FLAG_NONBLOCK;
   return i;
 }
 

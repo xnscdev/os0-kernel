@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <sys/io.h>
+#include <sys/task.h>
 #include <video/vga.h>
 #include <string.h>
 
@@ -75,14 +76,15 @@ vga_display_putchar (Terminal *term, char c)
   if (c == '\0')
     return;
   active = term == CURRENT_TERMINAL;
-  if (active)
-    __asm__ volatile ("cli");
+  DISABLE_TASK_SWITCH;
+
   if (c == '\n')
     goto wrap;
   if (c == '\t')
     term->vt_column |= 7;
   else
     vga_putentry (term, c, term->vt_column, term->vt_row);
+
   if (++term->vt_column == VGA_SCREEN_WIDTH)
     {
     wrap:
@@ -101,9 +103,9 @@ vga_display_putchar (Terminal *term, char c)
 		    2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 	}
     }
+
   vga_setcurs (term->vt_column, term->vt_row);
-  if (active)
-    __asm__ volatile ("sti");
+  ENABLE_TASK_SWITCH;
 }
 
 void
@@ -119,10 +121,10 @@ vga_clear (Terminal *term)
     }
   if (term == CURRENT_TERMINAL)
     {
-      __asm__ volatile ("cli");
+      DISABLE_TASK_SWITCH;
       memcpy (vga_hdw_buf, term->vt_data,
 	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
-      __asm__ volatile ("sti");
+      ENABLE_TASK_SWITCH;
     }
 }
 

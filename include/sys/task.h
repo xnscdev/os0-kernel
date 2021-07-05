@@ -49,7 +49,12 @@ typedef struct _ProcessTask
   volatile struct _ProcessTask *t_next;
 } ProcessTask;
 
+#define DISABLE_TASK_SWITCH (task_switch_enabled = 0)
+#define ENABLE_TASK_SWITCH  (task_switch_enabled = 1)
+
 __BEGIN_DECLS
+
+extern volatile int task_switch_enabled;
 
 void scheduler_init (void);
 void task_timer_tick (void);

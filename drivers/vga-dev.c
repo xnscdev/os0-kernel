@@ -51,10 +51,7 @@ VFSSuperblock vga_tty_sb = {
 int
 vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 {
-  /* XXX Fails if stdin is dup'd to a different fd and the original is closed */
-  int nonblock =
-    process_table[task_getpid ()].p_files[STDIN_FILENO]->pf_flags & O_NONBLOCK;
-  return kbd_get_input (buffer, len, !nonblock);
+  return kbd_get_input (buffer, len, 1);
 }
 
 int
@@ -67,7 +64,8 @@ vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
 int
 vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return vga_dev_read (inode->vi_private, buffer, len, offset);
+  return kbd_get_input (buffer, len,
+			inode->vi_flags & VI_FLAG_NONBLOCK ? 0 : 1);
 }
 
 int

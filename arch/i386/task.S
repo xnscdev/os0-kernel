@@ -215,6 +215,7 @@ task_exec:
 	pushf
 	push	%cs
 	push	$1f
+	movl	$1, task_switch_enabled
 	jmp	irq8
 
 1:

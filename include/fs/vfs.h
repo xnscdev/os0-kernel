@@ -35,6 +35,8 @@
 
 #define VFS_PATH_SHORT_MAX 16
 
+#define VI_FLAG_NONBLOCK 0x01000000
+
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
@@ -115,7 +117,6 @@ struct _VFSInode
 {
   uid_t vi_uid;
   gid_t vi_gid;
-  int vi_flags;
   ino_t vi_ino;
   nlink_t vi_nlink;
   dev_t vi_rdev;
@@ -126,6 +127,7 @@ struct _VFSInode
   struct timespec vi_mtime;
   struct timespec vi_ctime;
   blkcnt_t vi_blocks;
+  unsigned int vi_flags;
   const VFSInodeOps *vi_ops;
   VFSSuperblock *vi_sb;
   unsigned long vi_refcnt;

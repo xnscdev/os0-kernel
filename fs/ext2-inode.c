@@ -79,7 +79,6 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   inode->vi_mode = mode | S_IFREG;
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
-  inode->vi_flags = ei->ei_flags;
   inode->vi_nlink = ei->ei_nlink;
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
@@ -650,7 +649,6 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   inode->vi_mode = mode | S_IFDIR;
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
-  inode->vi_flags = ei->ei_flags;
   inode->vi_nlink = ei->ei_nlink;
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0

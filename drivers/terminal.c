@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <sys/task.h>
 #include <video/vga.h>
 #include <ctype.h>
 #include <limits.h>
@@ -152,10 +153,10 @@ vga_erase_line (Terminal *term)
     }
   if (term == CURRENT_TERMINAL)
     {
-      __asm__ volatile ("cli");
+      DISABLE_TASK_SWITCH;
       memcpy (vga_hdw_buf, term->vt_data,
 	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
-      __asm__ volatile ("sti");
+      ENABLE_TASK_SWITCH;
     }
 }
 
@@ -191,10 +192,10 @@ vga_erase_display (Terminal *term)
     }
   if (term == CURRENT_TERMINAL)
     {
-      __asm__ volatile ("cli");
+      DISABLE_TASK_SWITCH;
       memcpy (vga_hdw_buf, term->vt_data,
 	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
-      __asm__ volatile ("sti");
+      ENABLE_TASK_SWITCH;
     }
 }
 

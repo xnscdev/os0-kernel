@@ -254,7 +254,6 @@ ext2_fill_inode (VFSInode *inode)
     return;
   inode->vi_uid = ei->ei_uid;
   inode->vi_gid = ei->ei_gid;
-  inode->vi_flags = ei->ei_flags;
   inode->vi_nlink = ei->ei_nlink;
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
@@ -324,7 +323,6 @@ ext2_write_inode (VFSInode *inode)
   ei->ei_gid = inode->vi_gid;
   ei->ei_nlink = inode->vi_nlink;
   ei->ei_sectors = inode->vi_sectors;
-  ei->ei_flags = inode->vi_flags;
   if (S_ISREG (inode->vi_mode) && esb->esb_versmaj > 0
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
     ei->ei_sizeh = inode->vi_size >> 32;

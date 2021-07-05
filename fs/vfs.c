@@ -196,6 +196,7 @@ vfs_alloc_inode (VFSSuperblock *sb)
   inode = sb->sb_ops->sb_alloc_inode (sb);
   if (inode == NULL)
     return NULL;
+  inode->vi_flags = 0;
   inode->vi_refcnt = 1;
   return inode;
 }
