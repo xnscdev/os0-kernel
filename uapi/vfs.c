@@ -351,6 +351,12 @@ sys_umount (const char *dir)
   return -ENOSYS;
 }
 
+void
+sys_sync (void)
+{
+  /* There is currently no support for filesystem cache, so this is a no-op */
+}
+
 int
 sys_access (const char *path, int mode)
 {

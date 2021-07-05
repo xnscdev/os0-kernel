@@ -59,6 +59,7 @@ uid_t sys_getuid (void);
 unsigned int sys_alarm (unsigned int seconds);
 int sys_pause (void);
 int sys_access (const char *path, int mode);
+void sys_sync (void);
 int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
 int sys_mkdir (const char *path, mode_t mode);

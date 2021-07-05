@@ -57,7 +57,7 @@
 
 #define NSIG       48
 #define SIGRTMIN   32
-#define SIGRTMAX   NR_signals
+#define SIGRTMAX   NSIG
 
 /* Signal handler flags */
 
