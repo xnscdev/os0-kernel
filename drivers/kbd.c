@@ -62,6 +62,12 @@ static char kbd_ctrl_chars[128] = {
   ['?'] = 037
 };
 
+static char kbd_unctrl_chars[] = {
+  ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+  'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']',
+  '~', '?'
+};
+
 static int
 kbd_char_is_eol (char c)
 {
@@ -73,6 +79,7 @@ static void
 kbd_write_char (char c)
 {
   KbdBuffer *buffer = &CURRENT_TERMINAL->vt_kbdbuf;
+  tcflag_t lflag = CURRENT_TERMINAL->vt_termios.c_lflag;
   if (buffer->kbd_bufpos == KBD_BUFSIZ)
     {
       if (buffer->kbd_currpos > 0)
@@ -87,8 +94,19 @@ kbd_write_char (char c)
     }
   buffer->kbd_buffer[buffer->kbd_bufpos++] = c;
 
-  if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
-    vga_putchar (CURRENT_TERMINAL, c);
+  if (lflag & ECHO)
+    {
+      if ((lflag & ECHOCTL) && c != '\n' && c >= 0
+	  && c < sizeof (kbd_unctrl_chars))
+	{
+	  vga_display_putchar (CURRENT_TERMINAL, '^');
+	  vga_display_putchar (CURRENT_TERMINAL, kbd_unctrl_chars[(int) c]);
+	}
+      else
+	vga_putchar (CURRENT_TERMINAL, c);
+    }
+  else if ((lflag & ECHONL) && c == '\n')
+    vga_display_putchar (CURRENT_TERMINAL, '\n');
 
   if (kbd_char_is_eol (c))
     kbd_flush_input = 1;
@@ -103,7 +121,7 @@ kbd_delchar (void)
     {
       buffer->kbd_bufpos--;
       if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
-	vga_putchar (CURRENT_TERMINAL, '\b');
+	vga_delchar (CURRENT_TERMINAL);
     }
 }
 
@@ -115,16 +133,16 @@ kbd_delline (void)
     return;
   if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
     {
-      int i;
-      for (i = 0; i < buffer->kbd_bufpos - buffer->kbd_currpos; i++)
-	vga_putchar (CURRENT_TERMINAL, '\b');
+      size_t len = buffer->kbd_bufpos - buffer->kbd_currpos;
+      vga_delline (CURRENT_TERMINAL, len);
     }
-  buffer->kbd_bufpos = buffer->kbd_currpos;
+  buffer->kbd_bufpos = buffer->kbd_currpos = 0;
 }
 
 static int
 kbd_parse_ctlseq (char c)
 {
+  KbdBuffer *buffer = &CURRENT_TERMINAL->vt_kbdbuf;
   struct termios *term = &CURRENT_TERMINAL->vt_termios;
   int sig = 0;
   if (c == 0xff)
@@ -138,16 +156,21 @@ kbd_parse_ctlseq (char c)
     sig = SIGTSTP;
   if (sig)
     {
-      /* Send signal to all processes in the terminal's foreground process
-	 group */
-      int i;
-      for (i = 1; i < PROCESS_LIMIT; i++)
+      if (term->c_lflag & ISIG)
 	{
-	  if (process_table[i].p_task != NULL
-	      && process_table[i].p_pgid == CURRENT_TERMINAL->vt_fgpgid)
-	    process_send_signal (i, sig);
+	  int i;
+	  if (!(term->c_lflag & NOFLSH))
+	    buffer->kbd_bufpos = buffer->kbd_currpos = 0;
+	  for (i = 1; i < PROCESS_LIMIT; i++)
+	    {
+	      if (process_table[i].p_task != NULL
+		  && process_table[i].p_pgid == CURRENT_TERMINAL->vt_fgpgid)
+		process_send_signal (i, sig);
+	    }
+	  return 1;
 	}
-      return 1;
+      else
+	return 0;
     }
 
   if (term->c_lflag & ICANON)

@@ -47,9 +47,42 @@ vga_delchar (Terminal *term)
 {
   if (term->vt_column > 0)
     {
-      term->vt_column--;
-      vga_putentry (term, ' ', term->vt_column, term->vt_row);
+      if (term->vt_termios.c_lflag & ECHOE)
+	{
+	  term->vt_column--;
+	  vga_putentry (term, ' ', term->vt_column, term->vt_row);
+	  vga_setcurs (term->vt_column, term->vt_row);
+	}
+      else
+	{
+	  char c = term->vt_data[vga_getindex (term->vt_column - 1,
+					       term->vt_row)] & 0xff;
+	  vga_display_putchar (term, c);
+	}
+    }
+}
+
+void
+vga_delline (Terminal *term, size_t len)
+{
+  tcflag_t lflag = term->vt_termios.c_lflag;
+  if (lflag & ECHOKE)
+    {
+      size_t i;
+      if (len > term->vt_column)
+	len = term->vt_column;
+      for (i = 0; i < len; i++)
+	{
+	  term->vt_column--;
+	  vga_putentry (term, ' ', term->vt_column, term->vt_row);
+	}
       vga_setcurs (term->vt_column, term->vt_row);
+    }
+  else
+    {
+      vga_display_putchar (term, term->vt_termios.c_cc[VKILL]);
+      if (lflag & ECHOK)
+	vga_display_putchar (term, '\n');
     }
 }
 

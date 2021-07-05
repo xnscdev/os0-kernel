@@ -57,6 +57,12 @@ vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
 int
 vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
 {
+  if (CURRENT_TERMINAL->vt_termios.c_lflag & TOSTOP)
+    {
+      pid_t pid = task_getpid ();
+      if (process_table[pid].p_pgid != CURRENT_TERMINAL->vt_fgpgid)
+	process_send_signal (pid, SIGTTOU);
+    }
   vga_write (CURRENT_TERMINAL, buffer, len);
   return len;
 }

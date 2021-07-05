@@ -107,6 +107,7 @@ void vga_init (void);
 void vga_putentry (Terminal *term, char c, size_t x, size_t y);
 void vga_putchar (Terminal *term, char c);
 void vga_delchar (Terminal *term);
+void vga_delline (Terminal *term, size_t len);
 void vga_write (Terminal *term, const char *s, size_t size);
 void vga_puts (Terminal *term, const char *s);
 void vga_display_putchar (Terminal *term, char c);
