@@ -36,7 +36,7 @@ sys_exit (int code)
   process_table[pid].p_term = 1;
   process_table[pid].p_waitstat = (code & 0xff) << 8;
   exit_task = pid;
-  if (!(process_table[ppid].p_sigactions[SIGCHLD].sa_flags & SA_NOCLDSTOP))
+  if (ppid != 0)
     process_send_signal (ppid, SIGCHLD);
 }
 

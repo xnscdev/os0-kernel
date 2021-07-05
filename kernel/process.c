@@ -30,6 +30,7 @@ ProcessFile process_fd_table[PROCESS_SYS_FILE_LIMIT];
 ProcessFile *process_fd_next = process_fd_table;
 void *process_signal_handler;
 int process_signal;
+void *signal_return_addr;
 
 extern int exit_task;
 
@@ -320,7 +321,7 @@ process_clear (pid_t pid, int partial)
   memset (&proc->p_cusage, 0, sizeof (struct rusage));
 
   /* Clear all signal handlers and info */
-  process_clear_sighandlers ();
+  process_clear_sighandlers (pid);
   memset (&proc->p_sigblocked, 0, sizeof (sigset_t));
   memset (&proc->p_sigpending, 0, sizeof (sigset_t));
   memset (&proc->p_siginfo, 0, sizeof (siginfo_t));
@@ -601,12 +602,36 @@ process_send_signal (pid_t pid, int sig)
 	return 0; /* Ignore signal */
     }
 
-  if (sig == SIGFPE || sig == SIGILL || sig == SIGSEGV || sig == SIGBUS
-      || sig == SIGABRT || sig == SIGTRAP || sig == SIGSYS)
+  switch (sig)
     {
+    case SIGABRT:
+    case SIGALRM:
+    case SIGBUS:
+    case SIGFPE:
+    case SIGHUP:
+    case SIGILL:
+    case SIGINT:
+    case SIGIO:
+    case SIGPIPE:
+    case SIGPROF:
+    case SIGPWR:
+    case SIGQUIT:
+    case SIGSEGV:
+    case SIGSTKFLT:
+    case SIGSYS:
+    case SIGTERM:
+    case SIGTRAP:
+    case SIGTTIN:
+    case SIGTTOU:
+    case SIGUSR1:
+    case SIGUSR2:
+    case SIGVTALRM:
+    case SIGXCPU:
+    case SIGXFSZ:
       if (!(sigaction->sa_flags & SA_SIGINFO)
 	  && sigaction->sa_handler == SIG_DFL)
 	exit = 1; /* Default action is to terminate process */
+      break;
     }
 
   if (exit)
@@ -615,7 +640,7 @@ process_send_signal (pid_t pid, int sig)
       process_table[pid].p_term = 1;
       process_table[pid].p_waitstat = sig;
       exit_task = pid;
-      if (!(process_table[ppid].p_sigactions[SIGCHLD].sa_flags & SA_NOCLDSTOP))
+      if (ppid != 0)
 	process_send_signal (ppid, SIGCHLD);
     }
 
@@ -626,10 +651,9 @@ process_send_signal (pid_t pid, int sig)
 }
 
 void
-process_clear_sighandlers (void)
+process_clear_sighandlers (pid_t pid)
 {
-  memset (process_table[task_getpid ()].p_sigactions, 0,
-	  sizeof (struct sigaction) * NSIG);
+  memset (process_table[pid].p_sigactions, 0, sizeof (struct sigaction) * NSIG);
 }
 
 void
@@ -640,6 +664,20 @@ process_handle_signal (void)
   sigset_t mask;
   uint32_t paddr;
   int i;
+  if (proc->p_sig == 0)
+    {
+      /* Check if a previously pending signal has been unblocked */
+      for (i = SIGHUP; i <= SIGSYS; i++)
+	{
+	  if (!sigismember (&proc->p_sigblocked, i)
+	      && sigismember (&proc->p_sigpending, i))
+	    {
+	      proc->p_sig = i;
+	      sigdelset (&proc->p_sigpending, i);
+	      break;
+	    }
+	}
+    }
   process_signal = proc->p_sig;
   if (proc->p_sig == 0)
     return;

@@ -106,7 +106,7 @@ int process_alloc_fd (Process *proc, int fd);
 int process_free_fd (Process *proc, int fd);
 int process_terminated (pid_t pid);
 int process_send_signal (pid_t pid, int sig);
-void process_clear_sighandlers (void);
+void process_clear_sighandlers (pid_t pid);
 void process_handle_signal (void);
 
 __END_DECLS

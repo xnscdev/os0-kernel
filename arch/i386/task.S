@@ -27,13 +27,6 @@
 #include <sys/task.h>
 #include <errno.h>
 
-	.section .bss
-	.align 4
-	.type signal_return_addr, @object
-	.size signal_return_addr, 4
-signal_return_addr:
-	.skip 4
-
 	.section .text
 	.align 16
 	.global irq8
@@ -53,9 +46,12 @@ irq8:
 
 	mov	task_current, %edi
 
-	/* Exit if scheduler is uninitialized */
+	/* Exit if scheduler is uninitialized or task switching is disabled */
 	test	%edi, %edi
-	jz	.next_start
+	jz	.done
+	mov	task_switch_enabled, %eax
+	test	%eax, %eax
+	jz	.done
 
 	/* Save task ESP and EIP */
 	mov	%esp, 4(%edi)
@@ -223,7 +219,10 @@ task_exec:
 
 1:
 	/* Clear signal handlers */
+	call	task_getpid
+	push	%eax
 	call	process_clear_sighandlers
+	add	$4, %esp
 
 	cmp	$SYSCALL_STACK_ADDR, %esp
 	jna	2f
@@ -272,11 +271,13 @@ task_set_fini_funcs:
 	.global signal_trampoline
 	.type signal_trampoline, @function
 signal_trampoline:
+	movl	$0, task_switch_enabled
 	/* TODO Support alternate signal stacks */
 	pushl	signal_return_addr
 	pusha
 	pushf
 
+	/* Call signal handler */
 	pushl	$0
 	pushl	$TASK_SIGINFO_PAGE
 	pushl	process_signal
@@ -289,6 +290,7 @@ signal_trampoline:
 
 	popf
 	popa
+	movl	$1, task_switch_enabled
 	ret
 
 	.size signal_trampoline, . - signal_trampoline

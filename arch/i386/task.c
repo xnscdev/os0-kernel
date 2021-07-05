@@ -32,6 +32,7 @@ void signal_trampoline (void) __attribute__ ((aligned (PAGE_SIZE)));
 
 volatile ProcessTask *task_current;
 volatile ProcessTask *task_queue;
+volatile int task_switch_enabled;
 
 void
 scheduler_init (void)
@@ -54,6 +55,8 @@ scheduler_init (void)
   for (i = 0; i < NSIG; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
   process_table[0].p_umask = S_IWGRP | S_IWOTH;
+
+  task_switch_enabled = 1;
   __asm__ volatile ("sti");
 }
 
