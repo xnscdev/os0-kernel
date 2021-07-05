@@ -21,19 +21,35 @@
 #include <sys/syscall.h>
 #include <vm/heap.h>
 
+static int
+__sys_killpg (pid_t pgid, int sig)
+{
+  int i;
+  for (i = 1; i < PROCESS_LIMIT; i++)
+    {
+      if (process_table[i].p_pgid == pgid)
+	{
+	  int ret = sys_kill (i, sig);
+	  if (ret < 0)
+	    return ret;
+	}
+    }
+  return 0;
+}
+
 int
 sys_kill (pid_t pid, int sig)
 {
   siginfo_t *info;
   pid_t currpid = task_getpid ();
-  if (pid == 0 || pid == -1)
-    return -ENOSYS;
-  if (pid < 0)
-    pid = -pid;
-  if (!process_valid (pid))
-    return -ESRCH;
   if (sig < 0 || sig >= NSIG)
     return -EINVAL;
+  if (pid == -1)
+    return -ENOSYS; /* TODO Send signal to all non-system processes */
+  else if (pid <= 0)
+    return __sys_killpg (-pid, sig);
+  if (!process_valid (pid))
+    return -ESRCH;
   if (process_table[currpid].p_euid != 0
       && process_table[currpid].p_euid != process_table[pid].p_euid)
     return -EPERM;
