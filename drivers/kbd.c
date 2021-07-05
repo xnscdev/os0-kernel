@@ -89,6 +89,9 @@ kbd_write_char (char c)
 
   if (CURRENT_TERMINAL->vt_termios.c_lflag & ECHO)
     vga_putchar (CURRENT_TERMINAL, c);
+
+  if (kbd_char_is_eol (c))
+    kbd_flush_input = 1;
 }
 
 static void
@@ -205,9 +208,6 @@ kbd_handle (int scancode)
 	 sequence */
       vga_putchar (CURRENT_TERMINAL, '\33');
       return;
-    case KEY_ENTER:
-      kbd_flush_input = 1;
-      break;
     }
 
   /* If the character is printable, add it to the input buffer and echo
