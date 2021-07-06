@@ -292,12 +292,13 @@ vga_terminal_parse_escseq_esc (Terminal *term, char c)
       break;
     case '[':
       term->vt_escseq.vte_mode = TERMINAL_ESC_SEQ_CSI;
-      break;
+      return;
     case 'c':
-      term->vt_color = vga_mkcolor (VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+      term->vt_color = VGA_DEFAULT_COLOR;
       vga_clear (term);
       term->vt_row = 0;
       term->vt_column = 0;
+      term->vt_flags = 0;
       vga_setcurs (0, 0);
       break;
     case '7':
@@ -310,9 +311,8 @@ vga_terminal_parse_escseq_esc (Terminal *term, char c)
       if (term == CURRENT_TERMINAL)
 	vga_setcurs (term->vt_column, term->vt_row);
       break;
-    default:
-      vga_terminal_cancel_escseq (term);
     }
+  vga_terminal_cancel_escseq (term);
 }
 
 static void
@@ -375,7 +375,7 @@ vga_terminal_parse_escseq_csi (Terminal *term, char c)
       break;
     case ';':
       vga_csi_parse_nums (term);
-      break;
+      return;
     }
   vga_terminal_cancel_escseq (term);
 }

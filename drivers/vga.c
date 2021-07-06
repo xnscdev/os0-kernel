@@ -19,7 +19,6 @@
 #include <sys/io.h>
 #include <sys/task.h>
 #include <video/vga.h>
-#include <byteswap.h>
 #include <string.h>
 
 uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
@@ -27,8 +26,9 @@ uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
 void
 vga_putentry (Terminal *term, char c, size_t x, size_t y)
 {
-  uint16_t color = term->vt_flags & VT_FLAG_REVERSE ?
-    bswap_16 (term->vt_color) : term->vt_color;
+  unsigned char color = term->vt_color;
+  if (term->vt_flags & VT_FLAG_REVERSE)
+    color = ((color & 0xf0) >> 4) | ((color & 0x0f) << 4);
   term->vt_data[vga_getindex (x, y)] = vga_mkentry (c, color);
   if (term == CURRENT_TERMINAL)
     vga_hdw_buf[vga_getindex (x, y)] = vga_mkentry (c, color);
