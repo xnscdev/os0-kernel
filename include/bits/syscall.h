@@ -116,6 +116,7 @@
 #define SYS_getpgid       132
 #define SYS_fchdir        133
 #define SYS_sysfs         135
+#define SYS__llseek       140
 #define SYS_getdents      141
 #define SYS_flock         143
 #define SYS_getsid        147
@@ -128,6 +129,8 @@
 #define SYS_chown         182
 #define SYS_getcwd        183
 #define SYS_vfork         190
+#define SYS_truncate64    193
+#define SYS_ftruncate64   194
 #define SYS_stat64        195
 #define SYS_lstat64       196
 #define SYS_fstat64       197

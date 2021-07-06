@@ -308,34 +308,12 @@ sys_lchown (const char *path, uid_t uid, gid_t gid)
 off_t
 sys_lseek (int fd, off_t offset, int whence)
 {
-  ProcessFile *file;
-  off_t real_offset;
-  VFSInode *inode = inode_from_fd (fd);
-  if (inode == NULL)
-    return -EBADF;
-  file = process_table[task_getpid ()].p_files[fd];
-  if (!vfs_can_seek (inode))
-    return -ESPIPE;
-  switch (whence)
-    {
-    case SEEK_SET:
-      real_offset = offset;
-      break;
-    case SEEK_CUR:
-      real_offset = file->pf_offset + offset;
-      break;
-    case SEEK_END:
-      real_offset = inode->vi_size + offset;
-      break;
-    default:
-      return -EINVAL;
-    }
-  if (real_offset < 0)
-    return -EINVAL;
-  file->pf_offset = real_offset;
-
-  /* TODO Update directory structure on seek */
-  return real_offset;
+  int ret;
+  off64_t result;
+  ret = sys__llseek (fd, 0, offset, &result, whence);
+  if (ret < 0)
+    return ret;
+  return result & 0xffffffff;
 }
 
 int
@@ -503,24 +481,13 @@ sys_readlink (const char *path, char *buffer, size_t len)
 int
 sys_truncate (const char *path, off_t len)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 1);
-  if (ret != 0)
-    return ret;
-  inode->vi_size = len;
-  ret = vfs_truncate (inode);
-  vfs_unref_inode (inode);
-  return ret;
+  return sys_truncate64 (path, len);
 }
 
 int
 sys_ftruncate (int fd, off_t len)
 {
-  VFSInode *inode = inode_from_fd (fd);
-  if (inode == NULL)
-    return -EBADF;
-  inode->vi_size = len;
-  return vfs_truncate (inode);
+  return sys_ftruncate64 (fd, len);
 }
 
 int
@@ -671,6 +638,42 @@ sys_fchdir (int fd)
 }
 
 int
+sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
+	     off64_t *result, int whence)
+{
+  ProcessFile *file;
+  off64_t offset = ((off64_t) offset_high << 32) | offset_low;
+  off64_t real_offset;
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  file = process_table[task_getpid ()].p_files[fd];
+  if (!vfs_can_seek (inode))
+    return -ESPIPE;
+  switch (whence)
+    {
+    case SEEK_SET:
+      real_offset = offset;
+      break;
+    case SEEK_CUR:
+      real_offset = file->pf_offset + offset;
+      break;
+    case SEEK_END:
+      real_offset = inode->vi_size + offset;
+      break;
+    default:
+      return -EINVAL;
+    }
+  if (real_offset < 0)
+    return -EINVAL;
+  file->pf_offset = real_offset;
+
+  /* TODO Update directory structure on seek */
+  *result = real_offset;
+  return 0;
+}
+
+int
 sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 {
   Process *proc = &process_table[task_getpid ()];
@@ -725,6 +728,29 @@ sys_getcwd (char *buffer, size_t len)
     return -ERANGE;
   strcpy (buffer, cwd);
   return 0;
+}
+
+int
+sys_truncate64 (const char *path, off64_t len)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
+  inode->vi_size = len;
+  ret = vfs_truncate (inode);
+  vfs_unref_inode (inode);
+  return ret;
+}
+
+int
+sys_ftruncate64 (int fd, off64_t len)
+{
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  inode->vi_size = len;
+  return vfs_truncate (inode);
 }
 
 int

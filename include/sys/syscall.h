@@ -113,6 +113,8 @@ int sys_sigprocmask (int how, const sigset_t *__restrict set,
 		     sigset_t *__restrict old);
 pid_t sys_getpgid (pid_t pid);
 int sys_fchdir (int fd);
+int sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
+		 off64_t *result, int whence);
 int sys_getdents (int fd, struct dirent *dirp, unsigned int count);
 pid_t sys_getsid (pid_t pid);
 int sys_nanosleep (const struct timespec *req, struct timespec *rem);
@@ -123,6 +125,8 @@ int sys_getresgid (gid_t *rgid, gid_t *egid, gid_t *sgid);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_getcwd (char *buffer, size_t len);
 int sys_vfork (void);
+int sys_truncate64 (const char *path, off64_t len);
+int sys_ftruncate64 (int fd, off64_t len);
 int sys_stat64 (const char *path, struct stat64 *st);
 int sys_lstat64 (const char *path, struct stat64 *st);
 int sys_fstat64 (int fd, struct stat64 *st);
