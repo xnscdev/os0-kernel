@@ -128,6 +128,9 @@
 #define SYS_chown         182
 #define SYS_getcwd        183
 #define SYS_vfork         190
+#define SYS_stat64        195
+#define SYS_lstat64       196
+#define SYS_fstat64       197
 #define SYS_setxattr      226
 #define SYS_lsetxattr     227
 #define SYS_fsetxattr     228

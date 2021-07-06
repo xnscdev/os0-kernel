@@ -136,7 +136,7 @@ pipe_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 }
 
 int
-pipe_getattr (VFSInode *inode, struct stat *st)
+pipe_getattr (VFSInode *inode, struct stat64 *st)
 {
   Process *proc = &process_table[task_getpid ()];
   st->st_dev = 0;

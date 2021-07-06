@@ -1,5 +1,4 @@
 uapi_src = [
-  'fork.S',
   'id.c',
   'misc.c',
   'mman.c',

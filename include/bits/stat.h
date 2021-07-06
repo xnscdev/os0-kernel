@@ -23,6 +23,8 @@
 #error  "<bits/stat.h> should not be included directly"
 #endif
 
+#include <sys/types.h>
+
 #define S_IFMT   0170000
 #define S_IFIFO  0010000
 #define S_IFCHR  0020000
@@ -56,6 +58,38 @@
 #define S_ISLNK(x) (((x) & S_IFMT) == S_IFLNK)
 #define S_ISSOCK(x) (((x) & S_IFMT) == S_IFSOCK)
 
-#include <bits/types/stat.h>
+struct stat
+{
+  dev_t st_dev;
+  ino_t st_ino;
+  mode_t st_mode;
+  nlink_t st_nlink;
+  uid_t st_uid;
+  gid_t st_gid;
+  dev_t st_rdev;
+  off_t st_size;
+  time_t st_atime;
+  time_t st_mtime;
+  time_t st_ctime;
+  blksize_t st_blksize;
+  blkcnt_t st_blocks;
+};
+
+struct stat64
+{
+  dev_t st_dev;
+  ino64_t st_ino;
+  mode_t st_mode;
+  nlink_t st_nlink;
+  uid_t st_uid;
+  gid_t st_gid;
+  dev_t st_rdev;
+  off64_t st_size;
+  time_t st_atime;
+  time_t st_mtime;
+  time_t st_ctime;
+  blksize_t st_blksize;
+  blkcnt64_t st_blocks;
+};
 
 #endif

@@ -22,8 +22,6 @@
 #include <sys/cdefs.h>
 #include <sys/time.h>
 
-#include <bits/types/tm.h>
-
 __BEGIN_DECLS
 
 time_t time (time_t *t);

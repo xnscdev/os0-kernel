@@ -937,7 +937,7 @@ ext2_truncate (VFSInode *inode)
 }
 
 int
-ext2_getattr (VFSInode *inode, struct stat *st)
+ext2_getattr (VFSInode *inode, struct stat64 *st)
 {
   st->st_dev = makedev (inode->vi_sb->sb_dev->sd_major,
 			inode->vi_sb->sb_dev->sd_minor);

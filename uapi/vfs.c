@@ -565,34 +565,70 @@ sys_fstatfs (int fd, struct statfs *st)
 int
 sys_stat (const char *path, struct stat *st)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 1);
+  struct stat64 st64;
+  int ret = sys_stat64 (path, &st64);
   if (ret != 0)
     return ret;
-  ret = vfs_getattr (inode, st);
-  vfs_unref_inode (inode);
-  return ret;
+  st->st_dev = st64.st_dev;
+  st->st_ino = st64.st_ino;
+  st->st_mode = st64.st_mode;
+  st->st_nlink = st64.st_nlink;
+  st->st_uid = st64.st_uid;
+  st->st_gid = st64.st_gid;
+  st->st_rdev = st64.st_rdev;
+  st->st_size = st64.st_size;
+  st->st_atime = st64.st_atime;
+  st->st_mtime = st64.st_mtime;
+  st->st_ctime = st64.st_ctime;
+  st->st_blksize = st64.st_blksize;
+  st->st_blocks = st64.st_blocks;
+  return 0;
 }
 
 int
 sys_lstat (const char *path, struct stat *st)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 0);
+  struct stat64 st64;
+  int ret = sys_lstat64 (path, &st64);
   if (ret != 0)
     return ret;
-  ret = vfs_getattr (inode, st);
-  vfs_unref_inode (inode);
-  return ret;
+  st->st_dev = st64.st_dev;
+  st->st_ino = st64.st_ino;
+  st->st_mode = st64.st_mode;
+  st->st_nlink = st64.st_nlink;
+  st->st_uid = st64.st_uid;
+  st->st_gid = st64.st_gid;
+  st->st_rdev = st64.st_rdev;
+  st->st_size = st64.st_size;
+  st->st_atime = st64.st_atime;
+  st->st_mtime = st64.st_mtime;
+  st->st_ctime = st64.st_ctime;
+  st->st_blksize = st64.st_blksize;
+  st->st_blocks = st64.st_blocks;
+  return 0;
 }
 
 int
 sys_fstat (int fd, struct stat *st)
 {
-  VFSInode *inode = inode_from_fd (fd);
-  if (inode == NULL)
-    return -EBADF;
-  return vfs_getattr (inode, st);
+  struct stat64 st64;
+  int ret = sys_fstat64 (fd, &st64);
+  if (ret != 0)
+    return ret;
+  st->st_dev = st64.st_dev;
+  st->st_ino = st64.st_ino;
+  st->st_mode = st64.st_mode;
+  st->st_nlink = st64.st_nlink;
+  st->st_uid = st64.st_uid;
+  st->st_gid = st64.st_gid;
+  st->st_rdev = st64.st_rdev;
+  st->st_size = st64.st_size;
+  st->st_atime = st64.st_atime;
+  st->st_mtime = st64.st_mtime;
+  st->st_ctime = st64.st_ctime;
+  st->st_blksize = st64.st_blksize;
+  st->st_blocks = st64.st_blocks;
+  return 0;
 }
 
 int
@@ -668,4 +704,37 @@ sys_getcwd (char *buffer, size_t len)
     return -ERANGE;
   strcpy (buffer, cwd);
   return 0;
+}
+
+int
+sys_stat64 (const char *path, struct stat64 *st)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
+  ret = vfs_getattr (inode, st);
+  vfs_unref_inode (inode);
+  return ret;
+}
+
+int
+sys_lstat64 (const char *path, struct stat64 *st)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 0);
+  if (ret != 0)
+    return ret;
+  ret = vfs_getattr (inode, st);
+  vfs_unref_inode (inode);
+  return ret;
+}
+
+int
+sys_fstat64 (int fd, struct stat64 *st)
+{
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_getattr (inode, st);
 }

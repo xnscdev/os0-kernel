@@ -245,7 +245,7 @@ devfs_readlink (VFSInode *inode, char *buffer, size_t len)
 }
 
 int
-devfs_getattr (VFSInode *inode, struct stat *st)
+devfs_getattr (VFSInode *inode, struct stat64 *st)
 {
   st->st_dev = ((uint32_t) inode->vi_sb->sb_fstype -
 		(uint32_t) fs_table) / sizeof (VFSFilesystem);

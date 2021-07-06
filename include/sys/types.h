@@ -23,21 +23,15 @@
 
 /* POSIX types */
 
-typedef int32_t blkcnt_t;
 typedef int32_t blksize_t;
 typedef int64_t clock_t;
 typedef int32_t clockid_t;
 typedef uint16_t dev_t;
-typedef uint32_t fsblkcnt_t;
-typedef uint32_t fsfilcnt_t;
 typedef uint16_t gid_t;
 typedef uint16_t id_t;
-typedef uint32_t ino_t;
 typedef int32_t key_t;
 typedef uint32_t mode_t;
 typedef uint32_t nlink_t;
-typedef int32_t off_t;
-typedef int64_t loff_t;
 typedef int16_t pid_t;
 typedef int32_t ssize_t;
 typedef uint32_t suseconds_t;
@@ -45,5 +39,32 @@ typedef int64_t time_t;
 typedef int32_t timer_t;
 typedef uint16_t uid_t;
 typedef uint32_t useconds_t;
+
+typedef int32_t blkcnt32_t;
+typedef uint32_t fsblkcnt32_t;
+typedef uint32_t fsfilcnt32_t;
+typedef uint32_t ino32_t;
+typedef int32_t off32_t;
+
+typedef int64_t blkcnt64_t;
+typedef uint64_t fsblkcnt64_t;
+typedef uint64_t fsfilcnt64_t;
+typedef uint64_t ino64_t;
+typedef int64_t off64_t;
+typedef off64_t loff_t;
+
+#if defined _FILE_OFFSET_BITS && _FILE_OFFSET_BITS == 64
+typedef blkcnt64_t blkcnt_t;
+typedef fsblkcnt64_t fsblkcnt_t;
+typedef fsfilcnt64_t fsfilcnt_t;
+typedef ino64_t ino_t;
+typedef off64_t off_t;
+#else
+typedef blkcnt32_t blkcnt_t;
+typedef fsblkcnt32_t fsblkcnt_t;
+typedef fsfilcnt32_t fsfilcnt_t;
+typedef ino32_t ino_t;
+typedef off32_t off_t;
+#endif
 
 #endif

@@ -54,7 +54,7 @@ int devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 int devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
 int devfs_readlink (VFSInode *inode, char *buffer, size_t len);
-int devfs_getattr (VFSInode *inode, struct stat *st);
+int devfs_getattr (VFSInode *inode, struct stat64 *st);
 int devfs_compare (VFSDirEntry *entry, const char *a, const char *b);
 
 __END_DECLS

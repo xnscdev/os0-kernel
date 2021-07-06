@@ -76,7 +76,7 @@ typedef struct
   int (*vfs_rename) (VFSInode *, const char *, VFSInode *, const char *);
   int (*vfs_readlink) (VFSInode *, char *, size_t);
   int (*vfs_truncate) (VFSInode *);
-  int (*vfs_getattr) (VFSInode *, struct stat *);
+  int (*vfs_getattr) (VFSInode *, struct stat64 *);
   int (*vfs_setxattr) (VFSInode *, const char *, const void *, size_t, int);
   int (*vfs_getxattr) (VFSInode *, const char *, void *, size_t);
   int (*vfs_listxattr) (VFSInode *, char *, size_t);
@@ -117,16 +117,16 @@ struct _VFSInode
 {
   uid_t vi_uid;
   gid_t vi_gid;
-  ino_t vi_ino;
+  ino64_t vi_ino;
   nlink_t vi_nlink;
   dev_t vi_rdev;
-  loff_t vi_size;
+  off64_t vi_size;
   size_t vi_sectors;
   mode_t vi_mode;
   struct timespec vi_atime;
   struct timespec vi_mtime;
   struct timespec vi_ctime;
-  blkcnt_t vi_blocks;
+  blkcnt64_t vi_blocks;
   unsigned int vi_flags;
   const VFSInodeOps *vi_ops;
   VFSSuperblock *vi_sb;
@@ -208,7 +208,7 @@ int vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 		const char *newname);
 int vfs_readlink (VFSInode *inode, char *buffer, size_t len);
 int vfs_truncate (VFSInode *inode);
-int vfs_getattr (VFSInode *inode, struct stat *st);
+int vfs_getattr (VFSInode *inode, struct stat64 *st);
 int vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 		  size_t len, int flags);
 int vfs_getxattr (VFSInode *inode, const char *name, void *buffer,

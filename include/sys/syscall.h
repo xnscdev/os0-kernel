@@ -122,7 +122,10 @@ int sys_setresgid (gid_t rgid, gid_t egid, gid_t sgid);
 int sys_getresgid (gid_t *rgid, gid_t *egid, gid_t *sgid);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_getcwd (char *buffer, size_t len);
-pid_t sys_vfork (void);
+int sys_vfork (void);
+int sys_stat64 (const char *path, struct stat64 *st);
+int sys_lstat64 (const char *path, struct stat64 *st);
+int sys_fstat64 (int fd, struct stat64 *st);
 int sys_setxattr (const char *path, const char *name, const void *value,
 		  size_t len, int flags);
 int sys_lsetxattr (const char *path, const char *name, const void *value,

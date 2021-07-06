@@ -15,5 +15,3 @@ install_headers('dirent.h',
 		'tty.h',
 		'wait.h',
 		'xattr.h', subdir: 'bits')
-
-subdir('types')

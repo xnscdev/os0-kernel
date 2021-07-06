@@ -40,6 +40,16 @@ sys_exit (int code)
     process_send_signal (ppid, SIGCHLD);
 }
 
+int
+sys_fork (void)
+{
+  int ret;
+  task_switch_enabled = 0;
+  ret = task_fork (1);
+  task_switch_enabled = 1;
+  return ret;
+}
+
 pid_t
 sys_waitpid (pid_t pid, int *status, int options)
 {
@@ -199,4 +209,14 @@ pid_t
 sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 {
   return wait4 (pid, status, options, usage);
+}
+
+int
+sys_vfork (void)
+{
+  int ret;
+  task_switch_enabled = 0;
+  ret = task_fork (0);
+  task_switch_enabled = 1;
+  return ret;
 }

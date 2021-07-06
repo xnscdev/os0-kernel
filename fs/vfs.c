@@ -497,7 +497,7 @@ vfs_truncate (VFSInode *inode)
 }
 
 int
-vfs_getattr (VFSInode *inode, struct stat *st)
+vfs_getattr (VFSInode *inode, struct stat64 *st)
 {
   if (inode->vi_ops->vfs_getattr != NULL)
     return inode->vi_ops->vfs_getattr (inode, st);

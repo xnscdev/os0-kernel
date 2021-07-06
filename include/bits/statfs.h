@@ -23,8 +23,12 @@
 #error  "<bits/statfs.h> should not be included directly"
 #endif
 
-#include <bits/types/fsid.h>
 #include <sys/types.h>
+
+typedef struct
+{
+  int f_val[2];
+} fsid_t;
 
 struct statfs
 {
