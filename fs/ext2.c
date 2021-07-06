@@ -353,7 +353,7 @@ ext2_update (VFSSuperblock *sb)
 }
 
 int
-ext2_statfs (VFSSuperblock *sb, struct statfs *st)
+ext2_statfs (VFSSuperblock *sb, struct statfs64 *st)
 {
   Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
   uid_t euid = process_table[task_getpid ()].p_euid;

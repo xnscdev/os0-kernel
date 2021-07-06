@@ -44,4 +44,18 @@ struct statfs
   long f_flags;
 };
 
+struct statfs64
+{
+  long f_type;
+  blksize_t f_bsize;
+  fsblkcnt64_t f_blocks;
+  fsblkcnt64_t f_bfree;
+  fsblkcnt64_t f_bavail;
+  fsfilcnt64_t f_files;
+  fsfilcnt64_t f_ffree;
+  fsid_t f_fsid;
+  long f_namelen;
+  long f_flags;
+};
+
 #endif

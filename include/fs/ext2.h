@@ -189,7 +189,7 @@ void ext2_fill_inode (VFSInode *inode);
 void ext2_write_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);
 void ext2_update (VFSSuperblock *sb);
-int ext2_statfs (VFSSuperblock *sb, struct statfs *st);
+int ext2_statfs (VFSSuperblock *sb, struct statfs64 *st);
 int ext2_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int ext2_create (VFSInode *dir, const char *name, mode_t mode);

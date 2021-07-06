@@ -39,7 +39,7 @@ typedef struct
   char *pf_path;          /* Path used to open fd */
   int pf_mode;            /* Access mode */
   int pf_flags;           /* Other flags */
-  off_t pf_offset;        /* Current offset position */
+  off64_t pf_offset;      /* Current offset position */
   int pf_refcnt;          /* Reference count */
 } ProcessFile;
 

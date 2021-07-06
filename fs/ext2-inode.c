@@ -83,7 +83,7 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
+    inode->vi_size |= (off64_t) ei->ei_sizeh << 32;
   inode->vi_atime.tv_sec = ei->ei_atime;
   inode->vi_atime.tv_nsec = 0;
   inode->vi_mtime.tv_sec = ei->ei_mtime;
@@ -223,7 +223,7 @@ ext2_unlink (VFSInode *dir, const char *name)
   for (i = 0; i < blocks; i++)
     {
       int bytes = 0;
-      loff_t block = ext2_data_block (ei, sb, i);
+      off64_t block = ext2_data_block (ei, sb, i);
       Ext2DirEntry *last = NULL;
       if (ext2_read_blocks (buffer, sb, block, 1) != 0)
 	{
@@ -285,7 +285,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   off_t start_block;
   off_t mid_block;
   off_t end_block;
-  loff_t realblock;
+  off64_t realblock;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -392,7 +392,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
   off_t start_block;
   off_t mid_block;
   off_t end_block;
-  loff_t realblock;
+  off64_t realblock;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -593,7 +593,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   Ext2Inode *ei;
   char *data;
   Ext2DirEntry *entry;
-  loff_t firstblock;
+  off64_t firstblock;
   ino_t ino;
   time_t newtime = time (NULL);
   int ret;
@@ -653,7 +653,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
+    inode->vi_size |= (off64_t) ei->ei_sizeh << 32;
   inode->vi_atime.tv_sec = ei->ei_atime;
   inode->vi_atime.tv_nsec = 0;
   inode->vi_mtime.tv_sec = ei->ei_mtime;
@@ -766,7 +766,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
   for (i = 0; i < blocks; i++)
     {
       int bytes = 0;
-      loff_t block = ext2_data_block (ei, sb, i);
+      off64_t block = ext2_data_block (ei, sb, i);
       Ext2DirEntry *last = NULL;
       if (ext2_read_blocks (buffer, sb, block, 1) != 0)
 	{
@@ -831,7 +831,7 @@ int
 ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 {
   int i;
-  loff_t size = inode->vi_size;
+  off64_t size = inode->vi_size;
   Ext2Inode *ei = inode->vi_private;
 
   if (size <= 60)

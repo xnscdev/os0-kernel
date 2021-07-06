@@ -143,10 +143,13 @@
 #define SYS_removexattr   235
 #define SYS_lremovexattr  236
 #define SYS_fremovexattr  237
+#define SYS_statfs64      268
+#define SYS_fstatfs64     269
 #define SYS_openat        295
 #define SYS_mkdirat       296
 #define SYS_mknodat       297
 #define SYS_fchownat      298
+#define SYS_fstatat64     300
 #define SYS_unlinkat      301
 #define SYS_renameat      302
 #define SYS_linkat        303

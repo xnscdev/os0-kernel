@@ -53,7 +53,7 @@ typedef struct
   void (*sb_write_inode) (VFSInode *);
   void (*sb_free) (VFSSuperblock *);
   void (*sb_update) (VFSSuperblock *);
-  int (*sb_statfs) (VFSSuperblock *, struct statfs *);
+  int (*sb_statfs) (VFSSuperblock *, struct statfs64 *);
   int (*sb_remount) (VFSSuperblock *, int *, void *);
 } VFSSuperblockOps;
 
@@ -182,7 +182,7 @@ void vfs_fill_inode (VFSInode *inode);
 void vfs_write_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);
 void vfs_update_sb (VFSSuperblock *sb);
-int vfs_statfs (VFSSuperblock *sb, struct statfs *st);
+int vfs_statfs (VFSSuperblock *sb, struct statfs64 *st);
 int vfs_remount (VFSSuperblock *sb, int *flags, void *data);
 
 int vfs_perm_check_read (VFSInode *inode, int real);

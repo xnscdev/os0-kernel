@@ -544,22 +544,43 @@ sys_fchown (int fd, uid_t uid, gid_t gid)
 int
 sys_statfs (const char *path, struct statfs *st)
 {
-  VFSInode *inode;
-  int ret = vfs_open_file (&inode, path, 1);
+  struct statfs64 st64;
+  int ret = sys_statfs64 (path, &st64);
   if (ret != 0)
     return ret;
-  ret = vfs_statfs (inode->vi_sb, st);
-  vfs_unref_inode (inode);
-  return ret;
+  st->f_type = st64.f_type;
+  st->f_bsize = st64.f_bsize;
+  st->f_blocks = st64.f_blocks;
+  st->f_bfree = st64.f_bfree;
+  st->f_bavail = st64.f_bavail;
+  st->f_files = st64.f_files;
+  st->f_ffree = st64.f_ffree;
+  st->f_fsid.f_val[0] = st64.f_fsid.f_val[0];
+  st->f_fsid.f_val[1] = st64.f_fsid.f_val[1];
+  st->f_namelen = st64.f_namelen;
+  st->f_flags = st64.f_flags;
+  return 0;
 }
 
 int
 sys_fstatfs (int fd, struct statfs *st)
 {
-  VFSInode *inode = inode_from_fd (fd);
-  if (inode == NULL)
-    return -EBADF;
-  return vfs_statfs (inode->vi_sb, st);
+  struct statfs64 st64;
+  int ret = sys_fstatfs64 (fd, &st64);
+  if (ret != 0)
+    return ret;
+  st->f_type = st64.f_type;
+  st->f_bsize = st64.f_bsize;
+  st->f_blocks = st64.f_blocks;
+  st->f_bfree = st64.f_bfree;
+  st->f_bavail = st64.f_bavail;
+  st->f_files = st64.f_files;
+  st->f_ffree = st64.f_ffree;
+  st->f_fsid.f_val[0] = st64.f_fsid.f_val[0];
+  st->f_fsid.f_val[1] = st64.f_fsid.f_val[1];
+  st->f_namelen = st64.f_namelen;
+  st->f_flags = st64.f_flags;
+  return 0;
 }
 
 int
@@ -737,4 +758,25 @@ sys_fstat64 (int fd, struct stat64 *st)
   if (inode == NULL)
     return -EBADF;
   return vfs_getattr (inode, st);
+}
+
+int
+sys_statfs64 (const char *path, struct statfs64 *st)
+{
+  VFSInode *inode;
+  int ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
+  ret = vfs_statfs (inode->vi_sb, st);
+  vfs_unref_inode (inode);
+  return ret;
+}
+
+int
+sys_fstatfs64 (int fd, struct statfs64 *st)
+{
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_statfs (inode->vi_sb, st);
 }
