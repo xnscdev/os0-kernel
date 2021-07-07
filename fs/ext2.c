@@ -140,7 +140,7 @@ ext2_init_disk (VFSMount *mp, int flags, const char *path)
   /* Fill VFS superblock */
   mp->vfs_sb.sb_dev = dev;
   mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
-  mp->vfs_sb.sb_flags = flags;
+  mp->vfs_sb.sb_mntflags = flags;
   mp->vfs_sb.sb_magic = esb->esb_magic;
 
   esb->esb_fsck++;
@@ -215,7 +215,7 @@ VFSDirectory *
 ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
 {
   VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
-  loff_t realblock;
+  off64_t realblock;
 
   if (unlikely (d == NULL))
     return NULL;
@@ -224,8 +224,7 @@ ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
   if (unlikely (d->vd_buffer == NULL))
     goto err;
 
-  realblock = ext2_data_block (dir->vi_private, sb, 0);
-  if (realblock < 0)
+  if (ext2_data_blocks (dir->vi_private, sb, 0, 1, &realblock) < 0)
     goto err;
   if (ext2_read_blocks (d->vd_buffer, sb, realblock, 1) < 0)
     goto err;
@@ -258,7 +257,7 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_size = ei->ei_sizel;
   if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
       && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    inode->vi_size |= (loff_t) ei->ei_sizeh << 32;
+    inode->vi_size |= (off64_t) ei->ei_sizeh << 32;
   inode->vi_atime.tv_sec = ei->ei_atime;
   inode->vi_atime.tv_nsec = 0;
   inode->vi_mtime.tv_sec = ei->ei_mtime;
@@ -368,7 +367,7 @@ ext2_statfs (VFSSuperblock *sb, struct statfs64 *st)
   st->f_fsid.f_val[0] = sb->sb_dev->sd_major;
   st->f_fsid.f_val[1] = sb->sb_dev->sd_minor;
   st->f_namelen = EXT2_MAX_NAME_LEN;
-  st->f_flags = sb->sb_flags;
+  st->f_flags = sb->sb_mntflags;
   return 0;
 }
 

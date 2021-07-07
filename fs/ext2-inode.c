@@ -205,30 +205,45 @@ ext2_unlink (VFSInode *dir, const char *name)
   void *buffer;
   char *guessname;
   VFSInode *temp;
+  off64_t *realblocks;
   int ret;
   int i;
 
   ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
   if (ret != 0)
     return ret;
-  if (S_ISDIR (temp->vi_mode))
+  if (process_table[task_getpid ()].p_euid != 0 && S_ISDIR (temp->vi_mode))
     {
       /* Unlinking a directory requires root */
       vfs_unref_inode (temp);
       return -EPERM;
     }
-  vfs_unref_inode (temp);
+
   buffer = kmalloc (sb->sb_blksize);
+  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  if (unlikely (buffer == NULL || realblocks == NULL))
+    {
+      kfree (buffer);
+      vfs_unref_inode (temp);
+      return -ENOMEM;
+    }
+  if (ext2_data_blocks (ei, sb, 0, blocks, realblocks) < 0)
+    {
+      kfree (buffer);
+      kfree (realblocks);
+      vfs_unref_inode (temp);
+      return -ENOMEM;
+    }
 
   for (i = 0; i < blocks; i++)
     {
       int bytes = 0;
-      off64_t block = ext2_data_block (ei, sb, i);
       Ext2DirEntry *last = NULL;
-      if (ext2_read_blocks (buffer, sb, block, 1) != 0)
+      if (ext2_read_blocks (buffer, sb, realblocks[i], 1) != 0)
 	{
 	  kfree (buffer);
-	  kfree (ei);
+	  kfree (realblocks);
+	  vfs_unref_inode (temp);
 	  return -EIO;
 	}
       while (bytes < sb->sb_blksize)
@@ -249,16 +264,20 @@ ext2_unlink (VFSInode *dir, const char *name)
 	  if (strlen (name) == namelen
 	      && strncmp (guessname, name, namelen) == 0)
 	    {
-	      ino_t temp = guess->ed_inode;
-	      kfree (ei);
 	      if (last != NULL)
 	        last->ed_size += guess->ed_size;
 	      memset (guess, 0, sizeof (Ext2DirEntry));
-	      ret = ext2_write_blocks (buffer, sb, block, 1);
+	      ret = ext2_write_blocks (buffer, sb, realblocks[i], 1);
 	      kfree (buffer);
+	      kfree (realblocks);
 	      if (ret != 0)
-		return ret;
-	      return ext2_unref_inode (sb, temp);
+		{
+		  vfs_unref_inode (temp);
+		  return ret;
+		}
+	      ret = ext2_unref_inode (sb, temp);
+	      vfs_unref_inode (temp);
+	      return ret;
 	    }
 
 	  bytes += guess->ed_size;
@@ -267,7 +286,6 @@ ext2_unlink (VFSInode *dir, const char *name)
     }
 
   kfree (buffer);
-  kfree (ei);
   return -ENOENT;
 }
 
@@ -282,10 +300,11 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
   size_t start_diff;
   size_t end_diff;
-  off_t start_block;
-  off_t mid_block;
-  off_t end_block;
+  off64_t start_block;
+  off64_t mid_block;
+  off64_t end_block;
   off64_t realblock;
+  off64_t *realblocks;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -304,10 +323,10 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   if (mid_block > end_block)
     {
       /* Completely contained in a single block */
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb,
-				   start_block);
-      if (realblock < 0)
-	return realblock;
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
+			      &realblock);
+      if (ret < 0)
+	return ret;
       temp = kmalloc (blksize);
       if (unlikely (temp == NULL))
 	return -ENOMEM;
@@ -322,17 +341,29 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
       return len;
     }
 
+  /* XXX Will run out of memory if reading too much data, read blocks in
+     smaller chunks if too large */
+  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  if (unlikely (realblocks == NULL))
+    return -ENOMEM;
+  ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
+			  realblocks);
+  if (ret < 0)
+    {
+      kfree (realblocks);
+      return ret;
+    }
   for (i = 0; i < blocks; i++)
     {
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb,
-				   mid_block + i);
-      if (realblock < 0)
-	return realblock;
       ret = ext2_read_blocks (buffer + start_diff + i * blksize, inode->vi_sb,
-			      realblock, 1);
+			      realblocks[i], 1);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (realblocks);
+	  return ret;
+	}
     }
+  kfree (realblocks);
 
   /* Read unaligned starting bytes */
   if (start_diff != 0)
@@ -340,12 +371,12 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
       temp = kmalloc (blksize);
       if (unlikely (temp == NULL))
 	return -ENOMEM;
-      realblock =
-	ext2_data_block (inode->vi_private, inode->vi_sb, start_block);
-      if (realblock < 0)
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
+			      &realblock);
+      if (ret < 0)
 	{
 	  kfree (temp);
-	  return realblock;
+	  return ret;
 	}
       ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
       if (ret != 0)
@@ -365,11 +396,12 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 	  if (unlikely (temp == NULL))
 	    return -ENOMEM;
 	}
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb, end_block);
-      if (realblock < 0)
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, end_block, 1,
+			      &realblock);
+      if (ret < 0)
 	{
 	  kfree (temp);
-	  return realblock;
+	  return ret;
 	}
       ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
       if (ret != 0)
@@ -389,10 +421,11 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   size_t start_diff;
   size_t end_diff;
-  off_t start_block;
-  off_t mid_block;
-  off_t end_block;
+  off64_t start_block;
+  off64_t mid_block;
+  off64_t end_block;
   off64_t realblock;
+  off64_t *realblocks;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -421,10 +454,10 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
   if (mid_block > end_block)
     {
       /* Completely contained in a single block */
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb,
-				   start_block);
-      if (realblock < 0)
-	return realblock;
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
+			      &realblock);
+      if (ret < 0)
+	return ret;
       temp = kmalloc (blksize);
       if (unlikely (temp == NULL))
 	return -ENOMEM;
@@ -440,17 +473,24 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
       return len;
     }
 
+  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  if (unlikely (realblocks == NULL))
+    return -ENOMEM;
+  ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
+			  realblocks);
+  if (ret < 0)
+    return ret;
   for (i = 0; i < blocks; i++)
     {
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb,
-				   mid_block + i);
-      if (realblock < 0)
-	return realblock;
       ret = ext2_write_blocks (buffer + start_diff + i * blksize, inode->vi_sb,
-			       realblock, 1);
+			       realblocks[i], 1);
       if (ret != 0)
-	return ret;
+	{
+	  kfree (realblocks);
+	  return ret;
+	}
     }
+  kfree (realblocks);
 
   /* Write unaligned starting bytes */
   if (start_diff != 0)
@@ -458,12 +498,12 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
       temp = kmalloc (blksize);
       if (unlikely (temp == NULL))
 	return -ENOMEM;
-      realblock =
-	ext2_data_block (inode->vi_private, inode->vi_sb, start_block);
-      if (realblock < 0)
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
+			      &realblock);
+      if (ret < 0)
 	{
 	  kfree (temp);
-	  return realblock;
+	  return ret;
 	}
       ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
       if (ret != 0)
@@ -489,11 +529,12 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 	  if (unlikely (temp == NULL))
 	    return -ENOMEM;
 	}
-      realblock = ext2_data_block (inode->vi_private, inode->vi_sb, end_block);
-      if (realblock < 0)
+      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, end_block, 1,
+			      &realblock);
+      if (ret < 0)
 	{
 	  kfree (temp);
-	  return realblock;
+	  return ret;
 	}
       ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
       if (ret != 0)
@@ -524,6 +565,7 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
       Ext2DirEntry *guess = (Ext2DirEntry *) (dir->vd_buffer + dir->vd_offset);
       VFSDirEntry *result;
       uint16_t namelen;
+      off64_t realblock;
       int ret;
 
       if (guess->ed_inode == 0 || guess->ed_size == 0)
@@ -535,9 +577,10 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 		  (dir->vd_inode->vi_size + sb->sb_blksize - 1) /
 		  sb->sb_blksize)
 		return 1; /* Finished reading all directory entries */
-	      ret = ext2_read_blocks (dir->vd_buffer, sb,
-				      ext2_data_block (ei, sb, dir->vd_block),
-				      1);
+	      ret = ext2_data_blocks (ei, sb, dir->vd_block, 1, &realblock);
+	      if (ret < 0)
+		return ret;
+	      ret = ext2_read_blocks (dir->vd_buffer, sb, realblock, 1);
 	      if (ret < 0)
 		return ret;
 	      dir->vd_offset = 0;
@@ -725,6 +768,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
   char *guessname;
+  off64_t *realblocks;
   VFSInode *temp;
   VFSDirectory *d;
   int ret;
@@ -738,7 +782,6 @@ ext2_rmdir (VFSInode *dir, const char *name)
       vfs_unref_inode (temp);
       return -ENOTDIR;
     }
-  vfs_unref_inode (temp);
 
   /* Make sure the directory is empty */
   d = ext2_alloc_dir (dir, sb);
@@ -747,6 +790,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
   while (1)
     {
       VFSDirEntry *entry;
+      int bad;
       ret = ext2_readdir (&entry, d, sb);
       if (ret == 1)
 	break;
@@ -755,23 +799,42 @@ ext2_rmdir (VFSInode *dir, const char *name)
 	  ext2_destroy_dir (d);
 	  return ret;
 	}
-      i++;
+      bad = strcmp (entry->d_name, ".") != 0
+	&& strcmp (entry->d_name, "..") != 0;
       vfs_destroy_dir_entry (entry);
+      if (bad)
+	{
+	  ext2_destroy_dir (d);
+	  return -ENOTEMPTY;
+	}
     }
   ext2_destroy_dir (d);
-  if (i > 2)
-    return -ENOTEMPTY; /* Empty directory should only have 2 entries */
 
   buffer = kmalloc (sb->sb_blksize);
+  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  if (unlikely (buffer == NULL || realblocks == NULL))
+    {
+      kfree (buffer);
+      vfs_unref_inode (temp);
+      return -ENOMEM;
+    }
+  if (ext2_data_blocks (ei, sb, 0, blocks, realblocks) < 0)
+    {
+      kfree (buffer);
+      kfree (realblocks);
+      vfs_unref_inode (temp);
+      return -ENOMEM;
+    }
+
   for (i = 0; i < blocks; i++)
     {
       int bytes = 0;
-      off64_t block = ext2_data_block (ei, sb, i);
       Ext2DirEntry *last = NULL;
-      if (ext2_read_blocks (buffer, sb, block, 1) != 0)
+      if (ext2_read_blocks (buffer, sb, realblocks[i], 1) != 0)
 	{
 	  kfree (buffer);
-	  kfree (ei);
+	  kfree (realblocks);
+	  vfs_unref_inode (temp);
 	  return -EIO;
 	}
       while (bytes < sb->sb_blksize)
@@ -792,16 +855,20 @@ ext2_rmdir (VFSInode *dir, const char *name)
 	  if (strlen (name) == namelen
 	      && strncmp (guessname, name, namelen) == 0)
 	    {
-	      ino_t temp = guess->ed_inode;
-	      kfree (ei);
 	      if (last != NULL)
 	        last->ed_size += guess->ed_size;
 	      memset (guess, 0, sizeof (Ext2DirEntry));
-	      ret = ext2_write_blocks (buffer, sb, block, 1);
+	      ret = ext2_write_blocks (buffer, sb, realblocks[i], 1);
 	      kfree (buffer);
+	      kfree (realblocks);
 	      if (ret != 0)
-		return ret;
-	      return ext2_unref_inode (sb, temp);
+		{
+		  vfs_unref_inode (temp);
+		  return ret;
+		}
+	      ret = ext2_unref_inode (sb, temp);
+	      vfs_unref_inode (temp);
+	      return ret;
 	    }
 
 	  bytes += guess->ed_size;
@@ -810,7 +877,6 @@ ext2_rmdir (VFSInode *dir, const char *name)
     }
 
   kfree (buffer);
-  kfree (ei);
   return -ENOENT;
 }
 
@@ -850,12 +916,11 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
     {
       uint32_t block = 0;
       VFSSuperblock *sb = inode->vi_sb;
-      uint32_t realblock;
+      off64_t realblock;
       void *currblock;
-
-      realblock = ext2_data_block (ei, sb, block);
-      if (realblock < 0)
-        return -EIO;
+      int ret = ext2_data_blocks (ei, sb, block, 1, &realblock);
+      if (ret < 0)
+	return ret;
 
       currblock = kmalloc (sb->sb_blksize);
       if (unlikely (currblock == NULL))
@@ -883,11 +948,11 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 
 	  memcpy (buffer + i, currblock, sb->sb_blksize);
 	  i += sb->sb_blksize;
-	  realblock = ext2_data_block (ei, sb, ++block);
-	  if (realblock < 0)
+	  ret = ext2_data_blocks (ei, sb, ++block, 1, &realblock);
+	  if (ret < 0)
 	    {
 	      kfree (currblock);
-	      return -EIO;
+	      return ret;
 	    }
 	}
     }

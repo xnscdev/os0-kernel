@@ -169,13 +169,14 @@ int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		      size_t nblocks);
 int ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
 		       size_t nblocks);
-off_t ext2_data_block (Ext2Inode *inode, VFSSuperblock *sb, off_t block);
-int ext2_unalloc_data_blocks (VFSInode *inode, off_t start, blkcnt_t nblocks);
-uint32_t ext2_inode_offset (VFSSuperblock *sb, ino_t inode);
-Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino_t inode);
-int ext2_unref_inode (VFSSuperblock *sb, ino_t inode);
-loff_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
-ino_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
+int ext2_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, off64_t block,
+		      blkcnt_t nblocks, off64_t *result);
+int ext2_unalloc_data_blocks (VFSInode *inode, off64_t start, blkcnt_t nblocks);
+uint32_t ext2_inode_offset (VFSSuperblock *sb, ino64_t inode);
+Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino64_t inode);
+int ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode);
+off64_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
+ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 
