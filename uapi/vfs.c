@@ -33,7 +33,7 @@ __sys_xchown (const char *path, uid_t uid, gid_t gid, int follow_symlinks)
   return ret;
 }
 
-int
+ssize_t
 sys_read (int fd, void *buffer, size_t len)
 {
   ProcessFile *file;
@@ -50,8 +50,8 @@ sys_read (int fd, void *buffer, size_t len)
   return ret;
 }
 
-int
-sys_write (int fd, void *buffer, size_t len)
+ssize_t
+sys_write (int fd, const void *buffer, size_t len)
 {
   ProcessFile *file;
   int ret;
@@ -707,6 +707,30 @@ sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 	}
     }
   return sizeof (struct dirent) * count;
+}
+
+ssize_t
+sys_pread64 (int fd, void *buffer, size_t len, off64_t offset)
+{
+  ProcessFile *file;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
+    return -EBADF;
+  return vfs_read (file->pf_inode, buffer, len, offset);
+}
+
+ssize_t
+sys_pwrite64 (int fd, const void *buffer, size_t len, off64_t offset)
+{
+  ProcessFile *file;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
+    return -EBADF;
+  return vfs_write (file->pf_inode, buffer, len, offset);
 }
 
 int

@@ -126,6 +126,8 @@
 #define SYS_getresuid     165
 #define SYS_setresgid     170
 #define SYS_getresgid     171
+#define SYS_pread64       180
+#define SYS_pwrite64      181
 #define SYS_chown         182
 #define SYS_getcwd        183
 #define SYS_vfork         190

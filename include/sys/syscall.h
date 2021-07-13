@@ -35,8 +35,8 @@ __BEGIN_DECLS
 
 void sys_exit (int code);
 int sys_fork (void);
-int sys_read (int fd, void *buffer, size_t len);
-int sys_write (int fd, void *buffer, size_t len);
+ssize_t sys_read (int fd, void *buffer, size_t len);
+ssize_t sys_write (int fd, const void *buffer, size_t len);
 int sys_open (const char *path, int flags, mode_t mode);
 int sys_close (int fd);
 pid_t sys_waitpid (pid_t pid, int *status, int options);
@@ -122,6 +122,8 @@ int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
 int sys_getresuid (uid_t *ruid, uid_t *euid, uid_t *suid);
 int sys_setresgid (gid_t rgid, gid_t egid, gid_t sgid);
 int sys_getresgid (gid_t *rgid, gid_t *egid, gid_t *sgid);
+ssize_t sys_pread64 (int fd, void *buffer, size_t len, off64_t offset);
+ssize_t sys_pwrite64 (int fd, const void *buffer, size_t len, off64_t offset);
 int sys_chown (const char *path, uid_t uid, gid_t gid);
 int sys_getcwd (char *buffer, size_t len);
 int sys_vfork (void);
