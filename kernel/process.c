@@ -49,12 +49,9 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 	return -ENOMEM;
       /* Map with write permission to copy data first */
       map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#else
-      vm_tlb_reset ();
-#endif
     }
+  vm_tlb_reset_386 ();
 
   if (phdr->p_flags & PF_R)
     prot |= PROT_READ;
@@ -91,12 +88,9 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 	{
 	  uint32_t paddr = get_paddr (curr_page_dir, (void *) addr);
 	  map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
 	  vm_page_inval (paddr);
-#else
-	  vm_tlb_reset ();
-#endif
 	}
+      vm_tlb_reset_386 ();
     }
   return phdr->p_vaddr + phdr->p_memsz; /* Potential program break address */
 }
@@ -372,12 +366,9 @@ process_region_free (void *elem, void *data)
       if (paddr != 0)
 	free_page (paddr);
       unmap_page (data, addr);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#else
-      vm_tlb_reset ();
-#endif
     }
+  vm_tlb_reset_386 ();
   kfree (region);
 }
 
@@ -446,13 +437,9 @@ process_set_break (uint32_t addr)
       if (paddr == 0)
 	return proc->p_break;
       map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
   memset ((void *) proc->p_break, 0, addr - proc->p_break);
 
   proc->p_break = addr;
@@ -516,15 +503,11 @@ process_remap_segments (void *base, SortedArray *mregions)
 	    {
 	      uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
 	      map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
-#ifdef INVLPG_SUPPORT
 	      vm_page_inval (paddr);
-#endif
 	    }
 	}
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
 }
 
 int
@@ -698,11 +681,7 @@ process_handle_signal (void)
   paddr = alloc_page ();
   map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
 	    PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-#ifdef INVLPG_SUPPORT
-  vm_page_inval (paddr);
-#else
-  vm_tlb_reset ();
-#endif
+  vm_page_inval_386 (paddr);
   memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo, sizeof (siginfo_t));
 
   process_signal_handler = sigaction->sa_flags & SA_SIGINFO ?

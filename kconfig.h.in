@@ -25,6 +25,8 @@
 
 #ifdef ARCH_I386
 #mesondefine INVLPG_SUPPORT
+#else
+#define INVLPG_SUPPORT 1
 #endif
 
 #mesondefine PROCESS_LIMIT

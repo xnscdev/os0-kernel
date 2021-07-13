@@ -119,13 +119,9 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 	goto err;
       map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_WRITE);
       /* XXX Is invalidating page necessary when it should be not present? */
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
 
   if (inode == NULL)
     {
@@ -151,13 +147,9 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
       map_page (curr_page_dir, paddr, vaddr, pgflags);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
 
   /* Add the new region to the list of mapped areas */
   region = kmalloc (sizeof (ProcessMemoryRegion));
@@ -231,13 +223,9 @@ sys_munmap (void *addr, size_t len)
       paddr = get_paddr (curr_page_dir, (void *) vaddr);
       free_page (paddr);
       unmap_page (curr_page_dir, vaddr);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
 
   /* If there are more pages beyond the unmapped region, mark them as part
      of a separate region */
@@ -327,13 +315,9 @@ sys_mprotect (void *addr, size_t len, int prot)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
       map_page (curr_page_dir, paddr, vaddr, pgflags);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
   region->pm_prot = prot;
   return 0;
 }

@@ -47,13 +47,9 @@ rtld_load_interp_segment (VFSInode *inode, SortedArray *mregions,
 	goto err;
       map_page (curr_page_dir, paddr, vaddr + (phdr->p_vaddr & 0xfffff000),
 	        PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-#ifdef INVLPG_SUPPORT
       vm_page_inval (paddr);
-#endif
     }
-#ifndef INVLPG_SUPPORT
-  vm_tlb_reset ();
-#endif
+  vm_tlb_reset_386 ();
 
   if (phdr->p_filesz > 0)
     {

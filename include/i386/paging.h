@@ -20,6 +20,8 @@
 #define _I386_PAGING_H
 
 #ifndef _ASM
+#include <kconfig.h>
+
 #include <sys/cdefs.h>
 #include <stdint.h>
 #endif
@@ -51,8 +53,41 @@
 
 __BEGIN_DECLS
 
-void vm_tlb_reset (void);
-void vm_page_inval (uint32_t vaddr);
+/* Invalidates the entire translation lookaside buffer */
+
+__always_inline static inline void
+vm_tlb_reset (void)
+{
+  __asm__ volatile ("mov %%cr3, %%eax\nmov %%eax, %%cr3" ::: "memory");
+}
+
+/* Invalidates the entire TLB only if running on an i386 processor without 
+   support for the invlpg instruction */
+
+#ifdef INVLPG_SUPPORT
+#define vm_tlb_reset_386()
+#else
+#define vm_tlb_reset_386() vm_tlb_reset ()
+#endif
+
+/* Invalidates a single entry in the TLB, requires support for invlpg */
+
+__always_inline static inline void
+vm_page_inval (uint32_t addr)
+{
+#ifdef INVLPG_SUPPORT
+  __asm__ volatile ("invlpg (%0)" :: "r" (addr) : "memory");
+#endif
+}
+
+/* Invalidates a single entry in the TLB, or the entire TLB if invlpg is
+   not supported */
+
+#ifdef INVLPG_SUPPORT
+#define vm_page_inval_386(addr) vm_page_inval (addr)
+#else
+#define vm_page_inval_386(addr) vm_tlb_reset ()
+#endif
 
 uint32_t *page_table_clone (uint32_t index, uint32_t *orig);
 uint32_t *page_dir_clone (uint32_t *orig);

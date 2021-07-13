@@ -197,23 +197,17 @@ page_table_clone (uint32_t index, uint32_t *orig)
 	  table = NULL;
 	  goto end;
 	}
+
       map_page (curr_page_dir, buffer, PAGE_COPY_VADDR, PAGE_FLAG_WRITE);
-#ifdef INVLPG_SUPPORT
-      vm_page_inval (PAGE_COPY_VADDR);
-#else
-      vm_tlb_reset ();
-#endif
+      vm_page_inval_386 (PAGE_COPY_VADDR);
+
       memcpy ((void *) PAGE_COPY_VADDR, (const void *) vaddr, PAGE_SIZE);
       table[i] = buffer | (orig[i] & 0xfff);
     }
 
  end:
   unmap_page (curr_page_dir, PAGE_COPY_VADDR);
-#ifdef INVLPG_SUPPORT
-  vm_page_inval (PAGE_COPY_VADDR);
-#else
-  vm_tlb_reset ();
-#endif
+  vm_page_inval_386 (PAGE_COPY_VADDR);
   return table;
 }
 
