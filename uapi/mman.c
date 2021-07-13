@@ -119,7 +119,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 	goto err;
       map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_WRITE);
       /* XXX Is invalidating page necessary when it should be not present? */
-      vm_page_inval (paddr);
+      vm_page_inval (vaddr);
     }
   vm_tlb_reset_386 ();
 
@@ -147,7 +147,7 @@ sys_mmap (void *addr, size_t len, int prot, int flags, int fd, off_t offset)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
       map_page (curr_page_dir, paddr, vaddr, pgflags);
-      vm_page_inval (paddr);
+      vm_page_inval (vaddr);
     }
   vm_tlb_reset_386 ();
 
@@ -223,7 +223,7 @@ sys_munmap (void *addr, size_t len)
       paddr = get_paddr (curr_page_dir, (void *) vaddr);
       free_page (paddr);
       unmap_page (curr_page_dir, vaddr);
-      vm_page_inval (paddr);
+      vm_page_inval (vaddr);
     }
   vm_tlb_reset_386 ();
 
@@ -315,7 +315,7 @@ sys_mprotect (void *addr, size_t len, int prot)
     {
       uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
       map_page (curr_page_dir, paddr, vaddr, pgflags);
-      vm_page_inval (paddr);
+      vm_page_inval (vaddr);
     }
   vm_tlb_reset_386 ();
   region->pm_prot = prot;

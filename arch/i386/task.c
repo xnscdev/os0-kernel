@@ -244,7 +244,7 @@ _task_fork (int copy_pgdir)
 		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
       map_page (curr_page_dir, paddr, PAGE_COPY_VADDR + i,
 		PAGE_FLAG_WRITE | PAGE_FLAG_USER);
-      vm_page_inval (paddr + i);
+      vm_page_inval (PAGE_COPY_VADDR + i);
     }
   vm_tlb_reset_386 ();
   memcpy ((void *) PAGE_COPY_VADDR, (void *) TASK_STACK_BOTTOM,

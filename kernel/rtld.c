@@ -43,11 +43,11 @@ rtld_load_interp_segment (VFSInode *inode, SortedArray *mregions,
        vaddr += PAGE_SIZE)
     {
       uint32_t paddr = alloc_page ();
+      uint32_t addr = vaddr + (phdr->p_vaddr & 0xfffff000);
       if (unlikely (paddr == 0))
 	goto err;
-      map_page (curr_page_dir, paddr, vaddr + (phdr->p_vaddr & 0xfffff000),
-	        PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-      vm_page_inval (paddr);
+      map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
+      vm_page_inval (addr);
     }
   vm_tlb_reset_386 ();
 

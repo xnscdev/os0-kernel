@@ -49,7 +49,7 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 	return -ENOMEM;
       /* Map with write permission to copy data first */
       map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-      vm_page_inval (paddr);
+      vm_page_inval (addr);
     }
   vm_tlb_reset_386 ();
 
@@ -88,7 +88,7 @@ process_load_segment (VFSInode *inode, SortedArray *mregions, Elf32_Phdr *phdr)
 	{
 	  uint32_t paddr = get_paddr (curr_page_dir, (void *) addr);
 	  map_page (curr_page_dir, paddr, addr, PAGE_FLAG_USER);
-	  vm_page_inval (paddr);
+	  vm_page_inval (addr);
 	}
       vm_tlb_reset_386 ();
     }
@@ -366,7 +366,7 @@ process_region_free (void *elem, void *data)
       if (paddr != 0)
 	free_page (paddr);
       unmap_page (data, addr);
-      vm_page_inval (paddr);
+      vm_page_inval (addr);
     }
   vm_tlb_reset_386 ();
   kfree (region);
@@ -437,7 +437,7 @@ process_set_break (uint32_t addr)
       if (paddr == 0)
 	return proc->p_break;
       map_page (curr_page_dir, paddr, i, PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-      vm_page_inval (paddr);
+      vm_page_inval (i);
     }
   vm_tlb_reset_386 ();
   memset ((void *) proc->p_break, 0, addr - proc->p_break);
@@ -503,7 +503,7 @@ process_remap_segments (void *base, SortedArray *mregions)
 	    {
 	      uint32_t paddr = get_paddr (curr_page_dir, (void *) vaddr);
 	      map_page (curr_page_dir, paddr, vaddr, PAGE_FLAG_USER);
-	      vm_page_inval (paddr);
+	      vm_page_inval (vaddr);
 	    }
 	}
     }
@@ -681,7 +681,7 @@ process_handle_signal (void)
   paddr = alloc_page ();
   map_page (curr_page_dir, paddr, TASK_SIGINFO_PAGE,
 	    PAGE_FLAG_USER | PAGE_FLAG_WRITE);
-  vm_page_inval_386 (paddr);
+  vm_page_inval_386 (TASK_SIGINFO_PAGE);
   memcpy ((void *) TASK_SIGINFO_PAGE, &proc->p_siginfo, sizeof (siginfo_t));
 
   process_signal_handler = sigaction->sa_flags & SA_SIGINFO ?
