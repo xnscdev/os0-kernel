@@ -119,6 +119,8 @@
 #define SYS__llseek       140
 #define SYS_getdents      141
 #define SYS_flock         143
+#define SYS_readv         145
+#define SYS_writev        146
 #define SYS_getsid        147
 #define SYS_fdatasync     148
 #define SYS_nanosleep     162

@@ -710,6 +710,58 @@ sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 }
 
 ssize_t
+sys_readv (int fd, const struct iovec *vec, int vlen)
+{
+  ProcessFile *file;
+  int bytes = 0;
+  int ret;
+  size_t i;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_WRONLY)
+    return -EBADF;
+  if (vlen < 0)
+    return -EINVAL;
+  for (i = 0; i < vlen; i++)
+    {
+      ret = vfs_read (file->pf_inode, vec[i].iov_base, vec[i].iov_len,
+		      file->pf_offset);
+      if (ret < 0)
+	return ret;
+      file->pf_offset += vec[i].iov_len;
+      bytes += ret;
+    }
+  return bytes;
+}
+
+ssize_t
+sys_writev (int fd, const struct iovec *vec, int vlen)
+{
+  ProcessFile *file;
+  int bytes = 0;
+  int ret;
+  size_t i;
+  if (fd < 0 || fd >= PROCESS_FILE_LIMIT)
+    return -EBADF;
+  file = process_table[task_getpid ()].p_files[fd];
+  if (file == NULL || (file->pf_mode & O_ACCMODE) == O_RDONLY)
+    return -EBADF;
+  if (vlen < 0)
+    return -EINVAL;
+  for (i = 0; i < vlen; i++)
+    {
+      ret = vfs_write (file->pf_inode, vec[i].iov_base, vec[i].iov_len,
+		       file->pf_offset);
+      if (ret < 0)
+	return ret;
+      file->pf_offset += vec[i].iov_len;
+      bytes += ret;
+    }
+  return bytes;
+}
+
+ssize_t
 sys_pread64 (int fd, void *buffer, size_t len, off64_t offset)
 {
   ProcessFile *file;

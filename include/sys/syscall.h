@@ -20,6 +20,7 @@
 #define _SYS_SYSCALL_H
 
 #include <bits/syscall.h>
+#include <bits/uio.h>
 #include <fs/vfs.h>
 #include <sys/cdefs.h>
 #include <sys/time.h>
@@ -116,6 +117,8 @@ int sys_fchdir (int fd);
 int sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
 		 off64_t *result, int whence);
 int sys_getdents (int fd, struct dirent *dirp, unsigned int count);
+ssize_t sys_readv (int fd, const struct iovec *vec, int vlen);
+ssize_t sys_writev (int fd, const struct iovec *vec, int vlen);
 pid_t sys_getsid (pid_t pid);
 int sys_nanosleep (const struct timespec *req, struct timespec *rem);
 int sys_setresuid (uid_t ruid, uid_t euid, uid_t suid);
