@@ -164,7 +164,14 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
   SortedArray *mregions;
   Process *proc;
   int ret;
+  char hashbang[2];
   pid_t pid = task_getpid ();
+
+  /* Check for a hashbang */
+  if (vfs_read (inode, hashbang, 2, 0) < 0)
+    return -EIO;
+  if (hashbang[0] == '#' && hashbang[1] == '!')
+    return process_exec_sh (inode, entry, argv, envp, dlinfo);
 
   ret = task_setup_exec (argv, envp);
   if (ret < 0)
@@ -257,6 +264,60 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
  end:
   sorted_array_destroy (mregions, process_region_free, curr_page_dir);
   kfree (ehdr);
+  return ret;
+}
+
+int
+process_exec_sh (VFSInode *inode, uint32_t *entry, char *const *argv,
+		 char *const *envp, DynamicLinkInfo *dlinfo)
+{
+  char buffer[127];
+  char *new_argv[256];
+  char *ptr;
+  VFSInode *new_inode;
+  size_t nargs;
+  int ret;
+  int leave = 0;
+  int i = 0;
+  if (vfs_read (inode, buffer, 127, 2) < 0)
+    return -EIO;
+
+  /* Stop parsing hashbang line after newline */
+  ptr = strchr (buffer, '\n');
+  if (ptr != NULL)
+    *ptr = '\0';
+
+  /* Get number of arguments */
+  for (nargs = 0; argv[nargs] != NULL; nargs++)
+    ;
+
+  /* Prepend contents of hashbang line to argv */
+  ptr = buffer;
+  while (!leave)
+    {
+      char *end;
+      while (isspace (*ptr))
+	ptr++;
+      for (end = ptr; *end != '\0' && !isspace (*end); end++)
+	;
+      if (*end == '\0')
+	leave = 1;
+      else
+	*end = '\0';
+      if (i >= 255 - nargs)
+	return -EIO;
+      new_argv[i++] = ptr;
+      ptr = end + 1;
+    }
+  memcpy (&new_argv[i], argv, sizeof (void *) * (nargs + 1));
+  ret = vfs_open_file (&new_inode, new_argv[0], 1);
+  if (ret < 0)
+    return ret;
+
+  /* TODO Replace new_argv[1] with the full path to the program if needed */
+
+  ret = process_exec (new_inode, entry, new_argv, envp, dlinfo);
+  vfs_unref_inode (new_inode);
   return ret;
 }
 
