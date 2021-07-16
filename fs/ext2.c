@@ -129,22 +129,22 @@ ext2_init_disk (VFSMount *mp, int flags, const char *path)
     }
 
   /* Check ext2 magic number */
-  if (esb->esb_magic != EXT2_MAGIC)
+  if (esb->s_magic != EXT2_MAGIC)
     {
       printk ("fs-ext2: bad magic number 0x%x in ext2 filesystem",
-	      esb->esb_magic);
+	      esb->s_magic);
       kfree (esb);
       return -EINVAL;
     }
 
   /* Fill VFS superblock */
   mp->vfs_sb.sb_dev = dev;
-  mp->vfs_sb.sb_blksize = 1 << (esb->esb_blksize + 10);
+  mp->vfs_sb.sb_blksize = 1 << (esb->s_log_block_size + 10);
   mp->vfs_sb.sb_mntflags = flags;
-  mp->vfs_sb.sb_magic = esb->esb_magic;
+  mp->vfs_sb.sb_magic = esb->s_magic;
 
-  esb->esb_fsck++;
-  esb->esb_mtime = time (NULL);
+  esb->s_mnt_count++;
+  esb->s_mtime = time (NULL);
 
   /* Initialize block group descriptor table */
   mp->vfs_sb.sb_private = esb;
@@ -160,8 +160,10 @@ ext2_init_disk (VFSMount *mp, int flags, const char *path)
 uint32_t
 ext2_bgdt_size (Ext2Superblock *esb)
 {
-  uint32_t a = (esb->esb_blocks + esb->esb_bpg - 1) / esb->esb_bpg;
-  uint32_t b = (esb->esb_inodes + esb->esb_ipg - 1) / esb->esb_ipg;
+  uint32_t a = (esb->s_blocks_count + esb->s_blocks_per_group - 1) /
+    esb->s_blocks_per_group;
+  uint32_t b = (esb->s_inodes_count + esb->s_inodes_per_group - 1) /
+    esb->s_inodes_per_group;
   return a > b ? a : b;
 }
 
@@ -251,24 +253,24 @@ ext2_fill_inode (VFSInode *inode)
   Ext2Inode *ei = ext2_read_inode (inode->vi_sb, inode->vi_ino);
   if (ei == NULL)
     return;
-  inode->vi_uid = ei->ei_uid;
-  inode->vi_gid = ei->ei_gid;
-  inode->vi_nlink = ei->ei_nlink;
-  inode->vi_size = ei->ei_sizel;
-  if ((ei->ei_mode & 0xf000) == EXT2_TYPE_FILE && esb->esb_versmaj > 0
-      && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    inode->vi_size |= (off64_t) ei->ei_sizeh << 32;
-  inode->vi_atime.tv_sec = ei->ei_atime;
+  inode->vi_uid = ei->i_uid;
+  inode->vi_gid = ei->i_gid;
+  inode->vi_nlink = ei->i_links_count;
+  inode->vi_size = ei->i_size;
+  if ((ei->i_mode & 0xf000) == EXT2_TYPE_FILE && esb->s_rev_level > 0
+      && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
+    inode->vi_size |= (off64_t) ei->i_size_high << 32;
+  inode->vi_atime.tv_sec = ei->i_atime;
   inode->vi_atime.tv_nsec = 0;
-  inode->vi_mtime.tv_sec = ei->ei_mtime;
+  inode->vi_mtime.tv_sec = ei->i_mtime;
   inode->vi_mtime.tv_nsec = 0;
-  inode->vi_ctime.tv_sec = ei->ei_ctime;
+  inode->vi_ctime.tv_sec = ei->i_ctime;
   inode->vi_ctime.tv_nsec = 0;
-  inode->vi_sectors = ei->ei_sectors;
-  inode->vi_blocks = ei->ei_sectors * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
+  inode->vi_sectors = ei->i_blocks;
+  inode->vi_blocks = ei->i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
 
   /* Set mode and device numbers if applicable */
-  switch (ei->ei_mode & 0xf000)
+  switch (ei->i_mode & 0xf000)
     {
     case EXT2_TYPE_FIFO:
       inode->vi_mode = S_IFIFO;
@@ -276,7 +278,7 @@ ext2_fill_inode (VFSInode *inode)
       break;
     case EXT2_TYPE_CHRDEV:
       inode->vi_mode = S_IFCHR;
-      inode->vi_rdev = *((dev_t *) ei->ei_bptr0);
+      inode->vi_rdev = *((dev_t *) ei->i_block);
       break;
     case EXT2_TYPE_DIR:
       inode->vi_mode = S_IFDIR;
@@ -284,7 +286,7 @@ ext2_fill_inode (VFSInode *inode)
       break;
     case EXT2_TYPE_BLKDEV:
       inode->vi_mode = S_IFBLK;
-      inode->vi_rdev = *((dev_t *) ei->ei_bptr0);
+      inode->vi_rdev = *((dev_t *) ei->i_block);
       break;
     case EXT2_TYPE_FILE:
       inode->vi_mode = S_IFREG;
@@ -303,7 +305,7 @@ ext2_fill_inode (VFSInode *inode)
       inode->vi_mode = 0;
       inode->vi_rdev = 0;
     }
-  inode->vi_mode |= ei->ei_mode & 07777;
+  inode->vi_mode |= ei->i_mode & 07777;
   inode->vi_private = ei;
 }
 
@@ -314,17 +316,17 @@ ext2_write_inode (VFSInode *inode)
   Ext2Inode *ei = inode->vi_private;
   SpecDevice *dev = inode->vi_sb->sb_dev;
   uint32_t offset = ext2_inode_offset (inode->vi_sb, inode->vi_ino);
-  ei->ei_uid = inode->vi_uid;
-  ei->ei_sizel = inode->vi_size & 0xffffffff;
-  ei->ei_atime = inode->vi_atime.tv_sec;
-  ei->ei_ctime = inode->vi_ctime.tv_sec;
-  ei->ei_mtime = inode->vi_mtime.tv_sec;
-  ei->ei_gid = inode->vi_gid;
-  ei->ei_nlink = inode->vi_nlink;
-  ei->ei_sectors = inode->vi_sectors;
-  if (S_ISREG (inode->vi_mode) && esb->esb_versmaj > 0
-      && esb->esb_roft & EXT2_FT_RO_FILESIZE64)
-    ei->ei_sizeh = inode->vi_size >> 32;
+  ei->i_uid = inode->vi_uid;
+  ei->i_size = inode->vi_size & 0xffffffff;
+  ei->i_atime = inode->vi_atime.tv_sec;
+  ei->i_ctime = inode->vi_ctime.tv_sec;
+  ei->i_mtime = inode->vi_mtime.tv_sec;
+  ei->i_gid = inode->vi_gid;
+  ei->i_links_count = inode->vi_nlink;
+  ei->i_blocks = inode->vi_sectors;
+  if (S_ISREG (inode->vi_mode) && esb->s_rev_level > 0
+      && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
+    ei->i_size_high = inode->vi_size >> 32;
   dev->sd_write (dev, ei, sizeof (Ext2Inode), offset);
 }
 
@@ -358,12 +360,12 @@ ext2_statfs (VFSSuperblock *sb, struct statfs64 *st)
   uid_t euid = process_table[task_getpid ()].p_euid;
   st->f_type = EXT2_MAGIC;
   st->f_bsize = sb->sb_blksize;
-  st->f_blocks = esb->esb_blocks;
-  st->f_bfree = esb->esb_fblocks;
-  st->f_bavail = esb->esb_fblocks -
-    (euid != 0 && euid != esb->esb_ruid) * esb->esb_rblocks;
-  st->f_files = esb->esb_inodes;
-  st->f_ffree = esb->esb_finodes;
+  st->f_blocks = esb->s_blocks_count;
+  st->f_bfree = esb->s_free_blocks_count;
+  st->f_bavail = esb->s_free_blocks_count -
+    (euid != 0 && euid != esb->s_def_resuid) * esb->s_r_blocks_count;
+  st->f_files = esb->s_inodes_count;
+  st->f_ffree = esb->s_free_inodes_count;
   st->f_fsid.f_val[0] = sb->sb_dev->sd_major;
   st->f_fsid.f_val[1] = sb->sb_dev->sd_minor;
   st->f_namelen = EXT2_MAX_NAME_LEN;

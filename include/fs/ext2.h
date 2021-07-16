@@ -47,68 +47,209 @@
 #define EXT2_DIRTYPE_SOCKET 6
 #define EXT2_DIRTYPE_LINK   7
 
-#define EXT2_FT_OPT_PREALLOC  0x01
-#define EXT2_FT_OPT_AFSINODES 0x02
-#define EXT2_FT_OPT_JOURNALED 0x04
-#define EXT2_FT_OPT_XATTR     0x08
-#define EXT2_FT_OPT_FSRESIZE  0x10
-#define EXT2_FT_OPT_DIRHASH   0x20
+#define EXT2_FT_COMPAT_DIR_PREALLOC     0x0001
+#define EXT2_FT_COMPAT_IMAGIC_INODES    0x0002
+#define EXT3_FT_COMPAT_HAS_JOURNAL      0x0004
+#define EXT2_FT_COMPAT_EXT_XATTR        0x0008
+#define EXT2_FT_COMPAT_RESIZE_INODE     0x0010
+#define EXT2_FT_COMPAT_DIR_INDEX        0x0020
+#define EXT2_FT_COMPAT_LAZY_BG          0x0040
+#define EXT2_FT_COMPAT_EXCLUDE_BITMAP   0x0100
+#define EXT4_FT_COMPAT_SPARSE_SUPER2    0x0200
+#define EXT4_FT_COMPAT_FAST_COMMIT      0x0400
+#define EXT4_FT_COMPAT_STABLE_INODES    0x0800
 
-#define EXT2_FT_REQ_COMPRESS  0x01
-#define EXT2_FT_REQ_DIRTYPE   0x02
-#define EXT2_FT_REQ_RPLAYJRNL 0x04
-#define EXT2_FT_REQ_JRNLDEV   0x08
+#define EXT2_FT_INCOMPAT_COMPRESSION    0x0001
+#define EXT2_FT_INCOMPAT_FILETYPE       0x0002
+#define EXT3_FT_INCOMPAT_RECOVER        0x0004
+#define EXT3_FT_INCOMPAT_JOURNAL_DEV    0x0008
+#define EXT2_FT_INCOMPAT_META_BG        0x0010
+#define EXT3_FT_INCOMPAT_EXTENTS        0x0040
+#define EXT4_FT_INCOMPAT_64BIT          0x0080
+#define EXT4_FT_INCOMPAT_MMP            0x0100
+#define EXT4_FT_INCOMPAT_FLEX_BG        0x0200
+#define EXT4_FT_INCOMPAT_EA_INODE       0x0400
+#define EXT4_FT_INCOMPAT_DIRDATA        0x1000
+#define EXT4_FT_INCOMPAT_CSUM_SEED      0x2000
+#define EXT4_FT_INCOMPAT_LARGEDIR       0x4000
+#define EXT4_FT_INCOMPAT_INLINE_DATA    0x8000
+#define EXT4_FT_INCOMPAT_ENCRYPT        0x10000
+#define EXT4_FT_INCOMPAT_CASEFOLD       0x20000
 
-#define EXT2_FT_RO_SPARSE     0x01
-#define EXT2_FT_RO_FILESIZE64 0x02
-#define EXT2_FT_RO_BTREEDIR   0x04
+#define EXT2_FT_RO_COMPAT_SPARSE_SUPER  0x0001
+#define EXT2_FT_RO_COMPAT_LARGE_FILE    0x0002
+#define EXT4_FT_RO_COMPAT_HUGE_FILE     0x0008
+#define EXT4_FT_RO_COMPAT_GDT_CSUM      0x0010
+#define EXT4_FT_RO_COMPAT_DIR_NLINK     0x0020
+#define EXT4_FT_RO_COMPAT_EXTRA_ISIZE   0x0040
+#define EXT4_FT_RO_COMPAT_HAS_SNAPSHOT  0x0080
+#define EXT4_FT_RO_COMPAT_QUOTA         0x0100
+#define EXT4_FT_RO_COMPAT_BIGALLOC      0x0200
+#define EXT4_FT_RO_COMPAT_METADATA_CSUM 0x0400
+#define EXT4_FT_RO_COMPAT_REPLICA       0x0800
+#define EXT4_FT_RO_COMPAT_READONLY      0x1000
+#define EXT4_FT_RO_COMPAT_PROJECT       0x2000
+#define EXT4_FT_RO_COMPAT_SHARED_BLOCKS 0x4000
+#define EXT4_FT_RO_COMPAT_VERITY        0x8000
 
 typedef struct
 {
-  uint32_t esb_inodes;
-  uint32_t esb_blocks;
-  uint32_t esb_rblocks;
-  uint32_t esb_finodes;
-  uint32_t esb_fblocks;
-  uint32_t esb_sbid;
-  uint32_t esb_blksize;
-  uint32_t esb_fragsize;
-  uint32_t esb_bpg;
-  uint32_t esb_fpg;
-  uint32_t esb_ipg;
-  uint32_t esb_mtime;
-  uint32_t esb_wtime;
-  uint16_t esb_fsck;
-  uint16_t esb_fmnt;
-  uint16_t esb_magic;
-  uint16_t esb_state;
-  uint16_t esb_errh;
-  uint16_t esb_versmin;
-  uint32_t esb_chktime;
-  uint32_t esb_chkint;
-  uint32_t esb_vendor;
-  uint32_t esb_versmaj;
-  uint16_t esb_ruid;
-  uint16_t esb_rgid;
-  uint32_t esb_ino1;
-  uint16_t esb_inosize;
-  uint16_t esb_bakgid;
-  uint32_t esb_optft;
-  uint32_t esb_reqft;
-  uint32_t esb_roft;
-  unsigned char esb_fsid[16];
-  unsigned char esb_volname[16];
-  unsigned char esb_mntpoint[64];
-  uint32_t esb_compr;
-  uint8_t esb_fblkpalloc;
-  uint8_t esb_dblkpalloc;
-  uint16_t esb_reserved;
-  unsigned char esb_jrnlid[16];
-  uint32_t esb_jrnlino;
-  uint32_t esb_jrnldev;
-  uint32_t esb_orphlst;
-  unsigned char esb_unused[788];
-} __attribute__ ((packed)) Ext2Superblock;
+  uint32_t s_inodes_count;
+  uint32_t s_blocks_count;
+  uint32_t s_r_blocks_count;
+  uint32_t s_free_blocks_count;
+  uint32_t s_free_inodes_count;
+  uint32_t s_first_data_block;
+  uint32_t s_log_block_size;
+  uint32_t s_log_cluster_size;
+  uint32_t s_blocks_per_group;
+  uint32_t s_clusters_per_group;
+  uint32_t s_inodes_per_group;
+  uint32_t s_mtime;
+  uint32_t s_wtime;
+  uint16_t s_mnt_count;
+  int16_t s_max_mnt_count;
+  uint16_t s_magic;
+  uint16_t s_state;
+  uint16_t s_errors;
+  uint16_t s_minor_rev_level;
+  uint32_t s_lastcheck;
+  uint32_t s_checkinterval;
+  uint32_t s_creator_os;
+  uint32_t s_rev_level;
+  uint16_t s_def_resuid;
+  uint16_t s_def_resgid;
+  uint32_t s_first_ino;
+  uint16_t s_inode_size;
+  uint16_t s_block_group_nr;
+  uint32_t s_feature_compat;
+  uint32_t s_feature_incompat;
+  uint32_t s_feature_ro_compat;
+  unsigned char s_uuid[16];
+  unsigned char s_volume_name[16];
+  unsigned char s_last_mounted[64];
+  uint32_t s_algorithm_usage_bitmap;
+  unsigned char s_prealloc_blocks;
+  unsigned char s_prealloc_dir_blocks;
+  uint16_t s_resered_gdt_blocks;
+  unsigned char s_journal_uuid[16];
+  uint32_t s_journal_inum;
+  uint32_t s_journal_dev;
+  uint32_t s_last_orphan;
+  uint32_t s_hash_seed[4];
+  unsigned char s_def_hash_version;
+  unsigned char s_jnl_backup_type;
+  uint16_t s_desc_size;
+  uint32_t s_default_mount_opts;
+  uint32_t s_first_meta_bg;
+  uint32_t s_mkfs_time;
+  uint32_t s_jnl_blocks[17];
+  uint32_t s_blocks_count_hi;
+  uint32_t s_r_blocks_count_hi;
+  uint32_t s_free_blocks_hi;
+  uint16_t s_min_extra_isize;
+  uint16_t s_want_extra_isize;
+  uint32_t s_flags;
+  uint16_t s_raid_stride;
+  uint16_t s_mmp_update_interval;
+  uint64_t s_mmp_block;
+  uint32_t s_raid_stripe_width;
+  unsigned char s_log_groups_per_flex;
+  unsigned char s_checksum_type;
+  unsigned char s_encryption_level;
+  unsigned char s_reserved_pad;
+  uint64_t s_kbytes_written;
+  uint32_t s_snapshot_inum;
+  uint32_t s_snapshot_id;
+  uint64_t s_snapshot_r_blocks_count;
+  uint32_t s_snapshot_list;
+  uint32_t s_error_count;
+  uint32_t s_first_error_time;
+  uint32_t s_first_error_ino;
+  uint64_t s_first_error_block;
+  unsigned char s_first_error_func[32];
+  uint32_t s_first_error_line;
+  uint32_t s_last_error_time;
+  uint32_t s_last_error_ino;
+  uint32_t s_last_error_line;
+  uint64_t s_last_error_block;
+  unsigned char s_last_error_func[32];
+  unsigned char s_mount_opts[64];
+  uint32_t s_usr_quota_inum;
+  uint32_t s_grp_quota_inum;
+  uint32_t s_overhead_clusters;
+  uint32_t s_backup_bgs[2];
+  unsigned char s_encrypt_algos[4];
+  unsigned char s_encrypt_pw_salt[16];
+  uint32_t s_lpf_ino;
+  uint32_t s_prj_quota_inum;
+  uint32_t s_checksum_seed;
+  unsigned char s_wtime_hi;
+  unsigned char s_mtime_hi;
+  unsigned char s_mkfs_time_hi;
+  unsigned char s_lastcheck_hi;
+  unsigned char s_first_error_time_hi;
+  unsigned char s_last_error_time_hi;
+  unsigned char s_first_error_errcode;
+  unsigned char s_last_error_errcode;
+  uint16_t s_encoding;
+  uint16_t s_encoding_flags;
+  uint32_t s_reserved[95];
+  uint32_t s_checksum;
+} Ext2Superblock;
+
+typedef struct
+{
+  uint16_t i_mode;
+  uint16_t i_uid;
+  uint32_t i_size;
+  uint32_t i_atime;
+  uint32_t i_ctime;
+  uint32_t i_mtime;
+  uint32_t i_dtime;
+  uint16_t i_gid;
+  uint16_t i_links_count;
+  uint32_t i_blocks;
+  uint32_t i_flags;
+  uint32_t i_osd1;
+  uint32_t i_block[15];
+  uint32_t i_generation;
+  uint32_t i_file_acl;
+  uint32_t i_size_high;
+  uint32_t i_faddr;
+  uint32_t i_osd2[3];
+} Ext2Inode;
+
+typedef struct
+{
+  uint16_t i_mode;
+  uint16_t i_uid;
+  uint32_t i_size;
+  uint32_t i_atime;
+  uint32_t i_ctime;
+  uint32_t i_mtime;
+  uint32_t i_dtime;
+  uint16_t i_gid;
+  uint16_t i_links_count;
+  uint32_t i_blocks;
+  uint32_t i_flags;
+  uint32_t i_osd1;
+  uint32_t i_block[15];
+  uint32_t i_generation;
+  uint32_t i_file_acl;
+  uint32_t i_size_high;
+  uint32_t i_faddr;
+  uint32_t i_osd2[3];
+  uint16_t i_extra_isize;
+  uint16_t i_checksum_hi;
+  uint32_t i_ctime_extra;
+  uint32_t i_mtime_extra;
+  uint32_t i_atime_extra;
+  uint32_t i_crtime;
+  uint32_t i_crtime_extra;
+  uint32_t i_version_hi;
+  uint32_t i_projid;
+} Ext2LargeInode;
 
 typedef struct
 {
@@ -119,32 +260,7 @@ typedef struct
   uint16_t eb_ifree;
   uint16_t eb_dirs;
   unsigned char eb_unused[14];
-} __attribute__ ((packed)) Ext2BGD;
-
-typedef struct
-{
-  uint16_t ei_mode;
-  uint16_t ei_uid;
-  uint32_t ei_sizel;
-  uint32_t ei_atime;
-  uint32_t ei_ctime;
-  uint32_t ei_mtime;
-  uint32_t ei_dtime;
-  uint16_t ei_gid;
-  uint16_t ei_nlink;
-  uint32_t ei_sectors;
-  uint32_t ei_flags;
-  uint32_t ei_oss1;
-  uint32_t ei_bptr0[EXT2_STORED_INODES];
-  uint32_t ei_bptr1;
-  uint32_t ei_bptr2;
-  uint32_t ei_bptr3;
-  uint32_t ei_gen;
-  uint32_t ei_acl;
-  uint32_t ei_sizeh;
-  uint32_t ei_fragbaddr;
-  uint32_t ei_oss2[3];
-} __attribute__ ((packed)) Ext2Inode;
+} Ext2BGD;
 
 typedef struct
 {
@@ -152,7 +268,7 @@ typedef struct
   uint16_t ed_size;
   uint8_t ed_namelenl;
   uint8_t ed_namelenh;
-} __attribute__ ((packed)) Ext2DirEntry;
+} Ext2DirEntry;
 
 __BEGIN_DECLS
 
