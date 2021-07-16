@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <bits/mount.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
@@ -282,6 +283,8 @@ int
 vfs_create (VFSInode *dir, const char *name, mode_t mode)
 {
   int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
   ret = vfs_perm_check_write (dir, 0);
@@ -313,6 +316,8 @@ int
 vfs_link (VFSInode *old, VFSInode *dir, const char *new)
 {
   int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
   ret = vfs_perm_check_write (dir, 0);
@@ -327,6 +332,8 @@ int
 vfs_unlink (VFSInode *dir, const char *name)
 {
   int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
   ret = vfs_perm_check_write (dir, 0);
@@ -341,6 +348,8 @@ int
 vfs_symlink (VFSInode *dir, const char *old, const char *new)
 {
   int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
   ret = vfs_perm_check_write (dir, 0);
@@ -372,7 +381,10 @@ vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 int
 vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
-  int ret = vfs_perm_check_write (inode, 0);
+  int ret;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_write != NULL)
@@ -396,7 +408,10 @@ vfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 int
 vfs_chmod (VFSInode *inode, mode_t mode)
 {
-  uid_t euid = sys_geteuid ();
+  uid_t euid;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  euid = sys_geteuid ();
   if (euid != 0 && euid != inode->vi_uid)
     return -EPERM;
   if (inode->vi_ops->vfs_chmod != NULL)
@@ -407,7 +422,10 @@ vfs_chmod (VFSInode *inode, mode_t mode)
 int
 vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 {
-  uid_t euid = sys_geteuid ();
+  uid_t euid;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  euid = sys_geteuid ();
   if (euid != 0 && euid != inode->vi_uid)
     return -EPERM;
   if (inode->vi_ops->vfs_chown != NULL)
@@ -418,7 +436,10 @@ vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  int ret = vfs_perm_check_write (dir, 0);
+  int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -431,7 +452,10 @@ vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 int
 vfs_rmdir (VFSInode *dir, const char *name)
 {
-  int ret = vfs_perm_check_write (dir, 0);
+  int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -444,7 +468,10 @@ vfs_rmdir (VFSInode *dir, const char *name)
 int
 vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
-  int ret = vfs_perm_check_write (dir, 0);
+  int ret;
+  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
     return ret;
   if (!S_ISDIR (dir->vi_mode))
@@ -458,7 +485,11 @@ int
 vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 	    const char *newname)
 {
-  int ret = vfs_perm_check_write (olddir, 0);
+  int ret;
+  if (olddir->vi_sb->sb_mntflags & MNT_RDONLY
+      || newdir->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (olddir, 0);
   if (ret != 0)
     return ret;
   ret = vfs_perm_check_write (newdir, 0);
@@ -488,7 +519,10 @@ vfs_readlink (VFSInode *inode, char *buffer, size_t len)
 int
 vfs_truncate (VFSInode *inode)
 {
-  int ret = vfs_perm_check_write (inode, 0);
+  int ret;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_truncate != NULL)
@@ -508,7 +542,10 @@ int
 vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 	      size_t len, int flags)
 {
-  int ret = vfs_perm_check_write (inode, 0);
+  int ret;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_setxattr != NULL)
@@ -541,7 +578,10 @@ vfs_listxattr (VFSInode *inode, char *buffer, size_t len)
 int
 vfs_removexattr (VFSInode *inode, const char *name)
 {
-  int ret = vfs_perm_check_write (inode, 0);
+  int ret;
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
     return ret;
   if (inode->vi_ops->vfs_removexattr != NULL)
