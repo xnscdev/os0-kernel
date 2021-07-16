@@ -628,7 +628,7 @@ int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
   Ext2Superblock *esb = dir->vi_sb->sb_private;
-  Ext2BGD *bgdt = dir->vi_sb->sb_private + sizeof (Ext2Superblock);
+  Ext2GroupDesc *bgdt = dir->vi_sb->sb_private + sizeof (Ext2Superblock);
   VFSInode *inode;
   Ext2Inode *ei;
   char *data;
@@ -745,7 +745,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   ext2_write_inode (dir);
 
   /* Increase directory count in block group descriptor */
-  bgdt[inode->vi_ino / esb->s_inodes_per_group].eb_dirs++;
+  bgdt[inode->vi_ino / esb->s_inodes_per_group].bg_used_dirs_count++;
   ext2_update (dir->vi_sb);
 
   vfs_unref_inode (inode);

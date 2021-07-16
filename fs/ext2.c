@@ -84,13 +84,13 @@ ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
   size_t size = ext2_bgdt_size (esb);
   void *ptr;
   int ret;
-  ptr = kmalloc (sizeof (Ext2Superblock) + sizeof (Ext2BGD) * size);
+  ptr = kmalloc (sizeof (Ext2Superblock) + sizeof (Ext2GroupDesc) * size);
   if (unlikely (ptr == NULL))
     return -ENOMEM;
   memcpy (ptr, esb, sizeof (Ext2Superblock));
   sb->sb_private = ptr;
   ret = dev->sd_read (dev, sb->sb_private + sizeof (Ext2Superblock),
-		      sizeof (Ext2BGD) * size,
+		      sizeof (Ext2GroupDesc) * size,
 		      sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
   if (ret != 0)
     {
@@ -354,7 +354,7 @@ ext2_update (VFSSuperblock *sb)
 
   /* Update block group descriptor table */
   dev->sd_write (dev, sb->sb_private + sizeof (Ext2Superblock),
-		 sizeof (Ext2BGD) * ext2_bgdt_size (esb),
+		 sizeof (Ext2GroupDesc) * ext2_bgdt_size (esb),
 		 sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
 }
 

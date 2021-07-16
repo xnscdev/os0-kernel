@@ -271,14 +271,19 @@ typedef struct
 
 typedef struct
 {
-  uint32_t eb_busage;
-  uint32_t eb_iusage;
-  uint32_t eb_inotbl;
-  uint16_t eb_bfree;
-  uint16_t eb_ifree;
-  uint16_t eb_dirs;
-  unsigned char eb_unused[14];
-} Ext2BGD;
+  uint32_t bg_block_bitmap;
+  uint32_t bg_inode_bitmap;
+  uint32_t bg_inode_table;
+  uint16_t bg_free_blocks_count;
+  uint16_t bg_free_inodes_count;
+  uint16_t bg_used_dirs_count;
+  uint16_t bg_flags;
+  uint32_t bg_exclude_bitmap_lo;
+  uint16_t bg_block_bitmap_csum_lo;
+  uint16_t bg_inode_bitmap_csum_lo;
+  uint16_t bg_itable_unused;
+  uint16_t bg_checksum;
+} Ext2GroupDesc;
 
 typedef struct
 {
@@ -287,6 +292,19 @@ typedef struct
   uint8_t ed_namelenl;
   uint8_t ed_namelenh;
 } Ext2DirEntry;
+
+typedef struct
+{
+  Ext2Superblock f_super;
+  Ext2GroupDesc *f_group_desc;
+  unsigned int f_group_desc_count;
+  unsigned long f_desc_blocks;
+  int f_flags;
+  int f_fragsize;
+  unsigned int f_inode_blocks_per_group;
+  mode_t f_umask;
+  time_t f_now;
+} Ext2Filesystem;
 
 __BEGIN_DECLS
 

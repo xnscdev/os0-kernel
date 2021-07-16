@@ -40,17 +40,18 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
 {
   Ext2Superblock *esb = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   unsigned char *busage;
   int ret;
   int i;
-  if (bgdt[index].eb_bfree == 0)
+  if (bgdt[index].bg_free_blocks_count == 0)
     return -ENOSPC; /* No free block */
   busage = kmalloc (esb->s_blocks_per_group >> 3);
   if (unlikely (busage == NULL))
     return -ENOMEM;
   ret = dev->sd_read (dev, busage, esb->s_blocks_per_group >> 3,
-		      bgdt[index].eb_busage * sb->sb_blksize);
+		      bgdt[index].bg_block_bitmap * sb->sb_blksize);
   if (ret != 0)
     {
       kfree (busage);
@@ -66,14 +67,14 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
       /* Mark the block as allocated */
       busage[byte] |= 1 << offset;
       ret = dev->sd_write (dev, busage, esb->s_blocks_per_group >> 3,
-			   bgdt[index].eb_busage * sb->sb_blksize);
+			   bgdt[index].bg_block_bitmap * sb->sb_blksize);
       kfree (busage);
       if (ret != 0)
 	return ret;
 
       /* Subtract from free blocks in superblock and BGDT */
       esb->s_free_blocks_count--;
-      bgdt[index].eb_bfree--;
+      bgdt[index].bg_free_blocks_count--;
       ext2_update (sb);
 
       return (off64_t) esb->s_blocks_per_group * index + i;
@@ -87,17 +88,18 @@ ext2_try_create_inode (VFSSuperblock *sb, int index)
 {
   Ext2Superblock *esb = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   unsigned char *iusage;
   int ret;
   int i;
-  if (bgdt[index].eb_ifree == 0)
+  if (bgdt[index].bg_free_inodes_count == 0)
     return 0; /* No free inodes */
   iusage = kmalloc (esb->s_inodes_per_group >> 3);
   if (unlikely (iusage == NULL))
     return 0;
   ret = dev->sd_read (dev, iusage, esb->s_inodes_per_group >> 3,
-		      bgdt[index].eb_iusage * sb->sb_blksize);
+		      bgdt[index].bg_inode_bitmap * sb->sb_blksize);
   if (ret != 0)
     {
       kfree (iusage);
@@ -113,14 +115,14 @@ ext2_try_create_inode (VFSSuperblock *sb, int index)
       /* Mark the inode as allocated */
       iusage[byte] |= 1 << offset;
       ret = dev->sd_write (dev, iusage, esb->s_inodes_per_group >> 3,
-			   bgdt[index].eb_iusage * sb->sb_blksize);
+			   bgdt[index].bg_inode_bitmap * sb->sb_blksize);
       kfree (iusage);
       if (ret != 0)
 	return ret;
 
       /* Subtract from free inodes in superblock and BGDT */
       esb->s_free_inodes_count--;
-      bgdt[index].eb_ifree--;
+      bgdt[index].bg_free_inodes_count--;
       ext2_update (sb);
 
       return (ino64_t) esb->s_inodes_per_group * index + i + 1;
@@ -134,7 +136,8 @@ ext2_unalloc_block (VFSSuperblock *sb, off64_t block)
 {
   Ext2Superblock *esb = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   unsigned char *busage;
   uint32_t blkgrp = block / esb->s_blocks_per_group;
   uint32_t rem = block % esb->s_blocks_per_group;
@@ -145,7 +148,7 @@ ext2_unalloc_block (VFSSuperblock *sb, off64_t block)
   if (unlikely (busage == NULL))
     return 0;
   ret = dev->sd_read (dev, busage, esb->s_blocks_per_group >> 3,
-		      bgdt[blkgrp].eb_busage * sb->sb_blksize);
+		      bgdt[blkgrp].bg_block_bitmap * sb->sb_blksize);
   if (ret != 0)
     {
       kfree (busage);
@@ -155,14 +158,14 @@ ext2_unalloc_block (VFSSuperblock *sb, off64_t block)
   /* Mark the block as unallocated */
   busage[byte] &= ~(1 << offset);
   ret = dev->sd_write (dev, busage, esb->s_blocks_per_group >> 3,
-		       bgdt[blkgrp].eb_busage * sb->sb_blksize);
+		       bgdt[blkgrp].bg_block_bitmap * sb->sb_blksize);
   kfree (busage);
   if (ret != 0)
     return ret;
 
   /* Add to free blocks in superblock and BGDT */
   esb->s_free_blocks_count++;
-  bgdt[blkgrp].eb_bfree++;
+  bgdt[blkgrp].bg_free_blocks_count++;
   ext2_update (sb);
   return 0;
 }
@@ -172,7 +175,8 @@ ext2_clear_inode (VFSSuperblock *sb, ino64_t inode)
 {
   Ext2Superblock *esb = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   unsigned char *iusage;
   uint32_t blkgrp = inode / esb->s_inodes_per_group;
   uint32_t rem = inode % esb->s_inodes_per_group;
@@ -183,7 +187,7 @@ ext2_clear_inode (VFSSuperblock *sb, ino64_t inode)
   if (unlikely (iusage == NULL))
     return 0;
   ret = dev->sd_read (dev, iusage, esb->s_inodes_per_group >> 3,
-		      bgdt[blkgrp].eb_iusage * sb->sb_blksize);
+		      bgdt[blkgrp].bg_inode_bitmap * sb->sb_blksize);
   if (ret != 0)
     {
       kfree (iusage);
@@ -193,14 +197,14 @@ ext2_clear_inode (VFSSuperblock *sb, ino64_t inode)
   /* Mark the inode as unallocated */
   iusage[byte] &= ~(1 << offset);
   ret = dev->sd_write (dev, iusage, esb->s_inodes_per_group >> 3,
-		       bgdt[blkgrp].eb_iusage * sb->sb_blksize);
+		       bgdt[blkgrp].bg_inode_bitmap * sb->sb_blksize);
   kfree (iusage);
   if (ret != 0)
     return ret;
 
   /* Add to free inodes in superblock and BGDT */
   esb->s_free_inodes_count++;
-  bgdt[blkgrp].eb_ifree++;
+  bgdt[blkgrp].bg_free_inodes_count++;
   ext2_update (sb);
   return 0;
 }
@@ -685,9 +689,10 @@ uint32_t
 ext2_inode_offset (VFSSuperblock *sb, ino64_t inode)
 {
   Ext2Superblock *esb = sb->sb_private;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   uint32_t inosize = esb->s_rev_level > 0 ? esb->s_inode_size : 128;
-  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].eb_inotbl;
+  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].bg_inode_table;
   uint32_t index = (inode - 1) % esb->s_inodes_per_group;
   return inotbl * sb->sb_blksize + index * inosize;
 }
@@ -696,9 +701,10 @@ Ext2Inode *
 ext2_read_inode (VFSSuperblock *sb, ino64_t inode)
 {
   Ext2Superblock *esb = sb->sb_private;
-  Ext2BGD *bgdt = (Ext2BGD *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt =
+    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
   uint32_t inosize = esb->s_rev_level > 0 ? esb->s_inode_size : 128;
-  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].eb_inotbl;
+  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].bg_inode_table;
   uint32_t index = (inode - 1) % esb->s_inodes_per_group;
   uint32_t block = inotbl + index * inosize / sb->sb_blksize;
   uint32_t offset = index % (sb->sb_blksize / inosize);

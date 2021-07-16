@@ -146,23 +146,10 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
     return -EINVAL;
   for (i = 0; i < VFS_FS_TABLE_SIZE; i++)
     {
-      VFSMount *mp;
       int ret;
       int j;
       if (strcmp (fs_table[i].vfs_name, type) != 0)
         continue;
-      mp = kzalloc (sizeof (VFSMount));
-      if (unlikely (mp == NULL))
-	return -ENOMEM;
-      mp->vfs_fstype = &fs_table[i];
-
-      /* Get mount point as a path and set parent mount */
-      ret = vfs_open_file (&mp->vfs_mntpoint, dir, 1);
-      if (ret != 0)
-	{
-	  kfree (mp);
-	  return ret;
-	}
 
       /* Find a slot in the mount table */
       for (j = 0; j < VFS_MOUNT_TABLE_SIZE; j++)
@@ -171,19 +158,16 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 	    break;
 	}
       if (j == VFS_MOUNT_TABLE_SIZE)
-	{
-	  kfree (mp);
-	  return -ENOSPC;
-	}
+	return -ENOSPC;
+      mount_table[j].vfs_fstype = &fs_table[i];
 
       /* Filesystem-specific mount */
-      ret = fs_table[i].vfs_mount (mp, flags, data);
+      ret = fs_table[i].vfs_mount (&mount_table[j], flags, data);
       if (ret != 0)
 	return ret;
 
-      /* Fill mount table */
-      memcpy (&mount_table[j], mp, sizeof (VFSMount));
-      return 0;
+      /* Get mount point as a path and set parent mount */
+      return vfs_open_file (&mount_table[j].vfs_mntpoint, dir, 1);
     }
   return -EINVAL; /* No such filesystem type */
 }

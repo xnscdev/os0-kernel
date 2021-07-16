@@ -161,6 +161,8 @@ struct _VFSMount
   void *vfs_private;
 };
 
+typedef uint64_t block_t;
+
 __BEGIN_DECLS
 
 extern VFSFilesystem fs_table[VFS_FS_TABLE_SIZE];
