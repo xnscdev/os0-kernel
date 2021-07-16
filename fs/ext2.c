@@ -131,10 +131,15 @@ ext2_init_disk (VFSMount *mp, int flags, const char *path)
   /* Check ext2 magic number */
   if (esb->s_magic != EXT2_MAGIC)
     {
-      printk ("fs-ext2: bad magic number 0x%x in ext2 filesystem",
-	      esb->s_magic);
       kfree (esb);
       return -EINVAL;
+    }
+
+  /* Fail mounting if any incompatible features are required */
+  if (esb->s_feature_incompat & EXT2_UNSUPPORTED_FEATURES)
+    {
+      kfree (esb);
+      return -ENOTSUP;
     }
 
   /* Fill VFS superblock */

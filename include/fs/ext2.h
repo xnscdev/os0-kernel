@@ -92,6 +92,24 @@
 #define EXT4_FT_RO_COMPAT_SHARED_BLOCKS 0x4000
 #define EXT4_FT_RO_COMPAT_VERITY        0x8000
 
+/* Incompatible features that are unsupported */
+
+#define EXT2_UNSUPPORTED_FEATURES (EXT2_FT_INCOMPAT_COMPRESSION		\
+				   | EXT3_FT_INCOMPAT_RECOVER		\
+				   | EXT3_FT_INCOMPAT_JOURNAL_DEV	\
+				   | EXT2_FT_INCOMPAT_META_BG		\
+				   | EXT3_FT_INCOMPAT_EXTENTS		\
+				   | EXT4_FT_INCOMPAT_64BIT		\
+				   | EXT4_FT_INCOMPAT_MMP		\
+				   | EXT4_FT_INCOMPAT_FLEX_BG		\
+				   | EXT4_FT_INCOMPAT_EA_INODE		\
+				   | EXT4_FT_INCOMPAT_DIRDATA		\
+				   | EXT4_FT_INCOMPAT_CSUM_SEED		\
+				   | EXT4_FT_INCOMPAT_LARGEDIR		\
+				   | EXT4_FT_INCOMPAT_INLINE_DATA	\
+				   | EXT4_FT_INCOMPAT_ENCRYPT		\
+				   | EXT4_FT_INCOMPAT_CASEFOLD)
+
 typedef struct
 {
   uint32_t s_inodes_count;
