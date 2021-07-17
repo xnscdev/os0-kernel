@@ -203,7 +203,7 @@ ext2_unlink (VFSInode *dir, const char *name)
   void *buffer;
   char *guessname;
   VFSInode *temp;
-  off64_t *realblocks;
+  block_t *realblocks;
   int ret;
   int i;
 
@@ -218,7 +218,7 @@ ext2_unlink (VFSInode *dir, const char *name)
     }
 
   buffer = kmalloc (sb->sb_blksize);
-  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  realblocks = kmalloc (sizeof (block_t) * blocks);
   if (unlikely (buffer == NULL || realblocks == NULL))
     {
       kfree (buffer);
@@ -298,11 +298,11 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
   size_t start_diff;
   size_t end_diff;
-  off64_t start_block;
-  off64_t mid_block;
-  off64_t end_block;
-  off64_t realblock;
-  off64_t *realblocks;
+  block_t start_block;
+  block_t mid_block;
+  block_t end_block;
+  block_t realblock;
+  block_t *realblocks;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -341,7 +341,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 
   /* XXX Will run out of memory if reading too much data, read blocks in
      smaller chunks if too large */
-  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  realblocks = kmalloc (sizeof (block_t) * blocks);
   if (unlikely (realblocks == NULL))
     return -ENOMEM;
   ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
@@ -419,11 +419,11 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   size_t start_diff;
   size_t end_diff;
-  off64_t start_block;
-  off64_t mid_block;
-  off64_t end_block;
-  off64_t realblock;
-  off64_t *realblocks;
+  block_t start_block;
+  block_t mid_block;
+  block_t end_block;
+  block_t realblock;
+  block_t *realblocks;
   size_t blocks;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   void *temp = NULL;
@@ -471,7 +471,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
       return len;
     }
 
-  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  realblocks = kmalloc (sizeof (block_t) * blocks);
   if (unlikely (realblocks == NULL))
     return -ENOMEM;
   ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
@@ -563,7 +563,7 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
       Ext2DirEntry *guess = (Ext2DirEntry *) (dir->vd_buffer + dir->vd_offset);
       VFSDirEntry *result;
       uint16_t namelen;
-      off64_t realblock;
+      block_t realblock;
       int ret;
 
       if (guess->ed_inode == 0 || guess->ed_size == 0)
@@ -635,7 +635,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   Ext2Inode *ei;
   char *data;
   Ext2DirEntry *entry;
-  off64_t firstblock;
+  block_t firstblock;
   ino_t ino;
   time_t newtime = time (NULL);
   int ret;
@@ -765,7 +765,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
   char *guessname;
-  off64_t *realblocks;
+  block_t *realblocks;
   VFSInode *temp;
   VFSDirectory *d;
   int ret;
@@ -808,7 +808,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
   ext2_destroy_dir (d);
 
   buffer = kmalloc (sb->sb_blksize);
-  realblocks = kmalloc (sizeof (off64_t) * blocks);
+  realblocks = kmalloc (sizeof (block_t) * blocks);
   if (unlikely (buffer == NULL || realblocks == NULL))
     {
       kfree (buffer);
@@ -894,7 +894,7 @@ int
 ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 {
   int i;
-  off64_t size = inode->vi_size;
+  block_t size = inode->vi_size;
   Ext2Inode *ei = inode->vi_private;
 
   if (size <= 60)
@@ -913,7 +913,7 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
     {
       uint32_t block = 0;
       VFSSuperblock *sb = inode->vi_sb;
-      off64_t realblock;
+      block_t realblock;
       void *currblock;
       int ret = ext2_data_blocks (ei, sb, block, 1, &realblock);
       if (ret < 0)
@@ -984,7 +984,7 @@ ext2_truncate (VFSInode *inode)
   else if (origsize > newsize)
     {
       off_t start = (newsize + blksize - 1) / blksize;
-      blkcnt_t nblocks = (origsize + blksize - 1) / blksize - start;
+      blkcnt64_t nblocks = (origsize + blksize - 1) / blksize - start;
       if (nblocks != 0)
 	return ext2_unalloc_data_blocks (inode, start, nblocks);
       else
@@ -992,8 +992,8 @@ ext2_truncate (VFSInode *inode)
     }
   else
     {
-      blkcnt_t origblocks = (origsize + blksize - 1) / blksize;
-      blkcnt_t newblocks = (newsize + blksize - 1) / newsize;
+      blkcnt64_t origblocks = (origsize + blksize - 1) / blksize;
+      blkcnt64_t newblocks = (newsize + blksize - 1) / newsize;
       return ext2_extend_inode (inode, origblocks, newblocks);
     }
 }

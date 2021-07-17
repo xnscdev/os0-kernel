@@ -164,7 +164,10 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       /* Filesystem-specific mount */
       ret = fs_table[i].vfs_mount (&mount_table[j], flags, data);
       if (ret != 0)
-	return ret;
+	{
+	  memset (&mount_table[j], 0, sizeof (VFSMount));
+	  return ret;
+	}
 
       /* Get mount point as a path and set parent mount */
       return vfs_open_file (&mount_table[j].vfs_mntpoint, dir, 1);

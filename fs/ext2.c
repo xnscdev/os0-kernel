@@ -78,82 +78,39 @@ const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
+ext2_openfs (SpecDevice *dev, Ext2Filesystem *fs)
 {
-  Ext2Superblock *esb = sb->sb_private;
-  Ext2Filesystem *fs;
-  size_t size = ext2_bgdt_size (esb);
-  int ret;
-  fs = kmalloc (sizeof (Ext2Filesystem) + sizeof (Ext2GroupDesc) * size);
-  if (unlikely (fs == NULL))
-    return -ENOMEM;
-  memcpy (&fs->f_super, esb, sizeof (Ext2Superblock));
-  sb->sb_private = fs;
-  ret = dev->sd_read (dev, fs->f_group_desc, sizeof (Ext2GroupDesc) * size,
-		      sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
-  kfree (esb);
-  return ret;
-}
-
-static int
-ext2_init_disk (VFSMount *mp, int flags, const char *path)
-{
-  VFSInode *inode;
-  SpecDevice *dev;
-  Ext2Superblock *esb;
-  int ret = vfs_open_file (&inode, path, 1);
+  /* Read superblock */
+  size_t size;
+  int ret = dev->sd_read (dev, &fs->f_super, sizeof (Ext2Superblock), 1024);
   if (ret != 0)
     return ret;
 
-  /* Make sure we are mounting a valid block device */
-  if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0
-      || !S_ISBLK (inode->vi_mode))
-    return -EINVAL;
-  dev = device_lookup (major (inode->vi_rdev), minor (inode->vi_rdev));
-  assert (dev != NULL);
-
-  esb = kmalloc (sizeof (Ext2Superblock));
-  if (unlikely (esb == NULL))
-    return -ENOMEM;
-
-  ret = dev->sd_read (dev, esb, sizeof (Ext2Superblock), 1024);
-  if (ret != 0)
-    {
-      kfree (esb);
-      return ret;
-    }
-
   /* Check ext2 magic number */
-  if (esb->s_magic != EXT2_MAGIC)
-    {
-      kfree (esb);
-      return -EINVAL;
-    }
+  if (fs->f_super.s_magic != EXT2_MAGIC)
+    return -EINVAL;
 
   /* Fail mounting if any incompatible features are required */
-  if (esb->s_feature_incompat & EXT2_UNSUPPORTED_FEATURES)
-    {
-      kfree (esb);
-      return -ENOTSUP;
-    }
-
-  /* Fill VFS superblock */
-  mp->vfs_sb.sb_dev = dev;
-  mp->vfs_sb.sb_blksize = 1 << (esb->s_log_block_size + 10);
-  mp->vfs_sb.sb_mntflags = flags;
-  mp->vfs_sb.sb_magic = esb->s_magic;
-
-  esb->s_mnt_count++;
-  esb->s_mtime = time (NULL);
+  if (fs->f_super.s_feature_incompat & EXT2_UNSUPPORTED_FEATURES)
+    return -ENOTSUP;
 
   /* Initialize block group descriptor table */
-  mp->vfs_sb.sb_private = esb;
-  ret = ext2_init_bgdt (&mp->vfs_sb, dev);
-  if (ret != 0)
+  size = ext2_bgdt_size (&fs->f_super);
+  fs->f_group_desc = kmalloc (sizeof (Ext2GroupDesc) * size);
+  if (unlikely (fs->f_group_desc == NULL))
+    return -ENOMEM;
+  ret = dev->sd_read (dev, fs->f_group_desc, sizeof (Ext2GroupDesc) * size,
+		      fs->f_super.s_log_block_size >= 2 ?
+		      1 << (fs->f_super.s_log_block_size + 10) : 2048);
+  if (ret < 0)
     {
-      kfree (mp->vfs_sb.sb_private);
+      kfree (fs->f_group_desc);
       return ret;
     }
+
+  /* Increase mount count and update mount time */
+  fs->f_super.s_mnt_count++;
+  fs->f_super.s_mtime = time (NULL);
   return 0;
 }
 
@@ -170,6 +127,9 @@ ext2_bgdt_size (Ext2Superblock *esb)
 int
 ext2_mount (VFSMount *mp, int flags, void *data)
 {
+  VFSInode *inode;
+  SpecDevice *dev;
+  Ext2Filesystem *fs;
   int ret;
   if (data == NULL)
     return -EINVAL;
@@ -177,13 +137,42 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   mp->vfs_sb.sb_fstype = mp->vfs_fstype;
   mp->vfs_sb.sb_ops = &ext2_sops;
 
-  ret = ext2_init_disk (mp, flags, data);
+  ret = vfs_open_file (&inode, data, 1);
   if (ret != 0)
     return ret;
 
+  /* Make sure we are mounting a valid block device */
+  if (strcmp (inode->vi_sb->sb_fstype->vfs_name, devfs_vfs.vfs_name) != 0
+      || !S_ISBLK (inode->vi_mode))
+    return -EINVAL;
+  dev = device_lookup (major (inode->vi_rdev), minor (inode->vi_rdev));
+  assert (dev != NULL);
+
+  /* Fill filesystem data */
+  fs = kmalloc (sizeof (Ext2Filesystem));
+  if (unlikely (fs == NULL))
+    return -ENOMEM;
+  ret = ext2_openfs (dev, fs);
+  if (ret != 0)
+    {
+      kfree (fs);
+      return ret;
+    }
+
+  /* Fill VFS superblock */
+  mp->vfs_sb.sb_dev = dev;
+  mp->vfs_sb.sb_blksize = 1 << (fs->f_super.s_log_block_size + 10);
+  mp->vfs_sb.sb_mntflags = flags;
+  mp->vfs_sb.sb_magic = fs->f_super.s_magic;
+  mp->vfs_sb.sb_private = fs;
+
   mp->vfs_sb.sb_root = vfs_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))
-    return -ENOMEM;
+    {
+      kfree (fs->f_group_desc);
+      kfree (fs);
+      return -ENOMEM;
+    }
   mp->vfs_sb.sb_root->vi_ino = EXT2_ROOT_INODE;
   ext2_fill_inode (mp->vfs_sb.sb_root);
   return 0;
@@ -217,7 +206,7 @@ VFSDirectory *
 ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
 {
   VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
-  off64_t realblock;
+  block_t realblock;
 
   if (unlikely (d == NULL))
     return NULL;
