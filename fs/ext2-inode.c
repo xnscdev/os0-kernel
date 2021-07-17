@@ -28,7 +28,8 @@
 int
 ext2_create (VFSInode *dir, const char *name, mode_t mode)
 {
-  Ext2Superblock *esb = dir->vi_sb->sb_private;
+  Ext2Filesystem *fs = dir->vi_sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
   VFSInode *inode;
   Ext2Inode *ei;
   ino_t ino;
@@ -196,7 +197,7 @@ int
 ext2_unlink (VFSInode *dir, const char *name)
 {
   VFSSuperblock *sb = dir->vi_sb;
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vi_private;
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
@@ -555,7 +556,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 int
 ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vd_inode->vi_private;
   while (1)
     {
@@ -627,8 +628,9 @@ ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  Ext2Superblock *esb = dir->vi_sb->sb_private;
-  Ext2GroupDesc *bgdt = dir->vi_sb->sb_private + sizeof (Ext2Superblock);
+  Ext2Filesystem *fs = dir->vi_sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
+  Ext2GroupDesc *bgdt = fs->f_group_desc;
   VFSInode *inode;
   Ext2Inode *ei;
   char *data;
@@ -758,7 +760,7 @@ int
 ext2_rmdir (VFSInode *dir, const char *name)
 {
   VFSSuperblock *sb = dir->vi_sb;
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) dir->vi_sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vi_private;
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
@@ -957,7 +959,7 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 int
 ext2_truncate (VFSInode *inode)
 {
-  Ext2Superblock *esb = inode->vi_sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) inode->vi_sb->sb_private)->f_super;
   Ext2Inode *ei = inode->vi_private;
   uint64_t origsize = ei->i_size;
   uint64_t newsize = inode->vi_size & 0xffffffff;

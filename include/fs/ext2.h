@@ -296,14 +296,14 @@ typedef struct
 typedef struct
 {
   Ext2Superblock f_super;
-  Ext2GroupDesc *f_group_desc;
-  unsigned int f_group_desc_count;
-  unsigned long f_desc_blocks;
   int f_flags;
   int f_fragsize;
   unsigned int f_inode_blocks_per_group;
   mode_t f_umask;
   time_t f_now;
+  unsigned int f_group_desc_count;
+  unsigned long f_desc_blocks;
+  Ext2GroupDesc f_group_desc[0];
 } Ext2Filesystem;
 
 __BEGIN_DECLS

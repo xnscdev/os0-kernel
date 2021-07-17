@@ -38,10 +38,10 @@
 static off64_t
 ext2_try_alloc_block (VFSSuperblock *sb, int index)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
   SpecDevice *dev = sb->sb_dev;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt = fs->f_group_desc;
   unsigned char *busage;
   int ret;
   int i;
@@ -86,10 +86,10 @@ ext2_try_alloc_block (VFSSuperblock *sb, int index)
 static ino64_t
 ext2_try_create_inode (VFSSuperblock *sb, int index)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
   SpecDevice *dev = sb->sb_dev;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt = fs->f_group_desc;
   unsigned char *iusage;
   int ret;
   int i;
@@ -134,10 +134,10 @@ ext2_try_create_inode (VFSSuperblock *sb, int index)
 static int
 ext2_unalloc_block (VFSSuperblock *sb, off64_t block)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
   SpecDevice *dev = sb->sb_dev;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt = fs->f_group_desc;
   unsigned char *busage;
   uint32_t blkgrp = block / esb->s_blocks_per_group;
   uint32_t rem = block % esb->s_blocks_per_group;
@@ -173,10 +173,10 @@ ext2_unalloc_block (VFSSuperblock *sb, off64_t block)
 static int
 ext2_clear_inode (VFSSuperblock *sb, ino64_t inode)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
   SpecDevice *dev = sb->sb_dev;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
+  Ext2GroupDesc *bgdt = fs->f_group_desc;
   unsigned char *iusage;
   uint32_t blkgrp = inode / esb->s_inodes_per_group;
   uint32_t rem = inode % esb->s_inodes_per_group;
@@ -224,7 +224,7 @@ ext2_try_unalloc_pointer (VFSInode *inode, off64_t block, uint32_t *data)
 int
 ext2_extend_inode (VFSInode *inode, blkcnt_t origblocks, blkcnt_t newblocks)
 {
-  Ext2Superblock *esb = inode->vi_sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) inode->vi_sb->sb_private)->f_super;
   Ext2Inode *ei = inode->vi_private;
   blksize_t blksize = inode->vi_sb->sb_blksize;
   blkcnt_t i;
@@ -408,7 +408,7 @@ ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
   int ret = sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
 				  block * sb->sb_blksize);
   if (ret == 0)
-    ((Ext2Superblock *) sb->sb_private)->s_wtime = time (NULL);
+    ((Ext2Filesystem *) sb->sb_private)->f_super.s_wtime = time (NULL);
   return ret;
 }
 
@@ -688,24 +688,26 @@ ext2_unalloc_data_blocks (VFSInode *inode, off64_t start, blkcnt_t nblocks)
 uint32_t
 ext2_inode_offset (VFSSuperblock *sb, ino64_t inode)
 {
-  Ext2Superblock *esb = sb->sb_private;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
-  uint32_t inosize = esb->s_rev_level > 0 ? esb->s_inode_size : 128;
-  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].bg_inode_table;
-  uint32_t index = (inode - 1) % esb->s_inodes_per_group;
+  Ext2Filesystem *fs = sb->sb_private;
+  uint32_t inosize =
+    fs->f_super.s_rev_level > 0 ? fs->f_super.s_inode_size : 128;
+  uint32_t inotbl =
+    fs->f_group_desc[(inode - 1) /
+		     fs->f_super.s_inodes_per_group].bg_inode_table;
+  uint32_t index = (inode - 1) % fs->f_super.s_inodes_per_group;
   return inotbl * sb->sb_blksize + index * inosize;
 }
 
 Ext2Inode *
 ext2_read_inode (VFSSuperblock *sb, ino64_t inode)
 {
-  Ext2Superblock *esb = sb->sb_private;
-  Ext2GroupDesc *bgdt =
-    (Ext2GroupDesc *) (sb->sb_private + sizeof (Ext2Superblock));
-  uint32_t inosize = esb->s_rev_level > 0 ? esb->s_inode_size : 128;
-  uint32_t inotbl = bgdt[(inode - 1) / esb->s_inodes_per_group].bg_inode_table;
-  uint32_t index = (inode - 1) % esb->s_inodes_per_group;
+  Ext2Filesystem *fs = sb->sb_private;
+  uint32_t inosize =
+    fs->f_super.s_rev_level > 0 ? fs->f_super.s_inode_size : 128;
+  uint32_t inotbl =
+    fs->f_group_desc[(inode - 1) /
+		     fs->f_super.s_inodes_per_group].bg_inode_table;
+  uint32_t index = (inode - 1) % fs->f_super.s_inodes_per_group;
   uint32_t block = inotbl + index * inosize / sb->sb_blksize;
   uint32_t offset = index % (sb->sb_blksize / inosize);
   void *buffer;
@@ -805,7 +807,7 @@ ext2_create_inode (VFSSuperblock *sb, int prefbg)
 int
 ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
 {
-  Ext2Superblock *esb = dir->vi_sb->sb_private;
+  Ext2Superblock *esb = &((Ext2Filesystem *) dir->vi_sb->sb_private)->f_super;
   Ext2DirEntry *newent;
   VFSDirectory *d;
   VFSDirEntry *entry;

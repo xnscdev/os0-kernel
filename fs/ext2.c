@@ -80,24 +80,19 @@ const VFSFilesystem ext2_vfs = {
 static int
 ext2_init_bgdt (VFSSuperblock *sb, SpecDevice *dev)
 {
-  Ext2Superblock *esb = (Ext2Superblock *) sb->sb_private;
+  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs;
   size_t size = ext2_bgdt_size (esb);
-  void *ptr;
   int ret;
-  ptr = kmalloc (sizeof (Ext2Superblock) + sizeof (Ext2GroupDesc) * size);
-  if (unlikely (ptr == NULL))
+  fs = kmalloc (sizeof (Ext2Filesystem) + sizeof (Ext2GroupDesc) * size);
+  if (unlikely (fs == NULL))
     return -ENOMEM;
-  memcpy (ptr, esb, sizeof (Ext2Superblock));
-  sb->sb_private = ptr;
-  ret = dev->sd_read (dev, sb->sb_private + sizeof (Ext2Superblock),
-		      sizeof (Ext2GroupDesc) * size,
+  memcpy (&fs->f_super, esb, sizeof (Ext2Superblock));
+  sb->sb_private = fs;
+  ret = dev->sd_read (dev, fs->f_group_desc, sizeof (Ext2GroupDesc) * size,
 		      sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
-  if (ret != 0)
-    {
-      kfree (esb);
-      return ret;
-    }
-  return 0;
+  kfree (esb);
+  return ret;
 }
 
 static int
@@ -345,16 +340,16 @@ ext2_free (VFSSuperblock *sb)
 void
 ext2_update (VFSSuperblock *sb)
 {
-  Ext2Superblock *esb = sb->sb_private;
+  Ext2Filesystem *fs = sb->sb_private;
   SpecDevice *dev = sb->sb_dev;
 
   /* Update superblock */
-  if (dev->sd_write (dev, esb, sizeof (Ext2Superblock), 1024) != 0)
+  if (dev->sd_write (dev, &fs->f_super, sizeof (Ext2Superblock), 1024) != 0)
     return;
 
   /* Update block group descriptor table */
-  dev->sd_write (dev, sb->sb_private + sizeof (Ext2Superblock),
-		 sizeof (Ext2GroupDesc) * ext2_bgdt_size (esb),
+  dev->sd_write (dev, fs->f_group_desc,
+		 sizeof (Ext2GroupDesc) * ext2_bgdt_size (&fs->f_super),
 		 sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
 }
 
