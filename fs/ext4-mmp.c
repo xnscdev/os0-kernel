@@ -1,5 +1,5 @@
 /*************************************************************************
- * macros.h -- This file is part of OS/0.                                *
+ * ext4-mmp.c -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,10 +16,21 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_MACROS_H
-#define _LIBK_MACROS_H
+#include <fs/ext2.h>
+#include <libk/libk.h>
+#include <sys/ata.h>
+#include <vm/heap.h>
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
+int
+ext4_mmp_start (VFSSuperblock *sb)
+{
+  /* TODO Support ext4 MMP */
+  return 0;
+}
 
-#endif
+int
+ext4_mmp_stop (VFSSuperblock *sb)
+{
+  /* TODO Support ext4 MMP */
+  return 0;
+}

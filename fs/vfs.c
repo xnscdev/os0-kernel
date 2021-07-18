@@ -160,6 +160,7 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       if (j == VFS_MOUNT_TABLE_SIZE)
 	return -ENOSPC;
       mount_table[j].vfs_fstype = &fs_table[i];
+      mount_table[j].vfs_sb.sb_mntflags = flags;
 
       /* Filesystem-specific mount */
       ret = fs_table[i].vfs_mount (&mount_table[j], flags, data);

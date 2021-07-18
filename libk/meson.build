@@ -2,6 +2,7 @@ libk_src = [
   'array.c',
   'atoi.c',
   'bitsearch.c',
+  'crc32.c',
   'ctype.c',
   'itoa.c',
   'panic.c',

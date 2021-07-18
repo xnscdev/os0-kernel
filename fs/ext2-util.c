@@ -221,6 +221,74 @@ ext2_try_unalloc_pointer (VFSInode *inode, block_t block, uint32_t *data)
   return ext2_unalloc_block (inode->vi_sb, block);
 }
 
+static int
+ext2_bg_super_test_root (unsigned int group, unsigned int x)
+{
+  while (1)
+    {
+      if (group < x)
+	return 0;
+      if (group == x)
+	return 1;
+      if (group % x)
+	return 0;
+      group /= x;
+    }
+}
+
+int
+ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group)
+{
+  if (group == 0)
+    return 1;
+  if (fs->f_super.s_feature_ro_compat & EXT2_FT_RO_COMPAT_SPARSE_SUPER)
+    return group == fs->f_super.s_backup_bgs[0]
+      || group == fs->f_super.s_backup_bgs[1];
+  if (group <= 1)
+    return 1;
+  if (!(group & 1))
+    return 0;
+  if (ext2_bg_super_test_root (group, 3)
+      || ext2_bg_super_test_root (group, 5)
+      || ext2_bg_super_test_root (group, 7))
+    return 1;
+  return 0;
+}
+
+block_t
+ext2_descriptor_block (VFSSuperblock *sb, block_t group_block, unsigned int i)
+{
+  int has_super = 0;
+  int group_zero_adjust = 0;
+  int bg;
+  block_t block;
+  Ext2Filesystem *fs = sb->sb_private;
+
+  if (i == 0 && sb->sb_blksize == 1024 && EXT2_CLUSTER_RATIO (fs) > 1)
+    group_zero_adjust = 1;
+
+  if (!(fs->f_super.s_feature_incompat & EXT2_FT_INCOMPAT_META_BG)
+      || i < fs->f_super.s_first_meta_bg)
+    return group_block + group_zero_adjust + i + 1;
+
+  bg = EXT2_DESC_PER_BLOCK (fs->f_super) * i;
+  if (ext2_bg_has_super (fs, bg))
+    has_super = 1;
+  block = ext2_group_first_block (fs, bg);
+
+  if (group_block != fs->f_super.s_first_data_block
+      && block + has_super + fs->f_super.s_blocks_per_group <
+      ext2_blocks_count (&fs->f_super))
+    {
+      block += fs->f_super.s_blocks_per_group;
+      if (ext2_bg_has_super (fs, bg + 1))
+	has_super = 1;
+      else
+	has_super = 0;
+    }
+  return block + has_super + group_zero_adjust;
+}
+
 int
 ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks, blkcnt64_t newblocks)
 {

@@ -47,6 +47,23 @@
 #define EXT2_DIRTYPE_SOCKET 6
 #define EXT2_DIRTYPE_LINK   7
 
+#define EXT2_OLD_REV     0
+#define EXT2_DYNAMIC_REV 1
+
+#define EXT2_OLD_INODE_SIZE  128
+#define EXT2_OLD_FIRST_INODE 11
+
+#define EXT2_MIN_BLOCK_LOG_SIZE 10
+#define EXT2_MAX_BLOCK_LOG_SIZE 16
+#define EXT2_MIN_BLOCK_SIZE (1 << EXT2_MIN_BLOCK_LOG_SIZE)
+#define EXT2_MAX_BLOCK_SIZE (1 << EXT2_MAX_BLOCK_LOG_SIZE)
+
+#define EXT2_MIN_DESC_SIZE    32
+#define EXT2_MIN_DESC_SIZE_64 64
+#define EXT2_MAX_DESC_SIZE    EXT2_MIN_BLOCK_SIZE
+
+#define EXT2_CRC32C_CHECKSUM 1
+
 #define EXT2_FT_COMPAT_DIR_PREALLOC     0x0001
 #define EXT2_FT_COMPAT_IMAGIC_INODES    0x0002
 #define EXT3_FT_COMPAT_HAS_JOURNAL      0x0004
@@ -92,23 +109,50 @@
 #define EXT4_FT_RO_COMPAT_SHARED_BLOCKS 0x4000
 #define EXT4_FT_RO_COMPAT_VERITY        0x8000
 
-/* Incompatible features that are unsupported */
+#define EXT2_INCOMPAT_SUPPORTED (EXT2_FT_INCOMPAT_FILETYPE	\
+				 | EXT3_FT_INCOMPAT_JOURNAL_DEV \
+				 | EXT2_FT_INCOMPAT_META_BG	\
+				 | EXT3_FT_INCOMPAT_RECOVER	\
+				 | EXT3_FT_INCOMPAT_EXTENTS	\
+				 | EXT4_FT_INCOMPAT_FLEX_BG	\
+				 | EXT4_FT_INCOMPAT_EA_INODE	\
+				 | EXT4_FT_INCOMPAT_MMP		\
+				 | EXT4_FT_INCOMPAT_64BIT	\
+				 | EXT4_FT_INCOMPAT_INLINE_DATA \
+				 | EXT4_FT_INCOMPAT_ENCRYPT	\
+				 | EXT4_FT_INCOMPAT_CASEFOLD	\
+				 | EXT4_FT_INCOMPAT_CSUM_SEED	\
+				 | EXT4_FT_INCOMPAT_LARGEDIR)
 
-#define EXT2_UNSUPPORTED_FEATURES (EXT2_FT_INCOMPAT_COMPRESSION		\
-				   | EXT3_FT_INCOMPAT_RECOVER		\
-				   | EXT3_FT_INCOMPAT_JOURNAL_DEV	\
-				   | EXT2_FT_INCOMPAT_META_BG		\
-				   | EXT3_FT_INCOMPAT_EXTENTS		\
-				   | EXT4_FT_INCOMPAT_64BIT		\
-				   | EXT4_FT_INCOMPAT_MMP		\
-				   | EXT4_FT_INCOMPAT_FLEX_BG		\
-				   | EXT4_FT_INCOMPAT_EA_INODE		\
-				   | EXT4_FT_INCOMPAT_DIRDATA		\
-				   | EXT4_FT_INCOMPAT_CSUM_SEED		\
-				   | EXT4_FT_INCOMPAT_LARGEDIR		\
-				   | EXT4_FT_INCOMPAT_INLINE_DATA	\
-				   | EXT4_FT_INCOMPAT_ENCRYPT		\
-				   | EXT4_FT_INCOMPAT_CASEFOLD)
+#define EXT2_RO_COMPAT_SUPPORTED (EXT2_FT_RO_COMPAT_SPARSE_SUPER	\
+				  | EXT4_FT_RO_COMPAT_HUGE_FILE		\
+				  | EXT2_FT_RO_COMPAT_LARGE_FILE	\
+				  | EXT4_FT_RO_COMPAT_DIR_NLINK		\
+				  | EXT4_FT_RO_COMPAT_EXTRA_ISIZE	\
+				  | EXT4_FT_RO_COMPAT_GDT_CSUM		\
+				  | EXT4_FT_RO_COMPAT_BIGALLOC		\
+				  | EXT4_FT_RO_COMPAT_QUOTA		\
+				  | EXT4_FT_RO_COMPAT_METADATA_CSUM	\
+				  | EXT4_FT_RO_COMPAT_READONLY		\
+				  | EXT4_FT_RO_COMPAT_PROJECT		\
+				  | EXT4_FT_RO_COMPAT_SHARED_BLOCKS	\
+				  | EXT4_FT_RO_COMPAT_VERITY)
+
+#define EXT2_BLOCK_SIZE(s) (EXT2_MIN_BLOCK_SIZE << s.s_log_block_size)
+#define EXT2_CLUSTER_SIZE(s) (EXT2_MIN_BLOCK_SIZE << s.s_log_cluster_size)
+#define EXT2_INODE_SIZE(s)						\
+  (s.s_rev_level == EXT2_OLD_REV ? EXT2_OLD_INODE_SIZE : s.s_inode_size)
+#define EXT2_DESC_SIZE(s)				\
+  (s.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?	\
+   s.s_desc_size : EXT2_MIN_DESC_SIZE)
+#define EXT2_INODES_PER_BLOCK(s) (EXT2_BLOCK_SIZE (s) / EXT2_INODE_SIZE (s))
+#define EXT2_DESC_PER_BLOCK(s) (EXT2_BLOCK_SIZE (s) / EXT2_DESC_SIZE (s))
+#define EXT2_MAX_BLOCKS_PER_GROUP(s)				\
+  (65528 * (EXT2_CLUSTER_SIZE (s) / EXT2_BLOCK_SIZE (s)))
+#define EXT2_MAX_INODES_PER_GROUP(s) (65536 - EXT2_INODES_PER_BLOCK (s))
+#define EXT2_CLUSTER_RATIO(fs) (1 << fs->f_cluster_ratio_bits)
+#define EXT2_GROUPS_TO_BLOCKS(s, g) ((block_t) s.s_blocks_per_group * (g))
+#define EXT2_GROUPS_TO_CLUSTERS(s, g) ((block_t) s.s_clusters_per_group * (g))
 
 typedef struct
 {
@@ -295,15 +339,35 @@ typedef struct
 
 typedef struct
 {
+  uint32_t mmp_magic;
+  uint32_t mmp_seq;
+  uint64_t mmp_time;
+  unsigned char mmp_nodename[64];
+  unsigned char mmp_bdevname[32];
+  uint16_t mmp_check_interval;
+  uint16_t mmp_pad1;
+  uint32_t mmp_pad2[226];
+  uint32_t mmp_checksum;
+} Ext4MMPBlock;
+
+typedef struct
+{
   Ext2Superblock f_super;
   int f_flags;
   int f_fragsize;
-  unsigned int f_inode_blocks_per_group;
-  mode_t f_umask;
-  time_t f_now;
   unsigned int f_group_desc_count;
   unsigned long f_desc_blocks;
   Ext2GroupDesc *f_group_desc;
+  unsigned int f_inode_blocks_per_group;
+  uint32_t f_stride;
+  mode_t f_umask;
+  time_t f_now;
+  int f_cluster_ratio_bits;
+  uint16_t f_default_bitmap_type;
+  void *f_mmp_buffer;
+  int f_mmp_fd;
+  time_t f_mmp_last_written;
+  uint32_t f_checksum_seed;
 } Ext2Filesystem;
 
 __BEGIN_DECLS
@@ -313,8 +377,25 @@ extern const VFSInodeOps ext2_iops;
 extern const VFSDirEntryOps ext2_dops;
 extern const VFSFilesystem ext2_vfs;
 
+static inline blkcnt64_t
+ext2_blocks_count (const Ext2Superblock *s)
+{
+  return (blkcnt64_t) s->s_blocks_count |
+    (s->s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?
+     (blkcnt64_t) s->s_blocks_count_hi << 32 : 0);
+}
+
+static inline block_t
+ext2_group_first_block (Ext2Filesystem *fs, unsigned int group)
+{
+  return fs->f_super.s_first_data_block +
+    EXT2_GROUPS_TO_BLOCKS (fs->f_super, group);
+}
+
 void ext2_init (void);
 
+block_t ext2_descriptor_block (VFSSuperblock *sb, block_t group_block,
+			       unsigned int i);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
@@ -332,6 +413,9 @@ block_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
+
+int ext4_mmp_start (VFSSuperblock *sb);
+int ext4_mmp_stop (VFSSuperblock *sb);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);

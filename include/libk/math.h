@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * math.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,33 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/math.h>
-#include <libk/stack.h>
-#include <libk/types.h>
-#include <sys/ioctl.h>
-#include <sys/signal.h>
-#include <assert.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
+#ifndef _LIBK_MATH_H
+#define _LIBK_MATH_H
+
+#include <sys/cdefs.h>
+#include <stdint.h>
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+__BEGIN_DECLS
+
+static inline uint32_t
+div32_ceil (uint32_t a, uint32_t b)
+{
+  if (a == 0)
+    return 0;
+  return (a - 1) / b + 1;
+}
+
+static inline uint64_t
+div64_ceil (uint64_t a, uint64_t b)
+{
+  if (a == 0)
+    return 0;
+  return (a - 1) / b + 1;
+}
+
+__END_DECLS
+
+#endif

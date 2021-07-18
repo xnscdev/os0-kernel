@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <bits/mount.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <libk/libk.h>
@@ -78,39 +79,172 @@ const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_openfs (SpecDevice *dev, Ext2Filesystem *fs)
+ext2_superblock_checksum_valid (Ext2Filesystem *fs)
 {
-  /* Read superblock */
-  size_t size;
-  int ret = dev->sd_read (dev, &fs->f_super, sizeof (Ext2Superblock), 1024);
-  if (ret != 0)
-    return ret;
+  uint32_t checksum;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+  if (fs->f_super.s_checksum_type != EXT2_CRC32C_CHECKSUM)
+    return 0;
+  checksum =
+    crc32 (0xffffffff, &fs->f_super, offsetof (Ext2Superblock, s_checksum));
+  return checksum == fs->f_super.s_checksum;
+}
 
-  /* Check ext2 magic number */
-  if (fs->f_super.s_magic != EXT2_MAGIC)
+static int
+ext2_openfs (SpecDevice *dev, VFSSuperblock *sb, Ext2Filesystem *fs)
+{
+  unsigned long first_meta_bg;
+  unsigned long i;
+  block_t group_block;
+  block_t block;
+  char *dest;
+  size_t inosize;
+  uint64_t ngroups;
+  int group_zero_adjust = 0;
+  int ret;
+  fs->f_umask = S_IWGRP | S_IWOTH;
+
+  /* Read and verify superblock */
+  if (dev->sd_read (dev, &fs->f_super, sizeof (Ext2Superblock), 1024) < 0)
+    return -EIO;
+  if (!ext2_superblock_checksum_valid (fs)
+      || fs->f_super.s_magic != EXT2_MAGIC
+      || fs->f_super.s_rev_level > 1)
+    return -EINVAL;
+  sb->sb_magic = fs->f_super.s_magic;
+
+  /* Check for unsupported features */
+  if ((fs->f_super.s_feature_incompat & ~EXT2_INCOMPAT_SUPPORTED)
+      || (!(sb->sb_mntflags & MNT_RDONLY)
+	  && (fs->f_super.s_feature_ro_compat & ~EXT2_RO_COMPAT_SUPPORTED)))
+    return -ENOTSUP;
+  if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_JOURNAL_DEV)
+    return -ENOTSUP; /* Journals are currently not supported */
+
+  /* Check for valid block and cluster sizes */
+  if (fs->f_super.s_log_block_size >
+      EXT2_MAX_BLOCK_LOG_SIZE - EXT2_MIN_BLOCK_LOG_SIZE)
+    return -EINVAL;
+  if ((fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_BIGALLOC)
+      && fs->f_super.s_log_block_size != fs->f_super.s_log_cluster_size)
+    return -EINVAL;
+  sb->sb_blksize = EXT2_BLOCK_SIZE (fs->f_super);
+
+  /* Determine inode size */
+  inosize = EXT2_INODE_SIZE (fs->f_super);
+  if (inosize < EXT2_OLD_INODE_SIZE || inosize > sb->sb_blksize
+      || (inosize & (inosize - 1)))
     return -EINVAL;
 
-  /* Fail mounting if any incompatible features are required */
-  if (fs->f_super.s_feature_incompat & EXT2_UNSUPPORTED_FEATURES)
-    return -ENOTSUP;
+  if ((fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT)
+      && fs->f_super.s_desc_size < EXT2_MIN_DESC_SIZE_64)
+    return -EINVAL;
 
-  /* Initialize block group descriptor table */
-  size = ext2_bgdt_size (&fs->f_super);
-  fs->f_group_desc = kmalloc (sizeof (Ext2GroupDesc) * size);
-  if (unlikely (fs->f_group_desc == NULL))
-    return -ENOMEM;
-  ret = dev->sd_read (dev, fs->f_group_desc, sizeof (Ext2GroupDesc) * size,
-		      fs->f_super.s_log_block_size >= 2 ?
-		      1 << (fs->f_super.s_log_block_size + 10) : 2048);
-  if (ret < 0)
+  fs->f_cluster_ratio_bits =
+    fs->f_super.s_log_cluster_size - fs->f_super.s_log_block_size;
+  if (fs->f_super.s_blocks_per_group !=
+      fs->f_super.s_clusters_per_group << fs->f_cluster_ratio_bits)
+    return -EINVAL;
+  fs->f_inode_blocks_per_group = (fs->f_super.s_inodes_per_group * inosize +
+				  sb->sb_blksize - 1) / sb->sb_blksize;
+
+  /* Don't read group descriptors for journal devices */
+  if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_JOURNAL_DEV)
     {
-      kfree (fs->f_group_desc);
-      return ret;
+      fs->f_group_desc_count = 0;
+      return 0;
     }
 
-  /* Increase mount count and update mount time */
-  fs->f_super.s_mnt_count++;
-  fs->f_super.s_mtime = time (NULL);
+  if (fs->f_super.s_inodes_per_group == 0)
+    return -EINVAL;
+
+  /* Initialize checksum seed */
+  if (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_CSUM_SEED)
+    fs->f_checksum_seed = fs->f_super.s_checksum_seed;
+  else if ((fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM)
+	   && (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_EA_INODE))
+    fs->f_checksum_seed = crc32 (0xffffffff, fs->f_super.s_uuid, 16);
+
+  /* Check for valid block count info */
+  if (fs->f_super.s_blocks_per_group == 0
+      || (fs->f_super.s_blocks_per_group >
+	  EXT2_MAX_BLOCKS_PER_GROUP (fs->f_super))
+      || (fs->f_inode_blocks_per_group >=
+	  EXT2_MAX_INODES_PER_GROUP (fs->f_super))
+      || EXT2_DESC_PER_BLOCK (fs->f_super) == 0
+      || fs->f_super.s_first_data_block >= ext2_blocks_count (&fs->f_super))
+    return -EINVAL;
+
+  /* Determine number of block groups */
+  ngroups = div64_ceil (ext2_blocks_count (&fs->f_super) -
+			fs->f_super.s_first_data_block,
+			fs->f_super.s_blocks_per_group);
+  if (ngroups >> 32)
+    return -EINVAL;
+  fs->f_group_desc_count = ngroups;
+  if (ngroups * fs->f_super.s_inodes_per_group != fs->f_super.s_inodes_count)
+    return -EINVAL;
+  fs->f_desc_blocks =
+    div32_ceil (fs->f_group_desc_count, EXT2_DESC_PER_BLOCK (fs->f_super));
+
+  /* Read block group descriptors */
+  fs->f_group_desc = kmalloc (fs->f_desc_blocks * sb->sb_blksize);
+  if (unlikely (fs->f_group_desc == NULL))
+    return -ENOMEM;
+
+  group_block = fs->f_super.s_first_data_block;
+  if (group_block == 0 && sb->sb_blksize == 1024)
+    group_zero_adjust = 1;
+  dest = (char *) fs->f_group_desc;
+
+  if (fs->f_super.s_feature_incompat & EXT2_FT_INCOMPAT_META_BG)
+    {
+      first_meta_bg = fs->f_super.s_first_meta_bg;
+      if (first_meta_bg > fs->f_desc_blocks)
+	first_meta_bg = fs->f_desc_blocks;
+    }
+  else
+    first_meta_bg = fs->f_desc_blocks;
+  if (first_meta_bg > 0)
+    {
+      ret = dev->sd_read (dev, dest, first_meta_bg * sb->sb_blksize,
+			  (group_block + group_zero_adjust + 1) *
+			  sb->sb_blksize);
+      if (ret < 0)
+	{
+	  kfree (fs->f_group_desc);
+	  return ret;
+	}
+      dest += sb->sb_blksize * first_meta_bg;
+    }
+
+  for (i = first_meta_bg; i < fs->f_desc_blocks; i++)
+    block = ext2_descriptor_block (sb, group_block, i);
+  for (i = first_meta_bg; i < fs->f_desc_blocks; i++)
+    {
+      block = ext2_descriptor_block (sb, group_block, i);
+      ret = ext2_read_blocks (dest, sb, block, 1);
+      if (ret != 0)
+	{
+	  kfree (fs->f_group_desc);
+	  return ret;
+	}
+      dest += sb->sb_blksize;
+    }
+
+  fs->f_stride = fs->f_super.s_raid_stride;
+  if ((fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_MMP)
+      && !(sb->sb_mntflags & MNT_RDONLY))
+    {
+      ret = ext4_mmp_start (sb);
+      if (ret != 0)
+	{
+	  ext4_mmp_stop (sb);
+	  kfree (fs->f_group_desc);
+	  return ret;
+	}
+    }
   return 0;
 }
 
@@ -149,22 +283,17 @@ ext2_mount (VFSMount *mp, int flags, void *data)
   assert (dev != NULL);
 
   /* Fill filesystem data */
-  fs = kmalloc (sizeof (Ext2Filesystem));
+  fs = kzalloc (sizeof (Ext2Filesystem));
   if (unlikely (fs == NULL))
     return -ENOMEM;
-  ret = ext2_openfs (dev, fs);
+  mp->vfs_sb.sb_dev = dev;
+  mp->vfs_sb.sb_private = fs;
+  ret = ext2_openfs (dev, &mp->vfs_sb, fs);
   if (ret != 0)
     {
       kfree (fs);
       return ret;
     }
-
-  /* Fill VFS superblock */
-  mp->vfs_sb.sb_dev = dev;
-  mp->vfs_sb.sb_blksize = 1 << (fs->f_super.s_log_block_size + 10);
-  mp->vfs_sb.sb_mntflags = flags;
-  mp->vfs_sb.sb_magic = fs->f_super.s_magic;
-  mp->vfs_sb.sb_private = fs;
 
   mp->vfs_sb.sb_root = vfs_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))
