@@ -79,19 +79,6 @@ const VFSFilesystem ext2_vfs = {
 };
 
 static int
-ext2_superblock_checksum_valid (Ext2Filesystem *fs)
-{
-  uint32_t checksum;
-  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
-    return 1;
-  if (fs->f_super.s_checksum_type != EXT2_CRC32C_CHECKSUM)
-    return 0;
-  checksum =
-    crc32 (0xffffffff, &fs->f_super, offsetof (Ext2Superblock, s_checksum));
-  return checksum == fs->f_super.s_checksum;
-}
-
-static int
 ext2_openfs (SpecDevice *dev, VFSSuperblock *sb, Ext2Filesystem *fs)
 {
   unsigned long first_meta_bg;
@@ -367,9 +354,14 @@ ext2_destroy_dir (VFSDirectory *dir)
 void
 ext2_fill_inode (VFSInode *inode)
 {
-  Ext2Superblock *esb = (Ext2Superblock *) inode->vi_sb->sb_private;
-  Ext2Inode *ei = ext2_read_inode (inode->vi_sb, inode->vi_ino);
-  if (ei == NULL)
+  Ext2Filesystem *fs = inode->vi_sb->sb_private;
+  Ext2Superblock *esb = &fs->f_super;
+  Ext2Inode *ei = kmalloc (sizeof (Ext2Inode));
+  int ret;
+  if (unlikely (ei == NULL))
+    return;
+  ret = ext2_read_inode (inode->vi_sb, inode->vi_ino, ei);
+  if (ret != 0)
     return;
   inode->vi_uid = ei->i_uid;
   inode->vi_gid = ei->i_gid;

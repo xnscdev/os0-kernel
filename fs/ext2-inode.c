@@ -65,13 +65,13 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   ei->i_links_count = 1;
   ei->i_blocks = 0;
   ei->i_flags = 0;
-  ei->i_osd1 = 0;
+  memset (&ei->osd1, 0, sizeof (ei->osd1));
   memset (ei->i_block, 0, 60);
   ei->i_generation = 0; /* ??? */
   ei->i_file_acl = 0;
   ei->i_size_high = 0;
   ei->i_faddr = 0; /* ??? */
-  memset (ei->i_osd2, 0, 3);
+  memset (&ei->osd2, 0, sizeof (ei->osd2));
 
   inode->vi_ino = ino;
   inode->vi_mode = mode | S_IFREG;
@@ -669,7 +669,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   ei->i_links_count = 2;
   ei->i_blocks = ei->i_size / ATA_SECTSIZE;
   ei->i_flags = 0;
-  ei->i_osd1 = 0;
+  memset (&ei->osd1, 0, sizeof (ei->osd1));
   firstblock =
     ext2_alloc_block (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
   if (firstblock < 0)
@@ -683,7 +683,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   ei->i_file_acl = 0;
   ei->i_size_high = 0;
   ei->i_faddr = 0; /* ??? */
-  memset (ei->i_osd2, 0, 3);
+  memset (&ei->osd2, 0, sizeof (ei->osd2));
 
   inode->vi_ino = ino;
   inode->vi_mode = mode | S_IFDIR;

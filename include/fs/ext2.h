@@ -47,23 +47,6 @@
 #define EXT2_DIRTYPE_SOCKET 6
 #define EXT2_DIRTYPE_LINK   7
 
-#define EXT2_OLD_REV     0
-#define EXT2_DYNAMIC_REV 1
-
-#define EXT2_OLD_INODE_SIZE  128
-#define EXT2_OLD_FIRST_INODE 11
-
-#define EXT2_MIN_BLOCK_LOG_SIZE 10
-#define EXT2_MAX_BLOCK_LOG_SIZE 16
-#define EXT2_MIN_BLOCK_SIZE (1 << EXT2_MIN_BLOCK_LOG_SIZE)
-#define EXT2_MAX_BLOCK_SIZE (1 << EXT2_MAX_BLOCK_LOG_SIZE)
-
-#define EXT2_MIN_DESC_SIZE    32
-#define EXT2_MIN_DESC_SIZE_64 64
-#define EXT2_MAX_DESC_SIZE    EXT2_MIN_BLOCK_SIZE
-
-#define EXT2_CRC32C_CHECKSUM 1
-
 #define EXT2_FT_COMPAT_DIR_PREALLOC     0x0001
 #define EXT2_FT_COMPAT_IMAGIC_INODES    0x0002
 #define EXT3_FT_COMPAT_HAS_JOURNAL      0x0004
@@ -138,7 +121,28 @@
 				  | EXT4_FT_RO_COMPAT_SHARED_BLOCKS	\
 				  | EXT4_FT_RO_COMPAT_VERITY)
 
+#define EXT2_OLD_REV     0
+#define EXT2_DYNAMIC_REV 1
+
+#define EXT2_OLD_INODE_SIZE  128
+#define EXT2_OLD_FIRST_INODE 11
+
+#define EXT2_MIN_BLOCK_LOG_SIZE 10
+#define EXT2_MAX_BLOCK_LOG_SIZE 16
+#define EXT2_MIN_BLOCK_SIZE (1 << EXT2_MIN_BLOCK_LOG_SIZE)
+#define EXT2_MAX_BLOCK_SIZE (1 << EXT2_MAX_BLOCK_LOG_SIZE)
+
+#define EXT2_MIN_DESC_SIZE    32
+#define EXT2_MIN_DESC_SIZE_64 64
+#define EXT2_MAX_DESC_SIZE    EXT2_MIN_BLOCK_SIZE
+
+#define EXT4_INODE_CSUM_HI_EXTRA_END \
+  (offsetof (Ext2LargeInode, i_checksum_hi) + 2 - EXT2_OLD_INODE_SIZE)
+
+#define EXT2_CRC32C_CHECKSUM 1
+
 #define EXT2_BLOCK_SIZE(s) (EXT2_MIN_BLOCK_SIZE << s.s_log_block_size)
+#define EXT2_BLOCK_SIZE_BITS(s) (s.s_log_block_size + 10)
 #define EXT2_CLUSTER_SIZE(s) (EXT2_MIN_BLOCK_SIZE << s.s_log_cluster_size)
 #define EXT2_INODE_SIZE(s)						\
   (s.s_rev_level == EXT2_OLD_REV ? EXT2_OLD_INODE_SIZE : s.s_inode_size)
@@ -273,13 +277,44 @@ typedef struct
   uint16_t i_links_count;
   uint32_t i_blocks;
   uint32_t i_flags;
-  uint32_t i_osd1;
+  union
+  {
+    struct
+    {
+      uint32_t l_i_version;
+    } linux1;
+    struct
+    {
+      uint32_t h_i_translator;
+    } hurd1;
+  } osd1;
   uint32_t i_block[15];
   uint32_t i_generation;
   uint32_t i_file_acl;
   uint32_t i_size_high;
   uint32_t i_faddr;
-  uint32_t i_osd2[3];
+  union
+  {
+    struct
+    {
+      uint16_t l_i_blocks_hi;
+      uint16_t l_i_file_acl_hi;
+      uint16_t l_i_uid_high;
+      uint16_t l_i_gid_high;
+      uint16_t l_i_checksum_lo;
+#define i_checksum_lo osd2.linux2.l_i_checksum_lo
+      uint16_t l_i_reserved;
+    } linux2;
+    struct
+    {
+      unsigned char h_i_frag;
+      unsigned char h_i_fsize;
+      uint16_t h_i_mode_high;
+      uint16_t h_i_uid_high;
+      uint16_t h_i_gid_high;
+      uint32_t h_i_author;
+    } hurd2;
+  } osd2;
 } Ext2Inode;
 
 typedef struct
@@ -295,13 +330,43 @@ typedef struct
   uint16_t i_links_count;
   uint32_t i_blocks;
   uint32_t i_flags;
-  uint32_t i_osd1;
+  union
+  {
+    struct
+    {
+      uint32_t l_i_version;
+    } linux1;
+    struct
+    {
+      uint32_t h_i_translator;
+    } hurd1;
+  } osd1;
   uint32_t i_block[15];
   uint32_t i_generation;
   uint32_t i_file_acl;
   uint32_t i_size_high;
   uint32_t i_faddr;
-  uint32_t i_osd2[3];
+  union
+  {
+    struct
+    {
+      uint16_t l_i_blocks_hi;
+      uint16_t l_i_file_acl_hi;
+      uint16_t l_i_uid_high;
+      uint16_t l_i_gid_high;
+      uint16_t l_i_checksum_lo;
+      uint16_t l_i_reserved;
+    } linux2;
+    struct
+    {
+      unsigned char h_i_frag;
+      unsigned char h_i_fsize;
+      uint16_t h_i_mode_high;
+      uint16_t h_i_uid_high;
+      uint16_t h_i_gid_high;
+      uint32_t h_i_author;
+    } hurd2;
+  } osd2;
   uint16_t i_extra_isize;
   uint16_t i_checksum_hi;
   uint32_t i_ctime_extra;
@@ -331,6 +396,33 @@ typedef struct
 
 typedef struct
 {
+  uint32_t bg_block_bitmap;
+  uint32_t bg_inode_bitmap;
+  uint32_t bg_inode_table;
+  uint16_t bg_free_blocks_count;
+  uint16_t bg_free_inodes_count;
+  uint16_t bg_used_dirs_count;
+  uint16_t bg_flags;
+  uint32_t bg_exclude_bitmap_lo;
+  uint16_t bg_block_bitmap_csum_lo;
+  uint16_t bg_inode_bitmap_csum_lo;
+  uint16_t bg_itable_unused;
+  uint16_t bg_checksum;
+  uint32_t bg_block_bitmap_hi;
+  uint32_t bg_inode_bitmap_hi;
+  uint32_t bg_inode_table_hi;
+  uint16_t bg_free_blocks_count_hi;
+  uint16_t bg_free_inodes_count_hi;
+  uint16_t bg_used_dirs_count_hi;
+  uint16_t bg_itable_unused_hi;
+  uint32_t bg_exclude_bitmap_hi;
+  uint16_t bg_block_bitmap_csum_hi;
+  uint16_t bg_inode_bitmap_csum_hi;
+  uint32_t bg_reserved;
+} Ext4GroupDesc;
+
+typedef struct
+{
   uint32_t ed_inode;
   uint16_t ed_size;
   uint8_t ed_namelenl;
@@ -352,6 +444,31 @@ typedef struct
 
 typedef struct
 {
+  Ext2Inode f_inode;
+  uint64_t f_pos;
+  block_t f_block;
+  block_t f_physblock;
+  char *f_buffer;
+} Ext2File;
+
+typedef struct
+{
+  ino64_t e_ino;
+  Ext2Inode *e_inode;
+} Ext2InodeCacheEntry;
+
+typedef struct
+{
+  void *ic_buffer;
+  block_t ic_block;
+  int ic_cache_last;
+  unsigned int ic_cache_size;
+  int ic_refcnt;
+  Ext2InodeCacheEntry *ic_cache;
+} Ext2InodeCache;
+
+typedef struct
+{
   Ext2Superblock f_super;
   int f_flags;
   int f_fragsize;
@@ -364,6 +481,7 @@ typedef struct
   time_t f_now;
   int f_cluster_ratio_bits;
   uint16_t f_default_bitmap_type;
+  Ext2InodeCache *f_icache;
   void *f_mmp_buffer;
   int f_mmp_fd;
   time_t f_mmp_last_written;
@@ -394,8 +512,21 @@ ext2_group_first_block (Ext2Filesystem *fs, unsigned int group)
 
 void ext2_init (void);
 
+int ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group);
+int ext4_mmp_start (VFSSuperblock *sb);
+int ext4_mmp_stop (VFSSuperblock *sb);
+Ext2GroupDesc *ext2_group_desc (VFSSuperblock *sb, Ext2GroupDesc *gdp,
+				unsigned int group);
+Ext4GroupDesc *ext4_group_desc (VFSSuperblock *sb, Ext2GroupDesc *gdp,
+				unsigned int group);
+block_t ext2_inode_table_loc (VFSSuperblock *sb, unsigned int group);
 block_t ext2_descriptor_block (VFSSuperblock *sb, block_t group_block,
 			       unsigned int i);
+int ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file);
+int ext2_read_inode (VFSSuperblock *sb, ino64_t inode, Ext2Inode *result);
+int ext2_create_inode_cache (VFSSuperblock *sb, unsigned int cache_size);
+void ext2_free_inode_cache (Ext2InodeCache *cache);
+int ext2_flush_inode_cache (Ext2InodeCache *cache);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
@@ -407,15 +538,14 @@ int ext2_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, block_t block,
 int ext2_unalloc_data_blocks (VFSInode *inode, block_t start,
 			      blkcnt64_t nblocks);
 uint32_t ext2_inode_offset (VFSSuperblock *sb, ino64_t inode);
-Ext2Inode *ext2_read_inode (VFSSuperblock *sb, ino64_t inode);
 int ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode);
 block_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
-
-int ext4_mmp_start (VFSSuperblock *sb);
-int ext4_mmp_stop (VFSSuperblock *sb);
+int ext2_superblock_checksum_valid (Ext2Filesystem *fs);
+int ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
+			       Ext2LargeInode *inode);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);

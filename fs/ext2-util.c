@@ -255,6 +255,58 @@ ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group)
   return 0;
 }
 
+Ext2GroupDesc *
+ext2_group_desc (VFSSuperblock *sb, Ext2GroupDesc *gdp, unsigned int group)
+{
+  static char *buffer;
+  static size_t bufsize;
+  Ext2Filesystem *fs = sb->sb_private;
+  block_t block;
+  int desc_size = EXT2_DESC_SIZE (fs->f_super);
+  int desc_per_block = EXT2_DESC_PER_BLOCK (fs->f_super);
+  int ret;
+
+  if (group > fs->f_group_desc_count)
+    return NULL;
+  if (gdp != NULL)
+    return (Ext2GroupDesc *) ((char *) gdp + group * desc_size);
+
+  if (bufsize < sb->sb_blksize)
+    {
+      kfree (buffer);
+      buffer = NULL;
+    }
+  if (buffer == NULL)
+    {
+      buffer = kmalloc (sb->sb_blksize);
+      if (unlikely (buffer == NULL))
+	return NULL;
+      bufsize = sb->sb_blksize;
+    }
+  block = ext2_descriptor_block (sb, fs->f_super.s_first_data_block,
+				 group / desc_per_block);
+  ret = ext2_read_blocks (buffer, sb, block, 1);
+  if (ret != 0)
+    return NULL;
+  return (Ext2GroupDesc *) (buffer + group % desc_per_block * desc_size);
+}
+
+Ext4GroupDesc *
+ext4_group_desc (VFSSuperblock *sb, Ext2GroupDesc *gdp, unsigned int group)
+{
+  return (Ext4GroupDesc *) ext2_group_desc (sb, gdp, group);
+}
+
+block_t
+ext2_inode_table_loc (VFSSuperblock *sb, unsigned int group)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
+  return (block_t) gdp->bg_inode_table |
+    (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?
+     (block_t) gdp->bg_inode_table_hi << 32 : 0);
+}
+
 block_t
 ext2_descriptor_block (VFSSuperblock *sb, block_t group_block, unsigned int i)
 {
@@ -287,6 +339,171 @@ ext2_descriptor_block (VFSSuperblock *sb, block_t group_block, unsigned int i)
 	has_super = 0;
     }
   return block + has_super + group_zero_adjust;
+}
+
+int
+ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file)
+{
+  int ret = ext2_read_inode (sb, inode, &file->f_inode);
+  if (ret != 0)
+    return ret;
+  file->f_buffer = kmalloc (sb->sb_blksize * 3);
+  if (unlikely (file->f_buffer == NULL))
+    return -ENOMEM;
+  return 0;
+}
+
+int
+ext2_read_inode (VFSSuperblock *sb, ino64_t inode, Ext2Inode *result)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  int len = EXT2_INODE_SIZE (fs->f_super);
+  size_t bufsize = sizeof (Ext2Inode);
+  Ext2LargeInode *iptr;
+  char *ptr;
+  block_t blockno;
+  unsigned int group;
+  unsigned long block;
+  unsigned long offset;
+  unsigned int i;
+  int cache_slot;
+  int csum_valid;
+  int clen;
+  int ret;
+
+  if (unlikely (inode == 0 || inode > fs->f_super.s_inodes_count))
+    return -EINVAL;
+
+  /* Try lookup in inode cache */
+  if (fs->f_icache == NULL)
+    {
+      ret = ext2_create_inode_cache (sb, 4);
+      if (ret != 0)
+	return ret;
+    }
+  for (i = 0; i < fs->f_icache->ic_cache_size; i++)
+    {
+      if (fs->f_icache->ic_cache[i].e_ino == inode)
+	{
+	  memcpy (result, fs->f_icache->ic_cache[i].e_inode,
+		  bufsize > len ? len : bufsize);
+	  return 0;
+	}
+    }
+
+  group = (inode - 1) / fs->f_super.s_inodes_per_group;
+  if (group > fs->f_group_desc_count)
+    return -EINVAL;
+  offset = (inode - 1) % fs->f_super.s_inodes_per_group *
+    EXT2_INODE_SIZE (fs->f_super);
+  block = offset >> EXT2_BLOCK_SIZE_BITS (fs->f_super);
+  blockno = ext2_inode_table_loc (sb, group);
+  if (blockno == 0 || blockno < fs->f_super.s_first_data_block
+      || blockno + fs->f_inode_blocks_per_group - 1 >=
+      ext2_blocks_count (&fs->f_super))
+    return -EINVAL;
+  blockno += block;
+  offset &= EXT2_BLOCK_SIZE (fs->f_super) - 1;
+
+  cache_slot = (fs->f_icache->ic_cache_last + 1) % fs->f_icache->ic_cache_size;
+  iptr = (Ext2LargeInode *) fs->f_icache->ic_cache[cache_slot].e_inode;
+  ptr = (char *) iptr;
+  while (len != 0)
+    {
+      clen = len;
+      if (offset + len > sb->sb_blksize)
+	clen = sb->sb_blksize - offset;
+      if (blockno != fs->f_icache->ic_block)
+	{
+	  ret = ext2_read_blocks (fs->f_icache->ic_buffer, sb, blockno, 1);
+	  if (ret != 0)
+	    return ret;
+	  fs->f_icache->ic_block = blockno;
+	}
+      memcpy (ptr, fs->f_icache->ic_buffer + (unsigned int) offset, clen);
+      offset = 0;
+      len -= clen;
+      ptr += clen;
+      blockno++;
+    }
+  len = EXT2_INODE_SIZE (fs->f_super);
+
+  csum_valid = ext2_inode_checksum_valid (fs, inode, iptr);
+  if (csum_valid)
+    {
+      fs->f_icache->ic_cache_last = cache_slot;
+      fs->f_icache->ic_cache[cache_slot].e_ino = inode;
+    }
+  memcpy (result, iptr, bufsize > len ? len : bufsize);
+  return csum_valid ? 0 : -EINVAL;
+}
+
+int
+ext2_create_inode_cache (VFSSuperblock *sb, unsigned int cache_size)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  unsigned int i;
+  if (fs->f_icache != NULL)
+    return 0;
+
+  fs->f_icache = kzalloc (sizeof (Ext2InodeCache));
+  if (unlikely (fs->f_icache == NULL))
+    return -ENOMEM;
+  fs->f_icache->ic_buffer = kmalloc (sb->sb_blksize);
+  if (unlikely (fs->f_icache->ic_buffer == NULL))
+    goto err;
+
+  fs->f_icache->ic_block = 0;
+  fs->f_icache->ic_cache_last = -1;
+  fs->f_icache->ic_cache_size = cache_size;
+  fs->f_icache->ic_refcnt = 1;
+
+  fs->f_icache->ic_cache = kmalloc (sizeof (Ext2InodeCacheEntry) * cache_size);
+  if (unlikely (fs->f_icache->ic_cache == NULL))
+    goto err;
+
+  for (i = 0; i < cache_size; i++)
+    {
+      fs->f_icache->ic_cache[i].e_inode =
+	kmalloc (EXT2_INODE_SIZE (fs->f_super));
+      if (unlikely (fs->f_icache->ic_cache[i].e_inode == NULL))
+	goto err;
+    }
+  ext2_flush_inode_cache (fs->f_icache);
+  return 0;
+
+ err:
+  ext2_free_inode_cache (fs->f_icache);
+  fs->f_icache = NULL;
+  return -ENOMEM;
+}
+
+void
+ext2_free_inode_cache (Ext2InodeCache *cache)
+{
+  unsigned int i;
+  if (--cache->ic_refcnt > 0)
+    return;
+  if (cache->ic_buffer != NULL)
+    kfree (cache->ic_buffer);
+  for (i = 0; i < cache->ic_cache_size; i++)
+    kfree (cache->ic_cache[i].e_inode);
+  if (cache->ic_cache != NULL)
+    kfree (cache->ic_cache);
+  cache->ic_block = 0;
+  kfree (cache);
+}
+
+int
+ext2_flush_inode_cache (Ext2InodeCache *cache)
+{
+  unsigned int i;
+  if (cache == NULL)
+    return 0;
+  for (i = 0; i < cache->ic_cache_size; i++)
+    cache->ic_cache[i].e_ino = 0;
+  cache->ic_block = 0;
+  return 0;
 }
 
 int
@@ -766,46 +983,6 @@ ext2_inode_offset (VFSSuperblock *sb, ino64_t inode)
   return inotbl * sb->sb_blksize + index * inosize;
 }
 
-Ext2Inode *
-ext2_read_inode (VFSSuperblock *sb, ino64_t inode)
-{
-  Ext2Filesystem *fs = sb->sb_private;
-  uint32_t inosize =
-    fs->f_super.s_rev_level > 0 ? fs->f_super.s_inode_size : 128;
-  uint32_t inotbl =
-    fs->f_group_desc[(inode - 1) /
-		     fs->f_super.s_inodes_per_group].bg_inode_table;
-  uint32_t index = (inode - 1) % fs->f_super.s_inodes_per_group;
-  uint32_t block = inotbl + index * inosize / sb->sb_blksize;
-  uint32_t offset = index % (sb->sb_blksize / inosize);
-  void *buffer;
-  Ext2Inode *result;
-
-  if (inode == 0)
-    return NULL;
-
-  buffer = kmalloc (sb->sb_blksize);
-  if (unlikely (buffer == NULL))
-    return NULL;
-
-  if (ext2_read_blocks (buffer, sb, block, 1) != 0)
-    {
-      kfree (buffer);
-      return NULL;
-    }
-
-  result = kmalloc (sizeof (Ext2Inode));
-  if (unlikely (result == NULL))
-    {
-      kfree (buffer);
-      return NULL;
-    }
-  memcpy (result, buffer + offset * inosize, sizeof (Ext2Inode));
-
-  kfree (buffer);
-  return result;
-}
-
 int
 ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode)
 {
@@ -1046,4 +1223,74 @@ ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
   ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
   kfree (data);
   return ret;
+}
+
+int
+ext2_superblock_checksum_valid (Ext2Filesystem *fs)
+{
+  uint32_t checksum;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+  if (fs->f_super.s_checksum_type != EXT2_CRC32C_CHECKSUM)
+    return 0;
+  checksum =
+    crc32 (0xffffffff, &fs->f_super, offsetof (Ext2Superblock, s_checksum));
+  return checksum == fs->f_super.s_checksum;
+}
+
+int
+ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
+			   Ext2LargeInode *inode)
+{
+  uint32_t crc;
+  uint32_t provided;
+  uint32_t gen;
+  uint16_t old_lo;
+  uint16_t old_hi = 1;
+  unsigned int i;
+  unsigned int has_hi;
+  char *ptr;
+
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+
+  has_hi = EXT2_INODE_SIZE (fs->f_super) > EXT2_OLD_INODE_SIZE
+    && inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END;
+  provided = inode->i_checksum_lo;
+
+  /* Set checksum inode fields to zero */
+  old_lo = inode->i_checksum_lo;
+  inode->i_checksum_lo = 0;
+  if (has_hi)
+    {
+      old_hi = inode->i_checksum_hi;
+      inode->i_checksum_hi = 0;
+    }
+
+  /* Calculate checksum */
+  gen = inode->i_generation;
+  crc = crc32 (fs->f_checksum_seed, (unsigned char *) &ino, sizeof (ino64_t));
+  crc = crc32 (crc, (unsigned char *) &gen, 4);
+  crc = crc32 (crc, (unsigned char *) inode, EXT2_INODE_SIZE (fs->f_super));
+
+  /* Restore checksum fields */
+  inode->i_checksum_lo = old_lo;
+  if (has_hi)
+    inode->i_checksum_hi = old_hi;
+
+  if (has_hi)
+    provided |= inode->i_checksum_hi << 16;
+  else
+    crc &= 0xffff;
+
+  if (provided == crc)
+    return 1;
+
+  /* Check if inode is all zeros */
+  for (ptr = (char *) inode, i = 0; i < sizeof (Ext2Inode); ptr++, i++)
+    {
+      if (*ptr != '\0')
+	return 0;
+    }
+  return 1;
 }
