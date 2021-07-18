@@ -445,6 +445,7 @@ typedef struct
 typedef struct
 {
   Ext2Inode f_inode;
+  ino64_t f_ino;
   uint64_t f_pos;
   block_t f_block;
   block_t f_physblock;
@@ -537,15 +538,18 @@ int ext2_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, block_t block,
 		      blkcnt64_t nblocks, block_t *result);
 int ext2_unalloc_data_blocks (VFSInode *inode, block_t start,
 			      blkcnt64_t nblocks);
-uint32_t ext2_inode_offset (VFSSuperblock *sb, ino64_t inode);
 int ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode);
 block_t ext2_alloc_block (VFSSuperblock *sb, int prefbg);
 ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 int ext2_superblock_checksum_valid (Ext2Filesystem *fs);
+uint32_t ext2_inode_checksum (Ext2Filesystem *fs, ino64_t ino,
+			      Ext2LargeInode *inode, int has_hi);
 int ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
 			       Ext2LargeInode *inode);
+void ext2_inode_checksum_update (Ext2Filesystem *fs, ino64_t ino,
+				 Ext2LargeInode *inode);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);
@@ -553,8 +557,8 @@ VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 void ext2_destroy_inode (VFSInode *inode);
 VFSDirectory *ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
 void ext2_destroy_dir (VFSDirectory *dir);
-void ext2_fill_inode (VFSInode *inode);
-void ext2_write_inode (VFSInode *inode);
+int ext2_fill_inode (VFSInode *inode);
+int ext2_write_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);
 void ext2_update (VFSSuperblock *sb);
 int ext2_statfs (VFSSuperblock *sb, struct statfs64 *st);

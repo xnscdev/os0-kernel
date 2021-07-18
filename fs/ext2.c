@@ -351,36 +351,37 @@ ext2_destroy_dir (VFSDirectory *dir)
   kfree (dir);
 }
 
-void
+int
 ext2_fill_inode (VFSInode *inode)
 {
   Ext2Filesystem *fs = inode->vi_sb->sb_private;
   Ext2Superblock *esb = &fs->f_super;
-  Ext2Inode *ei = kmalloc (sizeof (Ext2Inode));
+  Ext2File *file = kmalloc (sizeof (Ext2File));
   int ret;
-  if (unlikely (ei == NULL))
-    return;
-  ret = ext2_read_inode (inode->vi_sb, inode->vi_ino, ei);
+  if (unlikely (file == NULL))
+    return -ENOMEM;
+  ret = ext2_open_file (inode->vi_sb, inode->vi_ino, file);
   if (ret != 0)
-    return;
-  inode->vi_uid = ei->i_uid;
-  inode->vi_gid = ei->i_gid;
-  inode->vi_nlink = ei->i_links_count;
-  inode->vi_size = ei->i_size;
-  if ((ei->i_mode & 0xf000) == EXT2_TYPE_FILE && esb->s_rev_level > 0
+    return ret;
+  inode->vi_uid = file->f_inode.i_uid;
+  inode->vi_gid = file->f_inode.i_gid;
+  inode->vi_nlink = file->f_inode.i_links_count;
+  inode->vi_size = file->f_inode.i_size;
+  if ((file->f_inode.i_mode & 0xf000) == EXT2_TYPE_FILE && esb->s_rev_level > 0
       && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
-    inode->vi_size |= (off64_t) ei->i_size_high << 32;
-  inode->vi_atime.tv_sec = ei->i_atime;
+    inode->vi_size |= (off64_t) file->f_inode.i_size_high << 32;
+  inode->vi_atime.tv_sec = file->f_inode.i_atime;
   inode->vi_atime.tv_nsec = 0;
-  inode->vi_mtime.tv_sec = ei->i_mtime;
+  inode->vi_mtime.tv_sec = file->f_inode.i_mtime;
   inode->vi_mtime.tv_nsec = 0;
-  inode->vi_ctime.tv_sec = ei->i_ctime;
+  inode->vi_ctime.tv_sec = file->f_inode.i_ctime;
   inode->vi_ctime.tv_nsec = 0;
-  inode->vi_sectors = ei->i_blocks;
-  inode->vi_blocks = ei->i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
+  inode->vi_sectors = file->f_inode.i_blocks;
+  inode->vi_blocks =
+    file->f_inode.i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
 
   /* Set mode and device numbers if applicable */
-  switch (ei->i_mode & 0xf000)
+  switch (file->f_inode.i_mode & 0xf000)
     {
     case EXT2_TYPE_FIFO:
       inode->vi_mode = S_IFIFO;
@@ -388,7 +389,7 @@ ext2_fill_inode (VFSInode *inode)
       break;
     case EXT2_TYPE_CHRDEV:
       inode->vi_mode = S_IFCHR;
-      inode->vi_rdev = *((dev_t *) ei->i_block);
+      inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
       break;
     case EXT2_TYPE_DIR:
       inode->vi_mode = S_IFDIR;
@@ -396,7 +397,7 @@ ext2_fill_inode (VFSInode *inode)
       break;
     case EXT2_TYPE_BLKDEV:
       inode->vi_mode = S_IFBLK;
-      inode->vi_rdev = *((dev_t *) ei->i_block);
+      inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
       break;
     case EXT2_TYPE_FILE:
       inode->vi_mode = S_IFREG;
@@ -415,17 +416,29 @@ ext2_fill_inode (VFSInode *inode)
       inode->vi_mode = 0;
       inode->vi_rdev = 0;
     }
-  inode->vi_mode |= ei->i_mode & 07777;
-  inode->vi_private = ei;
+  inode->vi_mode |= file->f_inode.i_mode & 07777;
+  inode->vi_private = file;
+  return 0;
 }
 
-void
+int
 ext2_write_inode (VFSInode *inode)
 {
-  Ext2Superblock *esb = inode->vi_sb->sb_private;
+  Ext2Filesystem *fs = inode->vi_sb->sb_private;
+  int len = EXT2_INODE_SIZE (fs->f_super);
+  size_t bufsize = sizeof (Ext2Inode);
   Ext2Inode *ei = inode->vi_private;
-  SpecDevice *dev = inode->vi_sb->sb_dev;
-  uint32_t offset = ext2_inode_offset (inode->vi_sb, inode->vi_ino);
+  Ext2LargeInode *winode;
+  block_t blockno;
+  unsigned long block;
+  unsigned long offset;
+  unsigned int group;
+  char *ptr;
+  unsigned int i;
+  int clen;
+  int ret;
+
+  /* Update disk inode structure */
   ei->i_uid = inode->vi_uid;
   ei->i_size = inode->vi_size & 0xffffffff;
   ei->i_atime = inode->vi_atime.tv_sec;
@@ -434,10 +447,100 @@ ext2_write_inode (VFSInode *inode)
   ei->i_gid = inode->vi_gid;
   ei->i_links_count = inode->vi_nlink;
   ei->i_blocks = inode->vi_sectors;
-  if (S_ISREG (inode->vi_mode) && esb->s_rev_level > 0
-      && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
+  if (S_ISREG (inode->vi_mode) && fs->f_super.s_rev_level > 0
+      && fs->f_super.s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
     ei->i_size_high = inode->vi_size >> 32;
-  dev->sd_write (dev, ei, sizeof (Ext2Inode), offset);
+
+  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+
+  winode = kmalloc (len);
+  if (unlikely (winode == NULL))
+    return -ENOMEM;
+  if (bufsize < len)
+    {
+      ret = ext2_read_inode (inode->vi_sb, inode->vi_ino, (Ext2Inode *) winode);
+      if (ret != 0)
+	{
+	  kfree (winode);
+	  return ret;
+	}
+    }
+
+  /* Update inode cache if necessary */
+  if (fs->f_icache != NULL)
+    {
+      for (i = 0; i < fs->f_icache->ic_cache_size; i++)
+	{
+	  if (fs->f_icache->ic_cache[i].e_ino == inode->vi_ino)
+	    {
+	      memcpy (fs->f_icache->ic_cache[i].e_inode, ei,
+		      bufsize > len ? len : bufsize);
+	      break;
+	    }
+	}
+    }
+  else
+    {
+      ret = ext2_create_inode_cache (inode->vi_sb, 4);
+      if (ret != 0)
+	{
+	  kfree (winode);
+	  return ret;
+	}
+    }
+  memcpy (winode, ei, bufsize > len ? len : bufsize);
+
+  /* Update inode checksum */
+  ext2_inode_checksum_update (fs, inode->vi_ino, winode);
+
+  group = (inode->vi_ino - 1) / fs->f_super.s_inodes_per_group;
+  offset = (inode->vi_ino - 1) % fs->f_super.s_inodes_per_group *
+    EXT2_INODE_SIZE (fs->f_super);
+  block = offset >> EXT2_BLOCK_SIZE_BITS (fs->f_super);
+  blockno = ext2_inode_table_loc (inode->vi_sb, group);
+  if (blockno == 0 || blockno < fs->f_super.s_first_data_block
+      || blockno + fs->f_inode_blocks_per_group - 1 >=
+      ext2_blocks_count (&fs->f_super))
+    {
+      kfree (winode);
+      return -EINVAL;
+    }
+  blockno += block;
+  offset &= EXT2_BLOCK_SIZE (fs->f_super) - 1;
+
+  ptr = (char *) winode;
+  while (len)
+    {
+      clen = len;
+      if (offset + len > inode->vi_sb->sb_blksize)
+	clen = inode->vi_sb->sb_blksize - offset;
+      if (fs->f_icache->ic_block != blockno)
+	{
+	  ret = ext2_read_blocks (fs->f_icache->ic_buffer, inode->vi_sb,
+				  blockno, 1);
+	  if (ret != 0)
+	    {
+	      kfree (winode);
+	      return ret;
+	    }
+	  fs->f_icache->ic_block = blockno;
+	}
+      memcpy (fs->f_icache->ic_buffer + (unsigned int) offset, ptr, clen);
+      ret = ext2_write_blocks (fs->f_icache->ic_buffer, inode->vi_sb,
+			       blockno, 1);
+      if (ret != 0)
+	{
+	  kfree (winode);
+	  return ret;
+	}
+      offset = 0;
+      ptr += clen;
+      len -= clen;
+      blockno++;
+    }
+  kfree (winode);
+  return 0;
 }
 
 void

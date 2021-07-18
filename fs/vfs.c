@@ -223,18 +223,20 @@ vfs_destroy_dir (VFSDirectory *dir)
     dir->vd_inode->vi_sb->sb_ops->sb_destroy_dir (dir);
 }
 
-void
+int
 vfs_fill_inode (VFSInode *inode)
 {
   if (inode->vi_sb->sb_ops->sb_fill_inode != NULL)
-    inode->vi_sb->sb_ops->sb_fill_inode (inode);
+    return inode->vi_sb->sb_ops->sb_fill_inode (inode);
+  return -ENOSYS;
 }
 
-void
+int
 vfs_write_inode (VFSInode *inode)
 {
   if (inode->vi_sb->sb_ops->sb_write_inode != NULL)
-    inode->vi_sb->sb_ops->sb_write_inode (inode);
+    return inode->vi_sb->sb_ops->sb_write_inode (inode);
+  return -ENOSYS;
 }
 
 void

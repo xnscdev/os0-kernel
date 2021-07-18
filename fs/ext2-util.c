@@ -347,6 +347,7 @@ ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file)
   int ret = ext2_read_inode (sb, inode, &file->f_inode);
   if (ret != 0)
     return ret;
+  file->f_ino = inode;
   file->f_buffer = kmalloc (sb->sb_blksize * 3);
   if (unlikely (file->f_buffer == NULL))
     return -ENOMEM;
@@ -970,19 +971,6 @@ ext2_unalloc_data_blocks (VFSInode *inode, block_t start, blkcnt64_t nblocks)
 
 #undef EXT2_TRY_UNALLOC
 
-uint32_t
-ext2_inode_offset (VFSSuperblock *sb, ino64_t inode)
-{
-  Ext2Filesystem *fs = sb->sb_private;
-  uint32_t inosize =
-    fs->f_super.s_rev_level > 0 ? fs->f_super.s_inode_size : 128;
-  uint32_t inotbl =
-    fs->f_group_desc[(inode - 1) /
-		     fs->f_super.s_inodes_per_group].bg_inode_table;
-  uint32_t index = (inode - 1) % fs->f_super.s_inodes_per_group;
-  return inotbl * sb->sb_blksize + index * inosize;
-}
-
 int
 ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode)
 {
@@ -1238,27 +1226,17 @@ ext2_superblock_checksum_valid (Ext2Filesystem *fs)
   return checksum == fs->f_super.s_checksum;
 }
 
-int
-ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
-			   Ext2LargeInode *inode)
+uint32_t
+ext2_inode_checksum (Ext2Filesystem *fs, ino64_t ino, Ext2LargeInode *inode,
+		     int has_hi)
 {
-  uint32_t crc;
-  uint32_t provided;
   uint32_t gen;
+  size_t size = EXT2_INODE_SIZE (fs->f_super);
   uint16_t old_lo;
-  uint16_t old_hi = 1;
-  unsigned int i;
-  unsigned int has_hi;
-  char *ptr;
+  uint16_t old_hi = 0;
+  uint32_t crc;
 
-  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
-    return 1;
-
-  has_hi = EXT2_INODE_SIZE (fs->f_super) > EXT2_OLD_INODE_SIZE
-    && inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END;
-  provided = inode->i_checksum_lo;
-
-  /* Set checksum inode fields to zero */
+  /* Set checksum fields to zero */
   old_lo = inode->i_checksum_lo;
   inode->i_checksum_lo = 0;
   if (has_hi)
@@ -1271,18 +1249,36 @@ ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
   gen = inode->i_generation;
   crc = crc32 (fs->f_checksum_seed, (unsigned char *) &ino, sizeof (ino64_t));
   crc = crc32 (crc, (unsigned char *) &gen, 4);
-  crc = crc32 (crc, (unsigned char *) inode, EXT2_INODE_SIZE (fs->f_super));
+  crc = crc32 (crc, (unsigned char *) inode, size);
 
-  /* Restore checksum fields */
+  /* Restore inode checksum fields */
   inode->i_checksum_lo = old_lo;
   if (has_hi)
     inode->i_checksum_hi = old_hi;
+  return crc;
+}
+
+int
+ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
+			   Ext2LargeInode *inode)
+{
+  uint32_t crc;
+  uint32_t provided;
+  unsigned int i;
+  unsigned int has_hi;
+  char *ptr;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+
+  has_hi = EXT2_INODE_SIZE (fs->f_super) > EXT2_OLD_INODE_SIZE
+    && inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END;
+  provided = inode->i_checksum_lo;
+  crc = ext2_inode_checksum (fs, ino, inode, has_hi);
 
   if (has_hi)
     provided |= inode->i_checksum_hi << 16;
   else
     crc &= 0xffff;
-
   if (provided == crc)
     return 1;
 
@@ -1293,4 +1289,22 @@ ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
 	return 0;
     }
   return 1;
+}
+
+void
+ext2_inode_checksum_update (Ext2Filesystem *fs, ino64_t ino,
+			    Ext2LargeInode *inode)
+{
+  uint32_t crc;
+  int has_hi;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return;
+
+  has_hi = EXT2_INODE_SIZE (fs->f_super) > EXT2_OLD_INODE_SIZE
+    && inode->i_extra_isize >= EXT4_INODE_CSUM_HI_EXTRA_END;
+  crc = ext2_inode_checksum (fs, ino, inode, has_hi);
+
+  inode->i_checksum_lo = crc & 0xffff;
+  if (has_hi)
+    inode->i_checksum_hi = crc >> 16;
 }
