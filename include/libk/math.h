@@ -43,6 +43,27 @@ div64_ceil (uint64_t a, uint64_t b)
   return (a - 1) / b + 1;
 }
 
+static inline void
+fast_set_bit (void *ptr, uint64_t bit)
+{
+  unsigned char *addr = ptr;
+  addr[bit >> 3] |= (unsigned char) (1 << (bit & 7));
+}
+
+static inline void
+fast_clear_bit (void *ptr, uint64_t bit)
+{
+  unsigned char *addr = ptr;
+  addr[bit >> 3] &= (unsigned char) ~(1 << (bit & 7));
+}
+
+static inline int
+fast_test_bit (const void *ptr, uint64_t bit)
+{
+  const unsigned char *addr = ptr;
+  return (1 << (bit & 7)) & addr[bit >> 3];
+}
+
 __END_DECLS
 
 #endif

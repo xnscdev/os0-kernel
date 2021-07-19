@@ -1,5 +1,5 @@
 /*************************************************************************
- * ext4-mmp.c -- This file is part of OS/0.                              *
+ * util.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -18,19 +18,35 @@
 
 #include <fs/ext2.h>
 #include <libk/libk.h>
-#include <sys/ata.h>
 #include <vm/heap.h>
 
 int
-ext4_mmp_start (VFSSuperblock *sb)
+ext4_extent_open (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		  Ext4ExtentHandle **handle)
 {
-  /* TODO Support ext4 MMP */
-  return 0;
+  return -ENOTSUP;
 }
 
 int
-ext4_mmp_stop (VFSSuperblock *sb)
+ext4_extent_goto (Ext4ExtentHandle *handle, int leaflvl, block_t block)
 {
-  /* TODO Support ext4 MMP */
-  return 0;
+  return -ENOTSUP;
+}
+
+int
+ext4_extent_get (Ext4ExtentHandle *handle, int flags, Ext4Extent *extent)
+{
+  return -ENOTSUP;
+}
+
+int
+ext4_extent_set_bmap (Ext4ExtentHandle *handle, block_t logical,
+		      block_t physical, int flags)
+{
+  return -ENOTSUP;
+}
+
+void
+ext4_extent_free (Ext4ExtentHandle *handle)
+{
 }

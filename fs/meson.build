@@ -1,8 +1,6 @@
+subdir('ext2')
+
 fs_src = [
-  'ext2.c',
-  'ext2-inode.c',
-  'ext2-util.c',
-  'ext4-mmp.c',
   'devfs.c',
   'fsguess.c',
   'path.c',
@@ -11,4 +9,5 @@ fs_src = [
   'vfs.c'
 ]
 
-fs = static_library('fs', fs_src, include_directories: includedir)
+fs = static_library('fs', fs_src, include_directories: includedir,
+		    link_with: fs_ext2)

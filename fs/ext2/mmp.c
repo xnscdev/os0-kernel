@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdlib.h -- This file is part of OS/0.                                *
+ * mmp.c -- This file is part of OS/0.                                   *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,35 +16,21 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDLIB_H
-#define _STDLIB_H
+#include <fs/ext2.h>
+#include <libk/libk.h>
+#include <sys/ata.h>
+#include <vm/heap.h>
 
-#include <libk/types.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
+int
+ext4_mmp_start (VFSSuperblock *sb)
+{
+  /* TODO Support ext4 MMP */
+  return 0;
+}
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-__BEGIN_DECLS
-
-int atoi (const char *str);
-long atol (const char *str);
-long long atoll (const char *str);
-
-char *itoa (int value, char *result, int base);
-char *itoa_u (int value, char *result, int base);
-char *utoa (unsigned int value, char *result, int base);
-char *utoa_u (unsigned int value, char *result, int base);
-
-void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
-
-uint16_t crc16 (uint16_t seed, const void *data, size_t len);
-uint32_t crc32 (uint32_t seed, const void *data, size_t len);
-
-void panic (const char *__restrict fmt, ...)
-  __attribute__ ((noreturn, cold, format (printf, 1, 2)));
-
-__END_DECLS
-
-#endif
+int
+ext4_mmp_stop (VFSSuperblock *sb)
+{
+  /* TODO Support ext4 MMP */
+  return 0;
+}

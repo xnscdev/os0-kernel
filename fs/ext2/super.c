@@ -1,5 +1,5 @@
 /*************************************************************************
- * ext2.c -- This file is part of OS/0.                                  *
+ * super.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -425,18 +425,7 @@ int
 ext2_write_inode (VFSInode *inode)
 {
   Ext2Filesystem *fs = inode->vi_sb->sb_private;
-  int len = EXT2_INODE_SIZE (fs->f_super);
-  size_t bufsize = sizeof (Ext2Inode);
   Ext2Inode *ei = inode->vi_private;
-  Ext2LargeInode *winode;
-  block_t blockno;
-  unsigned long block;
-  unsigned long offset;
-  unsigned int group;
-  char *ptr;
-  unsigned int i;
-  int clen;
-  int ret;
 
   /* Update disk inode structure */
   ei->i_uid = inode->vi_uid;
@@ -451,96 +440,8 @@ ext2_write_inode (VFSInode *inode)
       && fs->f_super.s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
     ei->i_size_high = inode->vi_size >> 32;
 
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
-    return -EROFS;
-
-  winode = kmalloc (len);
-  if (unlikely (winode == NULL))
-    return -ENOMEM;
-  if (bufsize < len)
-    {
-      ret = ext2_read_inode (inode->vi_sb, inode->vi_ino, (Ext2Inode *) winode);
-      if (ret != 0)
-	{
-	  kfree (winode);
-	  return ret;
-	}
-    }
-
-  /* Update inode cache if necessary */
-  if (fs->f_icache != NULL)
-    {
-      for (i = 0; i < fs->f_icache->ic_cache_size; i++)
-	{
-	  if (fs->f_icache->ic_cache[i].e_ino == inode->vi_ino)
-	    {
-	      memcpy (fs->f_icache->ic_cache[i].e_inode, ei,
-		      bufsize > len ? len : bufsize);
-	      break;
-	    }
-	}
-    }
-  else
-    {
-      ret = ext2_create_inode_cache (inode->vi_sb, 4);
-      if (ret != 0)
-	{
-	  kfree (winode);
-	  return ret;
-	}
-    }
-  memcpy (winode, ei, bufsize > len ? len : bufsize);
-
-  /* Update inode checksum */
-  ext2_inode_checksum_update (fs, inode->vi_ino, winode);
-
-  group = (inode->vi_ino - 1) / fs->f_super.s_inodes_per_group;
-  offset = (inode->vi_ino - 1) % fs->f_super.s_inodes_per_group *
-    EXT2_INODE_SIZE (fs->f_super);
-  block = offset >> EXT2_BLOCK_SIZE_BITS (fs->f_super);
-  blockno = ext2_inode_table_loc (inode->vi_sb, group);
-  if (blockno == 0 || blockno < fs->f_super.s_first_data_block
-      || blockno + fs->f_inode_blocks_per_group - 1 >=
-      ext2_blocks_count (&fs->f_super))
-    {
-      kfree (winode);
-      return -EINVAL;
-    }
-  blockno += block;
-  offset &= EXT2_BLOCK_SIZE (fs->f_super) - 1;
-
-  ptr = (char *) winode;
-  while (len)
-    {
-      clen = len;
-      if (offset + len > inode->vi_sb->sb_blksize)
-	clen = inode->vi_sb->sb_blksize - offset;
-      if (fs->f_icache->ic_block != blockno)
-	{
-	  ret = ext2_read_blocks (fs->f_icache->ic_buffer, inode->vi_sb,
-				  blockno, 1);
-	  if (ret != 0)
-	    {
-	      kfree (winode);
-	      return ret;
-	    }
-	  fs->f_icache->ic_block = blockno;
-	}
-      memcpy (fs->f_icache->ic_buffer + (unsigned int) offset, ptr, clen);
-      ret = ext2_write_blocks (fs->f_icache->ic_buffer, inode->vi_sb,
-			       blockno, 1);
-      if (ret != 0)
-	{
-	  kfree (winode);
-	  return ret;
-	}
-      offset = 0;
-      ptr += clen;
-      len -= clen;
-      blockno++;
-    }
-  kfree (winode);
-  return 0;
+  /* Write new inode to disk */
+  return ext2_update_inode (inode->vi_sb, inode->vi_ino, ei);
 }
 
 void

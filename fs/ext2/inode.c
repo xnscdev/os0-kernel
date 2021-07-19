@@ -1,5 +1,5 @@
 /*************************************************************************
- * ext2-inode.c -- This file is part of OS/0.                            *
+ * inode.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -296,122 +296,37 @@ ext2_symlink (VFSInode *dir, const char *old, const char *new)
 int
 ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  size_t start_diff;
-  size_t end_diff;
-  block_t start_block;
-  block_t mid_block;
-  block_t end_block;
-  block_t realblock;
-  block_t *realblocks;
-  size_t blocks;
-  blksize_t blksize = inode->vi_sb->sb_blksize;
-  void *temp = NULL;
-  size_t i;
+  Ext2File *file = inode->vi_private;
+  unsigned int count = 0;
+  unsigned int start;
+  unsigned int c;
+  uint64_t left;
+  char *ptr = buffer;
   int ret;
 
-  if (len == 0)
-    return 0;
-  start_block = offset / blksize;
-  mid_block = start_block + (offset % blksize != 0);
-  end_block = (offset + len) / blksize;
-  blocks = end_block - mid_block;
-  start_diff = mid_block * blksize - offset;
-  end_diff = offset + len - end_block * blksize;
-
-  if (mid_block > end_block)
+  file->f_pos = offset;
+  while (file->f_pos < EXT2_I_SIZE (file->f_inode) && len > 0)
     {
-      /* Completely contained in a single block */
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
-			      &realblock);
-      if (ret < 0)
+      ret = ext2_sync_file_buffer_pos (file);
+      if (ret != 0)
 	return ret;
-      temp = kmalloc (blksize);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
+      ret = ext2_load_file_buffer (file, 0);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer, temp + blksize - start_diff, len);
-      kfree (temp);
-      return len;
+	return ret;
+      start = file->f_pos % inode->vi_sb->sb_blksize;
+      c = inode->vi_sb->sb_blksize - start;
+      if (c > len)
+	c = len;
+      left = EXT2_I_SIZE (file->f_inode) - file->f_pos;
+      if (c > left)
+	c = left;
+      memcpy (ptr, file->f_buffer + start, c);
+      file->f_pos += c;
+      ptr += c;
+      count += c;
+      len -= c;
     }
-
-  /* XXX Will run out of memory if reading too much data, read blocks in
-     smaller chunks if too large */
-  realblocks = kmalloc (sizeof (block_t) * blocks);
-  if (unlikely (realblocks == NULL))
-    return -ENOMEM;
-  ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
-			  realblocks);
-  if (ret < 0)
-    {
-      kfree (realblocks);
-      return ret;
-    }
-  for (i = 0; i < blocks; i++)
-    {
-      ret = ext2_read_blocks (buffer + start_diff + i * blksize, inode->vi_sb,
-			      realblocks[i], 1);
-      if (ret != 0)
-	{
-	  kfree (realblocks);
-	  return ret;
-	}
-    }
-  kfree (realblocks);
-
-  /* Read unaligned starting bytes */
-  if (start_diff != 0)
-    {
-      temp = kmalloc (blksize);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
-			      &realblock);
-      if (ret < 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer, temp + blksize - start_diff, start_diff);
-    }
-
-  /* Read unaligned ending bytes */
-  if (end_diff != 0)
-    {
-      if (temp == NULL)
-	{
-	  temp = kmalloc (blksize);
-	  if (unlikely (temp == NULL))
-	    return -ENOMEM;
-	}
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, end_block, 1,
-			      &realblock);
-      if (ret < 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer + start_diff + blocks * blksize, temp, end_diff);
-    }
-
-  kfree (temp);
-  return len;
+  return count;
 }
 
 int
@@ -671,7 +586,7 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
   ei->i_flags = 0;
   memset (&ei->osd1, 0, sizeof (ei->osd1));
   firstblock =
-    ext2_alloc_block (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
+    ext2_old_alloc_block (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
   if (firstblock < 0)
     {
       vfs_unref_inode (inode);
