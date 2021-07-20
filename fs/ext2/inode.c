@@ -303,8 +303,11 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   uint64_t left;
   char *ptr = buffer;
   int ret;
-
   file->f_pos = offset;
+
+  if (file->f_inode.i_flags & EXT4_INLINE_DATA_FL)
+    return -ENOTSUP;
+
   while (file->f_pos < EXT2_I_SIZE (file->f_inode) && len > 0)
     {
       ret = ext2_sync_file_buffer_pos (file);
@@ -332,140 +335,56 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 int
 ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
-  size_t start_diff;
-  size_t end_diff;
-  block_t start_block;
-  block_t mid_block;
-  block_t end_block;
-  block_t realblock;
-  block_t *realblocks;
-  size_t blocks;
+  Ext2File *file = inode->vi_private;
   blksize_t blksize = inode->vi_sb->sb_blksize;
-  void *temp = NULL;
-  size_t i;
+  const char *ptr = buffer;
+  unsigned int count = 0;
+  unsigned int start;
+  unsigned int c;
   int ret;
 
-  if (S_ISDIR (inode->vi_mode))
-    return -EISDIR;
-  if (offset > inode->vi_size)
+  if (file->f_inode.i_flags & EXT4_INLINE_DATA_FL)
+    return -ENOTSUP;
+
+  while (len > 0)
     {
-      inode->vi_size = offset + len;
-      ret = ext2_truncate (inode);
+      ret = ext2_sync_file_buffer_pos (file);
       if (ret != 0)
-	return ret;
+	goto end;
+      start = file->f_pos % blksize;
+      c = blksize - start;
+      if (c > len)
+	c = len;
+      ret = ext2_load_file_buffer (file, c == blksize);
+      if (ret != 0)
+	goto end;
+      file->f_flags |= EXT2_FILE_BUFFER_DIRTY;
+      memcpy (file->f_buffer + start, ptr, c);
+
+      if (file->f_physblock == 0)
+	{
+	  ret = ext2_bmap (inode->vi_sb, file->f_ino, &file->f_inode,
+			   file->f_buffer + blksize,
+			   file->f_ino == 0 ? 0 : BMAP_ALLOC, file->f_block, 0,
+			   &file->f_physblock);
+	  if (ret != 0)
+	    goto end;
+	}
+
+      file->f_pos += c;
+      ptr += c;
+      count += c;
+      len -= c;
     }
 
-  if (len == 0)
-    return 0;
-  start_block = offset / blksize;
-  mid_block = start_block + (offset % blksize != 0);
-  end_block = (offset + len) / blksize;
-  blocks = end_block - mid_block;
-  start_diff = mid_block * blksize - offset;
-  end_diff = offset + len - end_block * blksize;
-
-  if (mid_block > end_block)
+ end:
+  if (count != 0 && EXT2_I_SIZE (file->f_inode) < file->f_pos)
     {
-      /* Completely contained in a single block */
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
-			      &realblock);
-      if (ret < 0)
-	return ret;
-      temp = kmalloc (blksize);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp + blksize - start_diff, buffer, len);
-      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
-      kfree (temp);
-      return len;
+      int ret2 = ext2_file_set_size (file, file->f_pos);
+      if (ret == 0)
+	ret = ret2;
     }
-
-  realblocks = kmalloc (sizeof (block_t) * blocks);
-  if (unlikely (realblocks == NULL))
-    return -ENOMEM;
-  ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, mid_block, blocks,
-			  realblocks);
-  if (ret < 0)
-    return ret;
-  for (i = 0; i < blocks; i++)
-    {
-      ret = ext2_write_blocks (buffer + start_diff + i * blksize, inode->vi_sb,
-			       realblocks[i], 1);
-      if (ret != 0)
-	{
-	  kfree (realblocks);
-	  return ret;
-	}
-    }
-  kfree (realblocks);
-
-  /* Write unaligned starting bytes */
-  if (start_diff != 0)
-    {
-      temp = kmalloc (blksize);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, start_block, 1,
-			      &realblock);
-      if (ret < 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp + blksize - start_diff, buffer, start_diff);
-      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-    }
-
-  /* Write unaligned ending bytes */
-  if (end_diff != 0)
-    {
-      if (temp == NULL)
-	{
-	  temp = kmalloc (blksize);
-	  if (unlikely (temp == NULL))
-	    return -ENOMEM;
-	}
-      ret = ext2_data_blocks (inode->vi_private, inode->vi_sb, end_block, 1,
-			      &realblock);
-      if (ret < 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      ret = ext2_read_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp, buffer + start_diff + blocks * blksize, end_diff);
-      ret = ext2_write_blocks (temp, inode->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-    }
-
-  kfree (temp);
-  return len;
+  return ret == 0 ? count : ret;
 }
 
 int

@@ -922,12 +922,19 @@ ext2_is_inline_symlink (const Ext2Inode *inode)
     && EXT2_I_SIZE (*inode) < sizeof (inode->i_block);
 }
 
+static inline int
+ext2_needs_large_file (uint64_t size)
+{
+  return size >= 0x80000000ULL;
+}
+
 void ext2_init (void);
 
 int ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group);
 int ext2_bg_test_flags (VFSSuperblock *sb, unsigned int group, uint16_t flags);
 void ext2_bg_clear_flags (VFSSuperblock *sb, unsigned int group,
 			  uint16_t flags);
+void ext2_update_super_revision (Ext2Superblock *s);
 int ext4_mmp_start (VFSSuperblock *sb);
 int ext4_mmp_stop (VFSSuperblock *sb);
 Ext2GroupDesc *ext2_group_desc (VFSSuperblock *sb, Ext2GroupDesc *gdp,
@@ -958,10 +965,19 @@ int ext2_set_bitmap_range (Ext2Bitmap *bmap, uint64_t start, unsigned int num,
 			   void *data);
 int ext2_find_first_zero_bitmap (Ext2Bitmap *bmap, block_t start, block_t end,
 				 block_t *result);
+void ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			 Ext3ExtentHandle *handle, block_t block,
+			 block_t *physblock);
+int ext2_map_cluster_block (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			    block_t block, block_t *physblock);
 void ext2_block_alloc_stats (VFSSuperblock *sb, block_t block, int inuse);
 int ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file);
+int ext2_file_block_offset_too_big (VFSSuperblock *sb, Ext2Inode *inode,
+				    block_t offset);
+int ext2_file_set_size (Ext2File *file, off64_t size);
 int ext2_read_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
 int ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
+int ext2_inode_set_size (VFSSuperblock *sb, Ext2Inode *inode, off64_t size);
 block_t ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			      block_t block);
 int ext2_create_inode_cache (VFSSuperblock *sb, unsigned int cache_size);
@@ -987,14 +1003,23 @@ int ext3_extent_insert (Ext3ExtentHandle *handle, int flags,
 int ext3_extent_replace (Ext3ExtentHandle *handle, int flags,
 			 Ext3GenericExtent *extent);
 int ext3_extent_delete (Ext3ExtentHandle *handle, int flags);
+int ext3_extent_dealloc_blocks (VFSSuperblock *sb, ino64_t ino,
+				Ext2Inode *inode, block_t start, block_t end);
+int ext3_extent_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		      Ext3ExtentHandle *handle, char *blockbuf, int flags,
+		      block_t block, int *retflags, int *blocks_alloc,
+		      block_t *physblock);
 int ext3_extent_set_bmap (Ext3ExtentHandle *handle, block_t logical,
 			  block_t physical, int flags);
 void ext3_extent_free (Ext3ExtentHandle *handle);
 int ext2_iblk_add_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
+int ext2_iblk_sub_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num,
 		      block_t *result, int *count);
 int ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		      block_t *result, Ext2BlockAllocContext *ctx);
+int ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			 char *blockbuf, block_t start, block_t end);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,

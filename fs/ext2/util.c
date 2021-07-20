@@ -250,6 +250,164 @@ ext2_clear_block_uninit (VFSSuperblock *sb, unsigned int group)
   fs->f_flags |= EXT2_FLAG_CHANGED | EXT2_FLAG_DIRTY | EXT2_FLAG_BB_DIRTY;
 }
 
+static int
+ext2_file_zero_remainder (Ext2File *file, off64_t offset)
+{
+  blksize_t blksize = file->f_sb->sb_blksize;
+  off64_t off = offset % blksize;
+  char *b = NULL;
+  block_t block;
+  int retflags;
+  int ret;
+  if (off == 0)
+    return 0;
+
+  ret = ext2_sync_file_buffer_pos (file);
+  if (ret != 0)
+    return ret;
+
+  ret = ext2_bmap (file->f_sb, file->f_ino, NULL, NULL, 0, offset / blksize,
+		   &retflags, &block);
+  if (ret != 0)
+    return ret;
+  if (block == 0 || (retflags & BMAP_RET_UNINIT))
+    return 0;
+
+  b = kmalloc (blksize);
+  if (unlikely (b == NULL))
+    return -ENOMEM;
+  ret = ext2_read_blocks (b, file->f_sb, block, 1);
+  if (ret != 0)
+    {
+      kfree (b);
+      return ret;
+    }
+  memset (b + off, 0, blksize - off);
+  ret = ext2_write_blocks (b, file->f_sb, block, 1);
+  kfree (b);
+  return ret;
+}
+
+static int
+ext2_check_zero_block (char *buffer, blksize_t blksize)
+{
+  blksize_t left = blksize;
+  char *ptr = buffer;
+  while (left > 0)
+    {
+      if (*ptr++ != 0)
+	return 0;
+      left--;
+    }
+  return 1;
+}
+
+static int
+ext2_dealloc_indirect_block (VFSSuperblock *sb, Ext2Inode *inode,
+			     char *blockbuf, uint32_t *p, int level,
+			     block_t start, block_t count, int max)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  block_t offset;
+  block_t inc;
+  uint32_t b;
+  int freed = 0;
+  int i;
+  int ret;
+
+  inc = 1ULL << ((EXT2_BLOCK_SIZE_BITS (fs->f_super) - 2) * level);
+  for (i = 0, offset = 0; i < max; i++, p++, offset += inc)
+    {
+      if (offset >= start + count)
+	break;
+      if (*p == 0 || offset + inc <= start)
+	continue;
+      b = *p;
+      if (level > 0)
+	{
+	  uint32_t s;
+	  ret = ext2_read_blocks (blockbuf, sb, b, 1);
+	  if (ret != 0)
+	    return ret;
+	  s = start > offset ? start - offset : 0;
+	  ret = ext2_dealloc_indirect_block (sb, inode,
+					     blockbuf + sb->sb_blksize,
+					     (uint32_t *) blockbuf, level - 1,
+					     s, count - offset,
+					     sb->sb_blksize >> 2);
+	  if (ret != 0)
+	    return ret;
+	  ret = ext2_write_blocks (blockbuf, sb, b, 1);
+	  if (ret != 0)
+	    return ret;
+	  if (!ext2_check_zero_block (blockbuf, sb->sb_blksize))
+	    continue;
+	}
+      ext2_block_alloc_stats (sb, b, -1);
+      *p = 0;
+      freed++;
+    }
+  return ext2_iblk_sub_blocks (sb, inode, freed);
+}
+
+static int
+ext2_dealloc_indirect (VFSSuperblock *sb, Ext2Inode *inode, char *blockbuf,
+		       block_t start, block_t end)
+{
+  char *buffer = NULL;
+  int num = EXT2_NDIR_BLOCKS;
+  uint32_t *bp = inode->i_block;
+  uint32_t addr_per_block;
+  block_t max = EXT2_NDIR_BLOCKS;
+  block_t count;
+  int level;
+  int ret = 0;
+  if (start > 0xffffffff)
+    return 0;
+  if (end >= 0xffffffff || end - start + 1 >= 0xffffffff)
+    count = ~start;
+  else
+    count = end - start + 1;
+
+  if (blockbuf == NULL)
+    {
+      buffer = kmalloc (sb->sb_blksize);
+      if (unlikely (buffer == NULL))
+	return -ENOMEM;
+      blockbuf = buffer;
+    }
+  addr_per_block = sb->sb_blksize >> 2;
+
+  for (level = 0; level < 4; level++, max *= addr_per_block)
+    {
+      if (start < max)
+	{
+	  ret = ext2_dealloc_indirect_block (sb, inode, blockbuf, bp, level,
+					     start, count, num);
+	  if (ret != 0)
+	    goto end;
+	  if (count > max)
+	    count -= max - start;
+	  else
+	    break;
+	  start = 0;
+	}
+      else
+	start -= max;
+      bp += num;
+      if (level == 0)
+	{
+	  num = 1;
+	  max = 1;
+	}
+    }
+
+ end:
+  if (buffer != NULL)
+    kfree (buffer);
+  return ret;
+}
+
 int
 ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group)
 {
@@ -283,6 +441,16 @@ ext2_bg_clear_flags (VFSSuperblock *sb, unsigned int group, uint16_t flags)
   Ext2Filesystem *fs = sb->sb_private;
   Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
   gdp->bg_flags &= ~flags;
+}
+
+void
+ext2_update_super_revision (Ext2Superblock *s)
+{
+  if (s->s_rev_level > EXT2_OLD_REV)
+    return;
+  s->s_rev_level = EXT2_DYNAMIC_REV;
+  s->s_first_ino = EXT2_OLD_FIRST_INODE;
+  s->s_inode_size = EXT2_OLD_INODE_SIZE;
 }
 
 Ext2GroupDesc *
@@ -496,6 +664,51 @@ ext2_bg_free_inodes_count_set (VFSSuperblock *sb, unsigned int group,
 }
 
 void
+ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		    Ext3ExtentHandle *handle, block_t block, block_t *physblock)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  block_t pblock = 0;
+  block_t base;
+  int i;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_BIGALLOC))
+    return;
+
+  base = block & ~EXT2_CLUSTER_MASK (fs);
+  for (i = 0; i < EXT2_CLUSTER_RATIO (fs); i++)
+    {
+      if (base + i == block)
+	continue;
+      ext3_extent_bmap (sb, ino, inode, handle, 0, 0, base + i, 0, 0, &pblock);
+      if (pblock != 0)
+	break;
+    }
+  if (pblock != 0)
+    *physblock = pblock - i + block - base;
+}
+
+int
+ext2_map_cluster_block (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			block_t block, block_t *physblock)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext3ExtentHandle *handle;
+  int ret;
+  *physblock = 0;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_BIGALLOC)
+      || !(inode->i_flags & EXT4_EXTENTS_FL))
+    return 0;
+
+  ret = ext3_extent_open (sb, ino, inode, &handle);
+  if (ret != 0)
+    return ret;
+
+  ext2_cluster_alloc (sb, ino, inode, handle, block, physblock);
+  ext3_extent_free (handle);
+  return 0;
+}
+
+void
 ext2_block_alloc_stats (VFSSuperblock *sb, block_t block, int inuse)
 {
   Ext2Filesystem *fs = sb->sb_private;
@@ -528,6 +741,64 @@ ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file)
   if (unlikely (file->f_buffer == NULL))
     return -ENOMEM;
   return 0;
+}
+
+int
+ext2_file_block_offset_too_big (VFSSuperblock *sb, Ext2Inode *inode,
+				block_t offset)
+{
+  block_t addr_per_block;
+  block_t max_map_block;
+
+  if (offset >= (1ULL << 32) - 1)
+    return 1;
+  if (inode->i_flags & EXT4_EXTENTS_FL)
+    return 0;
+
+  addr_per_block = sb->sb_blksize >> 2;
+  max_map_block = addr_per_block;
+  max_map_block += addr_per_block * addr_per_block;
+  max_map_block += addr_per_block * addr_per_block * addr_per_block;
+  max_map_block += EXT2_NDIR_BLOCKS;
+  return offset >= max_map_block;
+}
+
+int
+ext2_file_set_size (Ext2File *file, off64_t size)
+{
+  Ext2Filesystem *fs = file->f_sb->sb_private;
+  blksize_t blksize = file->f_sb->sb_blksize;
+  block_t old_truncate;
+  block_t truncate_block;
+  off64_t old_size;
+  int ret;
+  if (size > 0 && ext2_file_block_offset_too_big (file->f_sb, &file->f_inode,
+						  (size - 1) / blksize))
+    return -EFBIG;
+
+  truncate_block = (size + blksize - 1) >> EXT2_BLOCK_SIZE_BITS (fs->f_super);
+  old_size = EXT2_I_SIZE (file->f_inode);
+  old_truncate = (old_size + blksize - 1) >> EXT2_BLOCK_SIZE_BITS (fs->f_super);
+
+  ret = ext2_inode_set_size (file->f_sb, &file->f_inode, size);
+  if (ret != 0)
+    return ret;
+
+  if (file->f_ino != 0)
+    {
+      ret = ext2_update_inode (file->f_sb, file->f_ino, &file->f_inode);
+      if (ret != 0)
+	return ret;
+    }
+
+  ret = ext2_file_zero_remainder (file, size);
+  if (ret != 0)
+    return ret;
+
+  if (truncate_block >= old_truncate)
+    return 0;
+  return ext2_dealloc_blocks (file->f_sb, file->f_ino, &file->f_inode, 0,
+			      truncate_block, ~0ULL);
 }
 
 int
@@ -717,6 +988,47 @@ ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
       blockno++;
     }
   kfree (winode);
+  return 0;
+}
+
+int
+ext2_inode_set_size (VFSSuperblock *sb, Ext2Inode *inode, off64_t size)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  if (size < 0)
+    return -EINVAL;
+  if (ext2_needs_large_file (size))
+    {
+      int dirty_sb = 0;
+      if (S_ISREG (inode->i_mode))
+	{
+	  if (!(fs->f_super.s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
+	    {
+	      fs->f_super.s_feature_ro_compat |= EXT2_FT_RO_COMPAT_LARGE_FILE;
+	      dirty_sb = 1;
+	    }
+	}
+      else if (S_ISDIR (inode->i_mode))
+	{
+	  if (!(fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_LARGEDIR))
+	    {
+	      fs->f_super.s_feature_incompat |= EXT4_FT_INCOMPAT_LARGEDIR;
+	      dirty_sb = 1;
+	    }
+	}
+      else
+	return -EFBIG;
+
+      if (dirty_sb)
+	{
+	  if (fs->f_super.s_rev_level == EXT2_OLD_REV)
+	    ext2_update_super_revision (&fs->f_super);
+	  fs->f_flags |= EXT2_FLAG_DIRTY | EXT2_FLAG_CHANGED;
+	}
+    }
+
+  inode->i_size = size & 0xffffffff;
+  inode->i_size_high = size >> 32;
   return 0;
 }
 
@@ -937,6 +1249,26 @@ ext2_iblk_add_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks)
 }
 
 int
+ext2_iblk_sub_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  blkcnt64_t b = inode->i_blocks;
+  if (fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_HUGE_FILE)
+    b += (blkcnt64_t) inode->osd2.linux2.l_i_blocks_hi << 32;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_HUGE_FILE)
+      || !(inode->i_flags & EXT4_HUGE_FILE_FL))
+    nblocks *= sb->sb_blksize / 512;
+  nblocks *= EXT2_CLUSTER_RATIO (fs);
+  if (nblocks > b)
+    return -EOVERFLOW;
+  b -= nblocks;
+  if (fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_HUGE_FILE)
+    inode->osd2.linux2.l_i_blocks_hi = b >> 32;
+  inode->i_blocks = b & 0xffffffff;
+  return 0;
+}
+
+int
 ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num, block_t *result,
 		  int *count)
 {
@@ -1061,6 +1393,34 @@ ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
   ext2_block_alloc_stats (sb, block, 1);
   *result = block;
   return ret;
+}
+
+int
+ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		     char *blockbuf, block_t start, block_t end)
+{
+  Ext2Inode inode_buf;
+  int ret;
+  if (start > end)
+    return -EINVAL;
+  if (inode == NULL)
+    {
+      ret = ext2_read_inode (sb, ino, &inode_buf);
+      if (ret != 0)
+	return ret;
+      inode = &inode_buf;
+    }
+
+  if (inode->i_flags & EXT4_INLINE_DATA_FL)
+    return -ENOTSUP;
+
+  if (inode->i_flags & EXT4_EXTENTS_FL)
+    ret = ext3_extent_dealloc_blocks (sb, ino, inode, start, end);
+  else
+    ret = ext2_dealloc_indirect (sb, inode, blockbuf, start, end);
+  if (ret != 0)
+    return ret;
+  return ext2_update_inode (sb, ino, inode);
 }
 
 int

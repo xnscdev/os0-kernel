@@ -70,6 +70,64 @@ ext3_extent_splitting_eof (Ext3ExtentHandle *handle,
   return 1;
 }
 
+static int
+ext3_extent_dealloc_range (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			   block_t lfree_start, block_t free_start,
+			   uint32_t free_count, int *freed)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  block_t block;
+  uint32_t cluster_freed;
+  int freed_now = 0;
+  int ret;
+
+  if (EXT2_CLUSTER_RATIO (fs) == 1)
+    {
+      *freed += free_count;
+      while (free_count-- > 0)
+	ext2_block_alloc_stats (sb, free_start++, -1);
+      return 0;
+    }
+
+  if (free_start & EXT2_CLUSTER_MASK (fs))
+    {
+      ret = ext2_map_cluster_block (sb, ino, inode, lfree_start, &block);
+      if (ret != 0)
+	goto end;
+      if (block == 0)
+	{
+	  ext2_block_alloc_stats (sb, free_start, -1);
+	  freed_now++;
+	}
+    }
+
+  while (free_count > 0 && free_count >= EXT2_CLUSTER_RATIO (fs))
+    {
+      ext2_block_alloc_stats (sb, free_start, -1);
+      freed_now++;
+      cluster_freed = EXT2_CLUSTER_RATIO (fs);
+      free_count -= cluster_freed;
+      free_start += cluster_freed;
+      lfree_start += cluster_freed;
+    }
+
+  if (free_count > 0)
+    {
+      ret = ext2_map_cluster_block (sb, ino, inode, lfree_start, &block);
+      if (ret != 0)
+	goto end;
+      if (block == 0)
+	{
+	  ext2_block_alloc_stats (sb, free_start, -1);
+	  freed_now++;
+	}
+    }
+
+ end:
+  *freed += freed_now;
+  return ret;
+}
+
 int
 ext3_extent_open (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 		  Ext3ExtentHandle **handle)
@@ -853,6 +911,217 @@ ext3_extent_delete (Ext3ExtentHandle *handle, int flags)
       ret = ext3_extent_update_path (handle);
     }
   return ret;
+}
+
+int
+ext3_extent_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+			    block_t start, block_t end)
+{
+  Ext3ExtentHandle *handle = NULL;
+  Ext3GenericExtent extent;
+  block_t free_start;
+  block_t lfree_start;
+  block_t next;
+  uint32_t free_count;
+  uint32_t newlen;
+  int freed = 0;
+  int op;
+  int ret = ext3_extent_open (sb, ino, inode, &handle);
+  if (ret != 0)
+    return ret;
+
+  ext3_extent_goto (handle, 0, start);
+  ret = ext3_extent_get (handle, EXT2_EXTENT_CURRENT, &extent);
+  if (ret != 0)
+    {
+      if (ret == -ENOENT)
+	ret = 0;
+      goto end;
+    }
+
+  while (1)
+    {
+      op = EXT2_EXTENT_NEXT_LEAF;
+      next = extent.e_lblk + extent.e_len;
+      if (start >= extent.e_lblk)
+	{
+	  if (end < extent.e_lblk)
+	    break;
+	  free_start = extent.e_pblk;
+	  lfree_start = extent.e_lblk;
+	  if (next > end)
+	    free_count = end - extent.e_lblk + 1;
+	  else
+	    free_count = extent.e_len;
+	  extent.e_len -= free_count;
+	  extent.e_lblk += free_count;
+	  extent.e_pblk += free_count;
+	}
+      else if (end >= next - 1)
+	{
+	  if (start >= next)
+	    goto next_extent;
+	  newlen = start - extent.e_lblk;
+	  free_start = extent.e_pblk + newlen;
+	  lfree_start = extent.e_lblk + newlen;
+	  free_count = extent.e_len - newlen;
+	  extent.e_len = newlen;
+	}
+      else
+	{
+	  Ext3GenericExtent new_ex;
+	  new_ex.e_pblk = extent.e_pblk + end + 1 - extent.e_lblk;
+	  new_ex.e_lblk = end + 1;
+	  new_ex.e_len = next - end - 1;
+	  new_ex.e_flags = extent.e_flags;
+	  extent.e_len = start - extent.e_lblk;
+	  free_start = extent.e_pblk + extent.e_len;
+	  lfree_start = extent.e_lblk + extent.e_len;
+	  free_count = end - start + 1;
+
+	  ret = ext3_extent_insert (handle, EXT2_EXTENT_INSERT_AFTER, &new_ex);
+	  if (ret != 0)
+	    goto end;
+	  ret = ext3_extent_fix_parents (handle);
+	  if (ret != 0)
+	    goto end;
+	  ret = ext3_extent_goto (handle, 0, extent.e_lblk);
+	  if (ret != 0)
+	    goto end;
+	}
+
+      if (extent.e_len != 0)
+	{
+	  ret = ext3_extent_replace (handle, 0, &extent);
+	  if (ret != 0)
+	    goto end;
+	  ret = ext3_extent_fix_parents (handle);
+	}
+      else
+	{
+	  Ext3GenericExtent new_ex;
+	  block_t old_block;
+	  block_t next_block;
+	  ret = ext3_extent_get (handle, EXT2_EXTENT_CURRENT, &new_ex);
+	  if (ret != 0)
+	    goto end;
+	  old_block = new_ex.e_lblk;
+	  ret = ext3_extent_get (handle, EXT2_EXTENT_NEXT_LEAF, &new_ex);
+	  if (ret == -ESRCH)
+	    next_block = old_block;
+	  else if (ret != 0)
+	    goto end;
+	  else
+	    next_block = new_ex.e_lblk;
+	  ret = ext3_extent_goto (handle, 0, old_block);
+	  if (ret != 0)
+	    goto end;
+	  ret = ext3_extent_delete (handle, 0);
+	  if (ret != 0)
+	    goto end;
+	  ret = ext3_extent_fix_parents (handle);
+	  if (ret != 0 && ret != -ENOENT)
+	    goto end;
+	  ret = 0;
+
+	  ext3_extent_goto (handle, 0, next_block);
+	  op = EXT2_EXTENT_CURRENT;
+	}
+      if (ret != 0)
+	goto end;
+
+      ret = ext3_extent_dealloc_range (sb, ino, inode, lfree_start, free_start,
+				       free_count, &freed);
+      if (ret != 0)
+	goto end;
+
+    next_extent:
+      ret = ext3_extent_get (handle, op, &extent);
+      if (ret == -ESRCH || ret == -ENOENT)
+	break;
+      if (ret != 0)
+	goto end;
+    }
+
+  ret = ext2_iblk_sub_blocks (sb, inode, freed);
+ end:
+  ext3_extent_free (handle);
+  return ret;
+}
+
+int
+ext3_extent_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		  Ext3ExtentHandle *handle, char *blockbuf, int flags,
+		  block_t block, int *retflags, int *blocks_alloc,
+		  block_t *physblock)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2BlockAllocContext alloc_ctx;
+  Ext3GenericExtent extent;
+  unsigned int offset;
+  block_t b = 0;
+  int alloc = 0;
+  int ret = 0;
+  int set_flags = flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
+  if (flags & BMAP_SET)
+    return ext3_extent_set_bmap (handle, block, *physblock, set_flags);
+
+  ret = ext3_extent_goto (handle, 0, block);
+  if (ret != 0)
+    {
+      if (ret == -ENOENT)
+	{
+	  extent.e_lblk = block;
+	  goto found;
+	}
+      return ret;
+    }
+  ret = ext3_extent_get (handle, EXT2_EXTENT_CURRENT, &extent);
+  if (ret != 0)
+    return ret;
+  offset = block - extent.e_lblk;
+  if (block >= extent.e_lblk && offset <= extent.e_len)
+    {
+      *physblock = extent.e_pblk + offset;
+      if (retflags != NULL && (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT))
+	*retflags |= BMAP_RET_UNINIT;
+    }
+
+ found:
+  if (*physblock == 0 && (flags & BMAP_ALLOC))
+    {
+      ext2_cluster_alloc (sb, ino, inode, handle, block, &b);
+      if (b != 0)
+	goto set_extent;
+      ret = ext3_extent_bmap (sb, ino, inode, handle, blockbuf, 0, block - 1, 0,
+			      blocks_alloc, &b);
+      if (ret != 0)
+	b = ext2_find_inode_goal (sb, ino, inode, block);
+      alloc_ctx.bc_ino = ino;
+      alloc_ctx.bc_inode = inode;
+      alloc_ctx.bc_block = extent.e_lblk;
+      alloc_ctx.bc_flags = BLOCK_ALLOC_DATA;
+      ret = ext2_alloc_block (sb, b, blockbuf, &b, &alloc_ctx);
+      if (ret != 0)
+	return ret;
+      b &= ~EXT2_CLUSTER_MASK (fs);
+      b += EXT2_CLUSTER_MASK (fs) & block;
+      alloc++;
+
+    set_extent:
+      ret = ext3_extent_set_bmap (handle, block, b, set_flags);
+      if (ret != 0)
+	{
+	  ext2_block_alloc_stats (sb, b, -1);
+	  return ret;
+	}
+      ret = ext2_read_inode (sb, ino, inode);
+      if (ret != 0)
+	return ret;
+      *blocks_alloc += alloc;
+      *physblock = b;
+    }
+  return 0;
 }
 
 int

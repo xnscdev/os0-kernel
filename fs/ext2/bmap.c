@@ -30,11 +30,6 @@
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
 
-static int ext3_extent_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
-			     Ext3ExtentHandle *handle, char *blockbuf,
-			     int flags, block_t block, int *retflags,
-			     int *blocks_alloc, block_t *physblock);
-
 static int
 block_ind_bmap (VFSSuperblock *sb, int flags, uint32_t ind, char *blockbuf,
 		int *blocks_alloc, block_t blockno, uint32_t *result)
@@ -108,125 +103,6 @@ block_tind_bmap (VFSSuperblock *sb, int flags, uint32_t tind, char *blockbuf,
     return ret;
   return block_ind_bmap (sb, flags, b, blockbuf, block_alloc,
 			 blockno % addr_per_block, result);
-}
-
-static void
-ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
-		    Ext3ExtentHandle *handle, block_t block, block_t *physblock)
-{
-  Ext2Filesystem *fs = sb->sb_private;
-  block_t pblock = 0;
-  block_t base;
-  int i;
-  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_BIGALLOC))
-    return;
-
-  base = block & ~EXT2_CLUSTER_MASK (fs);
-  for (i = 0; i < EXT2_CLUSTER_RATIO (fs); i++)
-    {
-      if (base + i == block)
-	continue;
-      ext3_extent_bmap (sb, ino, inode, handle, 0, 0, base + i, 0, 0, &pblock);
-      if (pblock != 0)
-	break;
-    }
-  if (pblock != 0)
-    *physblock = pblock -  + block - base;
-}
-
-static int
-ext3_extent_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
-		  Ext3ExtentHandle *handle, char *blockbuf, int flags,
-		  block_t block, int *retflags, int *blocks_alloc,
-		  block_t *physblock)
-{
-  Ext2Filesystem *fs = sb->sb_private;
-  Ext2BlockAllocContext alloc_ctx;
-  Ext3GenericExtent extent;
-  unsigned int offset;
-  block_t b = 0;
-  int alloc = 0;
-  int ret = 0;
-  int set_flags = flags & BMAP_UNINIT ? EXT2_EXTENT_SET_BMAP_UNINIT : 0;
-  if (flags & BMAP_SET)
-    return ext3_extent_set_bmap (handle, block, *physblock, set_flags);
-
-  ret = ext3_extent_goto (handle, 0, block);
-  if (ret != 0)
-    {
-      if (ret == -ENOENT)
-	{
-	  extent.e_lblk = block;
-	  goto found;
-	}
-      return ret;
-    }
-  ret = ext3_extent_get (handle, EXT2_EXTENT_CURRENT, &extent);
-  if (ret != 0)
-    return ret;
-  offset = block - extent.e_lblk;
-  if (block >= extent.e_lblk && offset <= extent.e_len)
-    {
-      *physblock = extent.e_pblk + offset;
-      if (retflags != NULL && (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT))
-	*retflags |= BMAP_RET_UNINIT;
-    }
-
- found:
-  if (*physblock == 0 && (flags & BMAP_ALLOC))
-    {
-      ext2_cluster_alloc (sb, ino, inode, handle, block, &b);
-      if (b != 0)
-	goto set_extent;
-      ret = ext3_extent_bmap (sb, ino, inode, handle, blockbuf, 0, block - 1, 0,
-			      blocks_alloc, &b);
-      if (ret != 0)
-	b = ext2_find_inode_goal (sb, ino, inode, block);
-      alloc_ctx.bc_ino = ino;
-      alloc_ctx.bc_inode = inode;
-      alloc_ctx.bc_block = extent.e_lblk;
-      alloc_ctx.bc_flags = BLOCK_ALLOC_DATA;
-      ret = ext2_alloc_block (sb, b, blockbuf, &b, &alloc_ctx);
-      if (ret != 0)
-	return ret;
-      b &= ~EXT2_CLUSTER_MASK (fs);
-      b += EXT2_CLUSTER_MASK (fs) & block;
-      alloc++;
-
-    set_extent:
-      ret = ext3_extent_set_bmap (handle, block, b, set_flags);
-      if (ret != 0)
-	{
-	  ext2_block_alloc_stats (sb, b, -1);
-	  return ret;
-	}
-      ret = ext2_read_inode (sb, ino, inode);
-      if (ret != 0)
-	return ret;
-      *blocks_alloc += alloc;
-      *physblock = b;
-    }
-  return 0;
-}
-
-static int
-ext2_file_block_offset_too_big (VFSSuperblock *sb, Ext2Inode *inode,
-				block_t offset)
-{
-  block_t addr_per_block;
-  block_t max_map_block;
-
-  if (offset >= (1ULL << 32) - 1)
-    return 1;
-  if (inode->i_flags & EXT4_EXTENTS_FL)
-    return 0;
-
-  addr_per_block = sb->sb_blksize >> 2;
-  max_map_block = addr_per_block;
-  max_map_block += addr_per_block * addr_per_block;
-  max_map_block += addr_per_block * addr_per_block * addr_per_block;
-  max_map_block += EXT2_NDIR_BLOCKS;
-  return offset >= max_map_block;
 }
 
 int
