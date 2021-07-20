@@ -38,6 +38,8 @@
 #define EXT2_ROOT_INODE    2
 #define EXT2_MAX_NAME_LEN  255
 
+#define EXT3_EXTENT_MAGIC 0xf30a
+
 #define EXT2_TYPE_FIFO   0x1000
 #define EXT2_TYPE_CHRDEV 0x2000
 #define EXT2_TYPE_DIR    0x4000
@@ -225,6 +227,11 @@
 #define EXT2_BG_BLOCK_UNINIT 0x0002
 #define EXT2_BG_BLOCK_ZEROED 0x0004
 
+#define EXT2_INIT_MAX_LEN   (1 << 15)
+#define EXT2_UNINIT_MAX_LEN (EXT2_INIT_MAX_LEN - 1)
+#define EXT2_MAX_EXTENT_LBLK (((block_t) 1 << 32) - 1)
+#define EXT2_MAX_EXTENT_PBLK (((block_t) 1 << 48) - 1)
+
 #define EXT2_EXTENT_FLAGS_LEAF         0x0001
 #define EXT2_EXTENT_FLAGS_UNINIT       0x0002
 #define EXT2_EXTENT_FLAGS_SECOND_VISIT 0x0004
@@ -278,6 +285,20 @@
 #define EXT2_B2C(fs, block) ((block) >> (fs)->f_cluster_ratio_bits)
 #define EXT2_I_SIZE(i) ((i).i_size | (uint64_t) (i).i_size_high << 32)
 #define EXT2_MAX_STRIDE_LENGTH(sb) (4194304 / (int) sb->sb_blksize)
+#define EXT2_FIRST_EXTENT(h) ((Ext3Extent *) ((char *) (h) +		\
+					      sizeof (Ext3ExtentHeader)))
+#define EXT2_FIRST_INDEX(h) ((Ext3ExtentIndex *) ((char *) (h) +	\
+						  sizeof (Ext3ExtentHeader)))
+#define EXT2_HAS_FREE_INDEX(path)				\
+  ((path)->p_header->eh_entries < (path)->p_header->eh_max)
+#define EXT2_LAST_EXTENT(h) (EXT2_FIRST_EXTENT (h) + (h)->eh_entries - 1)
+#define EXT2_LAST_INDEX(h) (EXT2_FIRST_INDEX (h) + (h)->eh_entries - 1)
+#define EXT2_MAX_EXTENT(h) (EXT2_FIRST_EXTENT (h) + (h)->eh_max - 1)
+#define EXT2_MAX_INDEX(h) (EXT2_FIRST_INDEX (h) + (h)->eh_max - 1)
+#define EXT2_EXTENT_TAIL_OFFSET(h)					\
+  (sizeof (Ext3ExtentHeader) + sizeof (Ext3Extent) * (h)->eh_max)
+#define EXT2_EXTENT_TAIL(h)						\
+  ((Ext3ExtentTail *) ((char *) h + EXT2_EXTENT_TAIL_OFFSET (h)))
 
 typedef struct
 {
@@ -672,6 +693,68 @@ typedef struct
 
 typedef struct
 {
+  uint16_t eh_magic;
+  uint16_t eh_entries;
+  uint16_t eh_max;
+  uint16_t eh_depth;
+  uint32_t eh_generation;
+} Ext3ExtentHeader;
+
+typedef struct
+{
+  uint32_t ei_block;
+  uint32_t ei_leaf;
+  uint16_t ei_leaf_hi;
+  uint16_t ei_unused;
+} Ext3ExtentIndex;
+
+typedef struct
+{
+  int i_curr_entry;
+  int i_curr_level;
+  int i_num_entries;
+  int i_max_entries;
+  int i_max_depth;
+  int i_bytes_avail;
+  block_t i_max_lblk;
+  block_t i_max_pblk;
+  uint32_t i_max_len;
+  uint32_t i_max_uninit_len;
+} Ext3ExtentInfo;
+
+typedef struct
+{
+  uint32_t et_checksum;
+} Ext3ExtentTail;
+
+typedef struct
+{
+  uint32_t ee_block;
+  uint16_t ee_len;
+  uint16_t ee_start_hi;
+  uint32_t ee_start;
+} Ext3Extent;
+
+typedef struct
+{
+  uint32_t p_block;
+  uint16_t p_depth;
+  Ext3Extent *p_extent;
+  Ext3ExtentIndex *p_index;
+  Ext3ExtentHeader *p_header;
+  void *p_bh;
+} Ext3ExtentPath;
+
+typedef struct
+{
+  block_t e_pblk;
+  block_t e_lblk;
+  uint32_t e_len;
+  uint32_t e_flags;
+} Ext3GenericExtent;
+
+typedef struct
+{
   char *p_buffer;
   int p_entries;
   int p_max_entries;
@@ -680,11 +763,11 @@ typedef struct
   int p_flags;
   block_t p_end_block;
   void *p_curr;
-} Ext4ExtentPath;
+} Ext3GenericExtentPath;
 
 typedef struct
 {
-  Ext2Filesystem *eh_fs;
+  VFSSuperblock *eh_sb;
   ino64_t eh_ino;
   Ext2Inode *eh_inode;
   Ext2Inode eh_inode_buf;
@@ -692,16 +775,8 @@ typedef struct
   int eh_level;
   int eh_max_depth;
   int eh_max_paths;
-  Ext4ExtentPath *path;
-} Ext4ExtentHandle;
-
-typedef struct
-{
-  block_t e_pblk;
-  block_t e_lblk;
-  uint32_t e_len;
-  uint32_t e_flags;
-} Ext4Extent;
+  Ext3GenericExtentPath *eh_path;
+} Ext3ExtentHandle;
 
 typedef struct
 {
@@ -898,13 +973,23 @@ int ext2_load_file_buffer (Ext2File *file, int nofill);
 int ext2_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 	       char *blockbuf, int flags, block_t block, int *retflags,
 	       block_t *physblock);
-int ext4_extent_open (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
-		      Ext4ExtentHandle **handle);
-int ext4_extent_goto (Ext4ExtentHandle *handle, int leaflvl, block_t block);
-int ext4_extent_get (Ext4ExtentHandle *handle, int flags, Ext4Extent *extent);
-int ext4_extent_set_bmap (Ext4ExtentHandle *handle, block_t logical,
+int ext3_extent_open (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		      Ext3ExtentHandle **handle);
+int ext3_extent_header_valid (Ext3ExtentHeader *eh, size_t size);
+int ext3_extent_goto (Ext3ExtentHandle *handle, int leaflvl, block_t block);
+int ext3_extent_get (Ext3ExtentHandle *handle, int flags,
+		     Ext3GenericExtent *extent);
+int ext3_extent_get_info (Ext3ExtentHandle *handle, Ext3ExtentInfo *info);
+int ext3_extent_node_split (Ext3ExtentHandle *handle, int canexpand);
+int ext3_extent_fix_parents (Ext3ExtentHandle *handle);
+int ext3_extent_insert (Ext3ExtentHandle *handle, int flags,
+			Ext3GenericExtent *extent);
+int ext3_extent_replace (Ext3ExtentHandle *handle, int flags,
+			 Ext3GenericExtent *extent);
+int ext3_extent_delete (Ext3ExtentHandle *handle, int flags);
+int ext3_extent_set_bmap (Ext3ExtentHandle *handle, block_t logical,
 			  block_t physical, int flags);
-void ext4_extent_free (Ext4ExtentHandle *handle);
+void ext3_extent_free (Ext3ExtentHandle *handle);
 int ext2_iblk_add_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num,
 		      block_t *result, int *count);
@@ -938,6 +1023,12 @@ int ext2_inode_checksum_valid (Ext2Filesystem *fs, ino64_t ino,
 			       Ext2LargeInode *inode);
 void ext2_inode_checksum_update (Ext2Filesystem *fs, ino64_t ino,
 				 Ext2LargeInode *inode);
+int ext3_extent_block_checksum (VFSSuperblock *sb, ino64_t ino,
+				Ext3ExtentHeader *eh, uint32_t *crc);
+int ext3_extent_block_checksum_valid (VFSSuperblock *sb, ino64_t ino,
+				      Ext3ExtentHeader *eh);
+int ext3_extent_block_checksum_update (VFSSuperblock *sb, ino64_t ino,
+				       Ext3ExtentHeader *eh);
 uint32_t ext2_block_bitmap_checksum (VFSSuperblock *sb, unsigned int group);
 int ext2_block_bitmap_checksum_valid (VFSSuperblock *sb, unsigned int group,
 				      char *bitmap, int size);

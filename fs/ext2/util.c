@@ -727,8 +727,8 @@ ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
   Ext2Filesystem *fs = sb->sb_private;
   unsigned int group;
   unsigned char log_flex;
-  Ext4Extent extent;
-  Ext4ExtentHandle *handle = NULL;
+  Ext3GenericExtent extent;
+  Ext3ExtentHandle *handle = NULL;
   int ret;
 
   if (inode == NULL || ext2_is_inline_symlink (inode)
@@ -736,16 +736,16 @@ ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
     goto noblocks;
   if (inode->i_flags & EXT4_EXTENTS_FL)
     {
-      ret = ext4_extent_open (sb, ino, inode, &handle);
+      ret = ext3_extent_open (sb, ino, inode, &handle);
       if (ret != 0)
 	goto noblocks;
-      ret = ext4_extent_goto (handle, 0, block);
+      ret = ext3_extent_goto (handle, 0, block);
       if (ret != 0)
 	goto noblocks;
-      ret = ext4_extent_get (handle, EXT2_EXTENT_CURRENT, &extent);
+      ret = ext3_extent_get (handle, EXT2_EXTENT_CURRENT, &extent);
       if (ret != 0)
 	goto noblocks;
-      ext4_extent_free (handle);
+      ext3_extent_free (handle);
       return extent.e_pblk + block - extent.e_lblk;
     }
 
@@ -753,7 +753,7 @@ ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
     return inode->i_block[0];
 
  noblocks:
-  ext4_extent_free (handle);
+  ext3_extent_free (handle);
   log_flex = fs->f_super.s_log_groups_per_flex;
   group = ext2_group_of_inode (fs, ino);
   if (log_flex != 0)
@@ -1870,9 +1870,9 @@ ext2_inode_checksum (Ext2Filesystem *fs, ino64_t ino, Ext2LargeInode *inode,
 
   /* Calculate checksum */
   gen = inode->i_generation;
-  crc = crc32 (fs->f_checksum_seed, (unsigned char *) &ino, sizeof (ino64_t));
-  crc = crc32 (crc, (unsigned char *) &gen, 4);
-  crc = crc32 (crc, (unsigned char *) inode, size);
+  crc = crc32 (fs->f_checksum_seed, &ino, sizeof (ino64_t));
+  crc = crc32 (crc, &gen, 4);
+  crc = crc32 (crc, inode, size);
 
   /* Restore inode checksum fields */
   inode->i_checksum_lo = old_lo;
@@ -1930,6 +1930,62 @@ ext2_inode_checksum_update (Ext2Filesystem *fs, ino64_t ino,
   inode->i_checksum_lo = crc & 0xffff;
   if (has_hi)
     inode->i_checksum_hi = crc >> 16;
+}
+
+int
+ext3_extent_block_checksum (VFSSuperblock *sb, ino64_t ino,
+			    Ext3ExtentHeader *eh, uint32_t *crc)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Inode inode;
+  uint32_t gen;
+  size_t size =
+    EXT2_EXTENT_TAIL_OFFSET (eh) + offsetof (Ext3ExtentTail, et_checksum);
+  int ret = ext2_read_inode (sb, ino, &inode);
+  if (ret != 0)
+    return ret;
+  gen = inode.i_generation;
+  *crc = crc32 (fs->f_checksum_seed, &ino, sizeof (ino64_t));
+  *crc = crc32 (*crc, &gen, 4);
+  *crc = crc32 (*crc, eh, size);
+  return 0;
+}
+
+int
+ext3_extent_block_checksum_valid (VFSSuperblock *sb, ino64_t ino,
+				  Ext3ExtentHeader *eh)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext3ExtentTail *t = EXT2_EXTENT_TAIL (eh);
+  uint32_t provided;
+  uint32_t crc;
+  int ret;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+
+  provided = t->et_checksum;
+  ret = ext3_extent_block_checksum (sb, ino, eh, &crc);
+  if (ret != 0)
+    return 0;
+  return provided == crc;
+}
+
+int
+ext3_extent_block_checksum_update (VFSSuperblock *sb, ino64_t ino,
+				   Ext3ExtentHeader *eh)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext3ExtentTail *t = EXT2_EXTENT_TAIL (eh);
+  uint32_t crc;
+  int ret;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+
+  ret = ext3_extent_block_checksum (sb, ino, eh, &crc);
+  if (ret != 0)
+    return ret;
+  t->et_checksum = crc;
+  return 0;
 }
 
 uint32_t
