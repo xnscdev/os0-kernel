@@ -367,8 +367,8 @@ ext2_fill_inode (VFSInode *inode)
   inode->vi_gid = file->f_inode.i_gid;
   inode->vi_nlink = file->f_inode.i_links_count;
   inode->vi_size = file->f_inode.i_size;
-  if ((file->f_inode.i_mode & 0xf000) == EXT2_TYPE_FILE && esb->s_rev_level > 0
-      && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
+  if (S_ISREG (file->f_inode.i_mode) && esb->s_rev_level > 0
+      && (esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
     inode->vi_size |= (off64_t) file->f_inode.i_size_high << 32;
   inode->vi_atime.tv_sec = file->f_inode.i_atime;
   inode->vi_atime.tv_nsec = 0;
@@ -381,41 +381,9 @@ ext2_fill_inode (VFSInode *inode)
     file->f_inode.i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
 
   /* Set mode and device numbers if applicable */
-  switch (file->f_inode.i_mode & 0xf000)
-    {
-    case EXT2_TYPE_FIFO:
-      inode->vi_mode = S_IFIFO;
-      inode->vi_rdev = 0;
-      break;
-    case EXT2_TYPE_CHRDEV:
-      inode->vi_mode = S_IFCHR;
-      inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
-      break;
-    case EXT2_TYPE_DIR:
-      inode->vi_mode = S_IFDIR;
-      inode->vi_rdev = 0;
-      break;
-    case EXT2_TYPE_BLKDEV:
-      inode->vi_mode = S_IFBLK;
-      inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
-      break;
-    case EXT2_TYPE_FILE:
-      inode->vi_mode = S_IFREG;
-      inode->vi_rdev = 0;
-      break;
-    case EXT2_TYPE_LINK:
-      inode->vi_mode = S_IFLNK;
-      inode->vi_rdev = 0;
-      break;
-    case EXT2_TYPE_SOCKET:
-      inode->vi_mode = S_IFSOCK;
-      inode->vi_rdev = 0;
-      break;
-    default:
-      /* Should not happen */
-      inode->vi_mode = 0;
-      inode->vi_rdev = 0;
-    }
+  inode->vi_mode = file->f_inode.i_mode & S_IFMT;
+  if (S_ISBLK (inode->vi_mode) || S_ISCHR (inode->vi_mode))
+    inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
   inode->vi_mode |= file->f_inode.i_mode & 07777;
   inode->vi_private = file;
   return 0;
