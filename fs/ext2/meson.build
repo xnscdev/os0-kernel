@@ -3,9 +3,10 @@ fs_ext2_src = [
   'bitmap.c',
   'bmap.c',
   'extent.c',
-  'super.c',
   'inode.c',
+  'link.c',
   'mmp.c',
+  'super.c',
   'util.c'
 ]
 

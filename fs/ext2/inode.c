@@ -26,14 +26,15 @@
 #include <vm/heap.h>
 
 int
-ext2_create (VFSInode *dir, const char *name, mode_t mode)
+ext2_new_file (VFSInode *dir, const char *name, mode_t mode, VFSInode **result)
 {
   Ext2Filesystem *fs = dir->vi_sb->sb_private;
   Ext2Superblock *esb = &fs->f_super;
   VFSInode *inode;
+  Ext2File *file;
   Ext2Inode *ei;
-  ino_t ino;
-  time_t newtime = time (NULL);
+  ino64_t ino;
+  time_t t = time (NULL);
   int ret;
 
   inode = vfs_alloc_inode (dir->vi_sb);
@@ -42,39 +43,27 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
   if (ino == 0)
     {
-      kfree (inode);
+      vfs_unref_inode (inode);
       return -ENOSPC;
     }
 
-  ei = kmalloc (sizeof (Ext2Inode));
-  if (unlikely (ei == NULL))
+  file = kzalloc (sizeof (Ext2File));
+  if (unlikely (file == NULL))
     {
-      kfree (inode);
+      vfs_unref_inode (inode);
       return -ENOMEM;
     }
+  inode->vi_private = file;
+  ret = ext2_open_file (dir->vi_sb, ino, file);
+  if (ret != 0)
+    {
+      vfs_unref_inode (inode);
+      return ret;
+    }
 
-  /* TODO Pre-allocate data blocks */
-  ei->i_mode = S_IFREG | (mode & 07777);
-  ei->i_uid = 0;
-  ei->i_size = 0;
-  ei->i_atime = newtime;
-  ei->i_ctime = newtime;
-  ei->i_mtime = newtime;
-  ei->i_dtime = 0;
-  ei->i_gid = 0;
-  ei->i_links_count = 1;
-  ei->i_blocks = 0;
-  ei->i_flags = 0;
-  memset (&ei->osd1, 0, sizeof (ei->osd1));
-  memset (ei->i_block, 0, 60);
-  ei->i_generation = 0; /* ??? */
-  ei->i_file_acl = 0;
-  ei->i_size_high = 0;
-  ei->i_faddr = 0; /* ??? */
-  memset (&ei->osd2, 0, sizeof (ei->osd2));
-
+  ei = &file->f_inode;
   inode->vi_ino = ino;
-  inode->vi_mode = mode | S_IFREG;
+  inode->vi_mode = mode;
   inode->vi_uid = ei->i_uid;
   inode->vi_gid = ei->i_gid;
   inode->vi_nlink = ei->i_links_count;
@@ -82,20 +71,29 @@ ext2_create (VFSInode *dir, const char *name, mode_t mode)
   if (S_ISREG (ei->i_mode) && esb->s_rev_level > 0
       && (esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
     inode->vi_size |= (off64_t) ei->i_size_high << 32;
-  inode->vi_atime.tv_sec = ei->i_atime;
+  inode->vi_atime.tv_sec = t;
   inode->vi_atime.tv_nsec = 0;
-  inode->vi_mtime.tv_sec = ei->i_mtime;
+  inode->vi_mtime.tv_sec = t;
   inode->vi_mtime.tv_nsec = 0;
-  inode->vi_ctime.tv_sec = ei->i_ctime;
+  inode->vi_ctime.tv_sec = t;
   inode->vi_ctime.tv_nsec = 0;
   inode->vi_sectors = ei->i_blocks;
   inode->vi_blocks = ei->i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
-  inode->vi_private = ei;
 
   ext2_write_inode (inode);
-  ret = ext2_add_entry (dir, inode, name);
-  vfs_unref_inode (inode);
+  ret = ext2_add_link (dir->vi_sb, dir, name, ino, ext2_dir_type (mode));
+
+  if (result == NULL)
+    vfs_unref_inode (inode);
+  else
+    *result = inode;
   return ret;
+}
+
+int
+ext2_create (VFSInode *dir, const char *name, mode_t mode)
+{
+  return ext2_new_file (dir, name, (mode & ~S_IFMT) | S_IFREG, NULL);
 }
 
 int
@@ -190,14 +188,16 @@ ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 int
 ext2_link (VFSInode *old, VFSInode *dir, const char *new)
 {
-  return old->vi_sb == dir->vi_sb ? ext2_add_entry (dir, old, new) : -EXDEV;
+  if (old->vi_sb != dir->vi_sb)
+    return -EXDEV;
+  return ext2_add_link (dir->vi_sb, dir, new, old->vi_ino,
+			ext2_dir_type (old->vi_mode));
 }
 
 int
 ext2_unlink (VFSInode *dir, const char *name)
 {
   VFSSuperblock *sb = dir->vi_sb;
-  Ext2Superblock *esb = &((Ext2Filesystem *) sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vi_private;
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
@@ -248,22 +248,19 @@ ext2_unlink (VFSInode *dir, const char *name)
 	{
 	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
 	  uint16_t namelen;
-	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	  if (guess->d_inode == 0 || guess->d_rec_len == 0)
 	    {
 	      bytes += 4;
 	      continue;
 	    }
 
-	  namelen = guess->ed_namelenl;
-	  if ((esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE) == 0)
-	    namelen |= guess->ed_namelenh << 8;
-
+	  namelen = guess->d_name_len & 0xff;
 	  guessname = (char *) guess + sizeof (Ext2DirEntry);
 	  if (strlen (name) == namelen
 	      && strncmp (guessname, name, namelen) == 0)
 	    {
 	      if (last != NULL)
-	        last->ed_size += guess->ed_size;
+	        last->d_rec_len += guess->d_rec_len;
 	      memset (guess, 0, sizeof (Ext2DirEntry));
 	      ret = ext2_write_blocks (buffer, sb, realblocks[i], 1);
 	      kfree (buffer);
@@ -278,7 +275,7 @@ ext2_unlink (VFSInode *dir, const char *name)
 	      return ret;
 	    }
 
-	  bytes += guess->ed_size;
+	  bytes += guess->d_rec_len;
 	  last = guess;
 	}
     }
@@ -390,7 +387,6 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 int
 ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  Ext2Superblock *esb = &((Ext2Filesystem *) sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vd_inode->vi_private;
   while (1)
     {
@@ -400,7 +396,7 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
       block_t realblock;
       int ret;
 
-      if (guess->ed_inode == 0 || guess->ed_size == 0)
+      if (guess->d_inode == 0 || guess->d_rec_len == 0)
 	{
 	  dir->vd_offset += 4;
 	  if (dir->vd_offset >= sb->sb_blksize)
@@ -420,21 +416,18 @@ ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 	  continue;
 	}
 
-      namelen = guess->ed_namelenl;
-      if ((esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE) == 0)
-	namelen |= guess->ed_namelenh << 8;
-
+      namelen = guess->d_name_len & 0xff;
       result = kmalloc (sizeof (VFSDirEntry));
       result->d_flags = 0;
       result->d_inode = vfs_alloc_inode (sb);
-      result->d_inode->vi_ino = guess->ed_inode;
+      result->d_inode->vi_ino = guess->d_inode;
       ext2_fill_inode (result->d_inode);
       result->d_mounted = 0;
       result->d_name = kmalloc (namelen + 1);
       strncpy (result->d_name, dir->vd_buffer + dir->vd_offset + 8, namelen);
       result->d_name[namelen] = '\0';
       result->d_ops = &ext2_dops;
-      dir->vd_offset += guess->ed_size;
+      dir->vd_offset += guess->d_rec_len;
       *entry = result;
       return 0;
     }
@@ -462,139 +455,27 @@ ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  Ext2Filesystem *fs = dir->vi_sb->sb_private;
-  Ext2Superblock *esb = &fs->f_super;
-  Ext2GroupDesc *bgdt = fs->f_group_desc;
   VFSInode *inode;
-  Ext2Inode *ei;
-  char *data;
-  Ext2DirEntry *entry;
-  block_t firstblock;
-  ino_t ino;
-  time_t newtime = time (NULL);
-  int ret;
-
-  inode = vfs_alloc_inode (dir->vi_sb);
-  if (unlikely (inode == NULL))
-    return -ENOMEM;
-  ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
-  if (ino == 0)
-    {
-      kfree (inode);
-      return -ENOSPC;
-    }
-
-  ei = kmalloc (sizeof (Ext2Inode));
-  if (unlikely (ei == NULL))
-    {
-      kfree (inode);
-      return -ENOMEM;
-    }
-
-  /* TODO Pre-allocate data blocks */
-  ei->i_mode = S_IFDIR | (mode & 07777);
-  ei->i_uid = 0;
-  ei->i_size = dir->vi_sb->sb_blksize;
-  ei->i_atime = newtime;
-  ei->i_ctime = newtime;
-  ei->i_mtime = newtime;
-  ei->i_dtime = 0;
-  ei->i_gid = 0;
-  ei->i_links_count = 2;
-  ei->i_blocks = ei->i_size / ATA_SECTSIZE;
-  ei->i_flags = 0;
-  memset (&ei->osd1, 0, sizeof (ei->osd1));
-  firstblock =
-    ext2_old_alloc_block (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
-  if (firstblock < 0)
-    {
-      vfs_unref_inode (inode);
-      return firstblock;
-    }
-  ei->i_block[0] = firstblock;
-  memset (&ei->i_block[1], 0, 56);
-  ei->i_generation = 0; /* ??? */
-  ei->i_file_acl = 0;
-  ei->i_size_high = 0;
-  ei->i_faddr = 0; /* ??? */
-  memset (&ei->osd2, 0, sizeof (ei->osd2));
-
-  inode->vi_ino = ino;
-  inode->vi_mode = mode | S_IFDIR;
-  inode->vi_uid = ei->i_uid;
-  inode->vi_gid = ei->i_gid;
-  inode->vi_nlink = ei->i_links_count;
-  inode->vi_size = ei->i_size;
-  if (S_ISREG (ei->i_mode) && esb->s_rev_level > 0
-      && (esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
-    inode->vi_size |= (off64_t) ei->i_size_high << 32;
-  inode->vi_atime.tv_sec = ei->i_atime;
-  inode->vi_atime.tv_nsec = 0;
-  inode->vi_mtime.tv_sec = ei->i_mtime;
-  inode->vi_mtime.tv_nsec = 0;
-  inode->vi_ctime.tv_sec = ei->i_ctime;
-  inode->vi_ctime.tv_nsec = 0;
-  inode->vi_sectors = ei->i_blocks;
-  inode->vi_blocks = ei->i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
-  inode->vi_private = ei;
-
-  ext2_write_inode (inode);
-  ret = ext2_add_entry (dir, inode, name);
+  int ret = ext2_new_file (dir, name, (mode & ~S_IFMT) | S_IFDIR, &inode);
   if (ret != 0)
-    {
-      vfs_unref_inode (inode);
-      return ret;
-    }
+    return ret;
 
-  data = kzalloc (inode->vi_sb->sb_blksize);
-  if (data == NULL)
-    {
-      vfs_unref_inode (inode);
-      return -ENOMEM;
-    }
-
-  /* Build `.' entry */
-  entry = (Ext2DirEntry *) data;
-  entry->ed_inode = inode->vi_ino;
-  entry->ed_size = 12;
-  entry->ed_namelenl = 1;
-  if (esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
-    entry->ed_namelenh = EXT2_DIRTYPE_DIR;
-  else
-    entry->ed_namelenh = 0;
-  data[8] = '.';
-
-  /* Build `..' entry */
-  entry = (Ext2DirEntry *) &data[12];
-  entry->ed_inode = dir->vi_ino;
-  entry->ed_size = dir->vi_sb->sb_blksize - 12;
-  entry->ed_namelenl = 2;
-  if (esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
-    entry->ed_namelenh = EXT2_DIRTYPE_DIR;
-  else
-    entry->ed_namelenh = 0;
-  data[20] = '.';
-  data[21] = '.';
+  /* Build `.' and `..' entries */
+  ext2_add_link (inode->vi_sb, inode, ".", inode->vi_ino, EXT2_DIRTYPE_DIR);
+  ext2_add_link (inode->vi_sb, inode, "..", dir->vi_ino, EXT2_DIRTYPE_DIR);
 
   /* Increase refcount of parent directory */
   dir->vi_nlink++;
   ext2_write_inode (dir);
 
-  /* Increase directory count in block group descriptor */
-  bgdt[inode->vi_ino / esb->s_inodes_per_group].bg_used_dirs_count++;
-  ext2_update (dir->vi_sb);
-
   vfs_unref_inode (inode);
-  ret = ext2_write_blocks (data, dir->vi_sb, firstblock, 1);
-  kfree (data);
-  return ret;
+  return 0;
 }
 
 int
 ext2_rmdir (VFSInode *dir, const char *name)
 {
   VFSSuperblock *sb = dir->vi_sb;
-  Ext2Superblock *esb = &((Ext2Filesystem *) dir->vi_sb->sb_private)->f_super;
   Ext2Inode *ei = dir->vi_private;
   int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
   void *buffer;
@@ -672,22 +553,19 @@ ext2_rmdir (VFSInode *dir, const char *name)
 	{
 	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
 	  uint16_t namelen;
-	  if (guess->ed_inode == 0 || guess->ed_size == 0)
+	  if (guess->d_inode == 0 || guess->d_rec_len == 0)
 	    {
 	      bytes += 4;
 	      continue;
 	    }
 
-	  namelen = guess->ed_namelenl;
-	  if ((esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE) == 0)
-	    namelen |= guess->ed_namelenh << 8;
-
+	  namelen = guess->d_name_len;
 	  guessname = (char *) guess + sizeof (Ext2DirEntry);
 	  if (strlen (name) == namelen
 	      && strncmp (guessname, name, namelen) == 0)
 	    {
 	      if (last != NULL)
-	        last->ed_size += guess->ed_size;
+	        last->d_rec_len += guess->d_rec_len;
 	      memset (guess, 0, sizeof (Ext2DirEntry));
 	      ret = ext2_write_blocks (buffer, sb, realblocks[i], 1);
 	      kfree (buffer);
@@ -702,7 +580,7 @@ ext2_rmdir (VFSInode *dir, const char *name)
 	      return ret;
 	    }
 
-	  bytes += guess->ed_size;
+	  bytes += guess->d_rec_len;
 	  last = guess;
 	}
     }

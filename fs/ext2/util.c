@@ -408,6 +408,557 @@ ext2_dealloc_indirect (VFSSuperblock *sb, Ext2Inode *inode, char *blockbuf,
   return ret;
 }
 
+static int
+ext2_block_iterate_ind (uint32_t *ind_block, uint32_t ref_block, int ref_offset,
+			Ext2BlockContext *ctx)
+{
+  Ext2Filesystem *fs = ctx->b_sb->sb_private;
+  int changed = 0;
+  int flags;
+  int limit;
+  int offset;
+  uint32_t *blockno;
+  block_t block;
+  int ret = 0;
+  int i;
+
+  limit = ctx->b_sb->sb_blksize;
+  if (!(ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY))
+    {
+      block = *ind_block;
+      ret = ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_IND, ref_block,
+			 ref_offset, ctx->b_private);
+      *ind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+
+  if (*ind_block == 0 || (ret & BLOCK_ABORT))
+    {
+      ctx->b_blkcnt += limit;
+      return ret;
+    }
+  if (*ind_block >= ext2_blocks_count (&fs->f_super)
+      || *ind_block < fs->f_super.s_first_data_block)
+    {
+      ctx->b_err = -EINVAL;
+      return ret | BLOCK_ERROR;
+    }
+  ctx->b_err = ext2_read_blocks (ctx->b_ind_buf, ctx->b_sb, *ind_block, 1);
+  if (ctx->b_err != 0)
+    return ret | BLOCK_ERROR;
+
+  blockno = (uint32_t *) ctx->b_ind_buf;
+  offset = 0;
+  if (ctx->b_flags & BLOCK_FLAG_APPEND)
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  block = *blockno;
+	  flags = ctx->b_func (ctx->b_sb, &block, ctx->b_blkcnt, *ind_block,
+			       offset, ctx->b_private);
+	  *blockno = (uint32_t) block;
+	  changed |= flags;
+	  if (flags & BLOCK_ABORT)
+	    {
+	      ret |= BLOCK_ABORT;
+	      break;
+	    }
+	  offset += 4;
+	}
+    }
+  else
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  if (*blockno == 0)
+	    goto skip_sparse;
+	  block = *blockno;
+	  flags = ctx->b_func (ctx->b_sb, &block, ctx->b_blkcnt, *ind_block,
+			       offset, ctx->b_private);
+	  *blockno = (uint32_t) block;
+	  changed |= flags;
+	  if (flags & BLOCK_ABORT)
+	    {
+	      ret |= BLOCK_ABORT;
+	      break;
+	    }
+
+	skip_sparse:
+	  offset += 4;
+	}
+    }
+
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (changed & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return changed | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  if (changed & BLOCK_CHANGED)
+    {
+      ctx->b_err = ext2_write_blocks (ctx->b_ind_buf, ctx->b_sb, *ind_block, 1);
+      if (ctx->b_err != 0)
+	ret |= BLOCK_ERROR | BLOCK_ABORT;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY) && !(ret & BLOCK_ABORT))
+    {
+      block = *ind_block;
+      ret |= ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_IND, ref_block,
+			  ref_offset, ctx->b_private);
+      *ind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  return ret;
+}
+
+static int
+ext2_block_iterate_dind (uint32_t *dind_block, uint32_t ref_block,
+			 int ref_offset, Ext2BlockContext *ctx)
+{
+  Ext2Filesystem *fs = ctx->b_sb->sb_private;
+  int changed = 0;
+  int flags;
+  int limit;
+  int offset;
+  uint32_t *blockno;
+  block_t block;
+  int ret = 0;
+  int i;
+
+  limit = ctx->b_sb->sb_blksize;
+  if (!(ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY))
+    {
+      block = *dind_block;
+      ret = ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_DIND, ref_block,
+			 ref_offset, ctx->b_private);
+      *dind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+
+  if (*dind_block == 0 || (ret & BLOCK_ABORT))
+    {
+      ctx->b_blkcnt += limit * limit;
+      return ret;
+    }
+  if (*dind_block >= ext2_blocks_count (&fs->f_super)
+      || *dind_block < fs->f_super.s_first_data_block)
+    {
+      ctx->b_err = -EINVAL;
+      return ret | BLOCK_ERROR;
+    }
+  ctx->b_err = ext2_read_blocks (ctx->b_dind_buf, ctx->b_sb, *dind_block, 1);
+  if (ctx->b_err != 0)
+    return ret | BLOCK_ERROR;
+
+  blockno = (uint32_t *) ctx->b_dind_buf;
+  offset = 0;
+  if (ctx->b_flags & BLOCK_FLAG_APPEND)
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  flags = ext2_block_iterate_ind (blockno, *dind_block, offset, ctx);
+	  changed |= flags;
+	  if (flags & (BLOCK_ABORT | BLOCK_ERROR))
+	    {
+	      ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+	      break;
+	    }
+	  offset += 4;
+	}
+    }
+  else
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  if (*blockno == 0)
+	    {
+	      ctx->b_blkcnt += limit;
+	      continue;
+	    }
+	  flags = ext2_block_iterate_ind (blockno, *dind_block, offset, ctx);
+	  changed |= flags;
+	  if (flags & (BLOCK_ABORT | BLOCK_ERROR))
+	    {
+	      ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+	      break;
+	    }
+	  offset += 4;
+	}
+    }
+
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (changed & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return changed | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  if (changed & BLOCK_CHANGED)
+    {
+      ctx->b_err =
+	ext2_write_blocks (ctx->b_dind_buf, ctx->b_sb, *dind_block, 1);
+      if (ctx->b_err != 0)
+	ret |= BLOCK_ERROR | BLOCK_ABORT;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY) && !(ret & BLOCK_ABORT))
+    {
+      block = *dind_block;
+      ret |= ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_DIND, ref_block,
+			  ref_offset, ctx->b_private);
+      *dind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  return ret;
+}
+
+static int
+ext2_block_iterate_tind (uint32_t *tind_block, uint32_t ref_block,
+			 int ref_offset, Ext2BlockContext *ctx)
+{
+  Ext2Filesystem *fs = ctx->b_sb->sb_private;
+  int changed = 0;
+  int flags;
+  int limit;
+  int offset;
+  uint32_t *blockno;
+  block_t block;
+  int ret = 0;
+  int i;
+
+  limit = ctx->b_sb->sb_blksize;
+  if (!(ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY))
+    {
+      block = *tind_block;
+      ret = ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_TIND, ref_block,
+			 ref_offset, ctx->b_private);
+      *tind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+
+  if (*tind_block == 0 || (ret & BLOCK_ABORT))
+    {
+      ctx->b_blkcnt += (blkcnt64_t) limit * limit * limit;
+      return ret;
+    }
+  if (*tind_block >= ext2_blocks_count (&fs->f_super)
+      || *tind_block < fs->f_super.s_first_data_block)
+    {
+      ctx->b_err = -EINVAL;
+      return ret | BLOCK_ERROR;
+    }
+  ctx->b_err = ext2_read_blocks (ctx->b_tind_buf, ctx->b_sb, *tind_block, 1);
+  if (ctx->b_err != 0)
+    return ret | BLOCK_ERROR;
+
+  blockno = (uint32_t *) ctx->b_tind_buf;
+  offset = 0;
+  if (ctx->b_flags & BLOCK_FLAG_APPEND)
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  flags = ext2_block_iterate_dind (blockno, *tind_block, offset, ctx);
+	  changed |= flags;
+	  if (flags & (BLOCK_ABORT | BLOCK_ERROR))
+	    {
+	      ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+	      break;
+	    }
+	  offset += 4;
+	}
+    }
+  else
+    {
+      for (i = 0; i < limit; i++, ctx->b_blkcnt++, blockno++)
+	{
+	  if (*blockno == 0)
+	    {
+	      ctx->b_blkcnt += limit;
+	      continue;
+	    }
+	  flags = ext2_block_iterate_dind (blockno, *tind_block, offset, ctx);
+	  changed |= flags;
+	  if (flags & (BLOCK_ABORT | BLOCK_ERROR))
+	    {
+	      ret |= flags & (BLOCK_ABORT | BLOCK_ERROR);
+	      break;
+	    }
+	  offset += 4;
+	}
+    }
+
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (changed & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return changed | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  if (changed & BLOCK_CHANGED)
+    {
+      ctx->b_err =
+	ext2_write_blocks (ctx->b_tind_buf, ctx->b_sb, *tind_block, 1);
+      if (ctx->b_err != 0)
+	ret |= BLOCK_ERROR | BLOCK_ABORT;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)
+      && !(ctx->b_flags & BLOCK_FLAG_DATA_ONLY) && !(ret & BLOCK_ABORT))
+    {
+      block = *tind_block;
+      ret |= ctx->b_func (ctx->b_sb, &block, BLOCK_COUNT_TIND, ref_block,
+			  ref_offset, ctx->b_private);
+      *tind_block = (uint32_t) block;
+    }
+  if ((ctx->b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx->b_err = -EROFS;
+      return ret | BLOCK_ABORT | BLOCK_ERROR;
+    }
+  return ret;
+}
+
+static int
+ext2_read_dir_block (VFSSuperblock *sb, block_t block, void *buffer, int flags,
+		     VFSInode *inode)
+{
+  int corrupt = 0;
+  int ret = ext2_read_blocks (buffer, sb, block, 1);
+  if (ret != 0)
+    return ret;
+  if (!ext2_dir_block_checksum_valid (sb, inode, (Ext2DirEntry *) buffer))
+    corrupt = 1;
+  return ret != 0 && corrupt ? -EUCLEAN : ret;
+}
+
+static int
+ext2_write_dir_block (VFSSuperblock *sb, block_t block, void *buffer, int flags,
+		      VFSInode *inode)
+{
+  int ret = ext2_dir_block_checksum_update (sb, inode, (Ext2DirEntry *) buffer);
+  if (ret != 0)
+    return ret;
+  return ext2_write_blocks (buffer, sb, block, 1);
+}
+
+static int
+ext2_dirent_valid (VFSSuperblock *sb, char *buffer, unsigned int offset,
+		   unsigned int final_offset)
+{
+  Ext2DirEntry *dirent;
+  unsigned int rec_len;
+  while (offset < final_offset && offset <= sb->sb_blksize - 12)
+    {
+      dirent = (Ext2DirEntry *) (buffer + offset);
+      if (ext2_get_rec_len (sb, dirent, &rec_len) != 0)
+	return 0;
+      offset += rec_len;
+      if (rec_len < 8 || rec_len % 4 == 0
+	  || (dirent->d_name_len & 0xff) + 8 > rec_len)
+	return 0;
+    }
+  return offset == final_offset;
+}
+
+static int
+ext2_process_dir_block (VFSSuperblock *sb, block_t *blockno, blkcnt64_t blkcnt,
+			block_t ref_block, int ref_offset, void *private)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2DirContext *ctx = private;
+  Ext2DirEntry *dirent;
+  unsigned int next_real_entry = 0;
+  unsigned int offset = 0;
+  unsigned int bufsize;
+  unsigned int size;
+  unsigned int rec_len;
+  int changed = 0;
+  int csum_size = 0;
+  int do_abort = 0;
+  int entry;
+  int inline_data;
+  int ret = 0;
+
+  entry = blkcnt == 0 ? DIRENT_DOT_FILE : DIRENT_OTHER_FILE;
+  inline_data = ctx->d_flags & DIRENT_FLAG_INLINE ? 1 : 0;
+  if (!inline_data)
+    {
+      ctx->d_err =
+	ext2_read_dir_block (sb, *blockno, ctx->d_buffer, 0, ctx->d_dir);
+      if (ctx->d_err != 0)
+	return BLOCK_ABORT;
+      bufsize = sb->sb_blksize;
+    }
+  else
+    bufsize = ctx->d_bufsize;
+
+  if (fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM)
+    csum_size = sizeof (Ext2DirEntryTail);
+
+  while (offset < bufsize - 8)
+    {
+      dirent = (Ext2DirEntry *) (ctx->d_buffer + offset);
+      if (ext2_get_rec_len (sb, dirent, &rec_len))
+	return BLOCK_ABORT;
+      if (offset + rec_len > bufsize || rec_len < 8 || rec_len % 4 != 0
+	  || (dirent->d_name_len & 0xff) + 8 > rec_len)
+	{
+	  ctx->d_err = -EUCLEAN;
+	  return BLOCK_ABORT;
+	}
+      if (dirent->d_inode == 0)
+	{
+	  if (!inline_data && offset == bufsize - csum_size
+	      && dirent->d_rec_len == csum_size &&
+	      dirent->d_name_len == EXT2_DIR_NAME_LEN_CHECKSUM)
+	    {
+	      if (!(ctx->d_flags & DIRENT_FLAG_CHECKSUM))
+		goto next;
+	      entry = DIRENT_CHECKSUM;
+	    }
+	  else if (!(ctx->d_flags & DIRENT_FLAG_EMPTY))
+	    goto next;
+	}
+
+      ret = ctx->d_func (ctx->d_dir, next_real_entry > offset ?
+			 DIRENT_DELETED_FILE : entry, dirent, offset, bufsize,
+			 ctx->d_buffer, ctx->d_private);
+      if (entry < DIRENT_OTHER_FILE)
+	entry++;
+
+      if (ret & DIRENT_CHANGED)
+	{
+	  if (ext2_get_rec_len (sb, dirent, &rec_len) != 0)
+	    return BLOCK_ABORT;
+	  changed++;
+	}
+      if (ret & DIRENT_ABORT)
+	{
+	  do_abort++;
+	  break;
+	}
+
+    next:
+      if (next_real_entry == offset)
+	next_real_entry += rec_len;
+      if (ctx->d_flags & DIRENT_FLAG_REMOVED)
+	{
+	  size = ((dirent->d_name_len & 0xff) + 11) & ~3;
+	  if (rec_len != size)
+	    {
+	      unsigned int final_offset = offset + rec_len;
+	      offset += size;
+	      while (offset < final_offset
+		     && !ext2_dirent_valid (sb, ctx->d_buffer, offset,
+					    final_offset))
+		offset += 4;
+	      continue;
+	    }
+	}
+      offset += rec_len;
+    }
+
+  if (changed)
+    {
+      if (!inline_data)
+	{
+	  ctx->d_err = ext2_write_dir_block (sb, *blockno, ctx->d_buffer, 0,
+					     ctx->d_dir);
+	  if (ctx->d_err != 0)
+	    return BLOCK_ABORT;
+	}
+      else
+	ret = BLOCK_INLINE_CHANGED;
+    }
+  return ret | (do_abort ? BLOCK_ABORT : 0);
+}
+
+static int
+ext2_get_dirent_tail (VFSSuperblock *sb, Ext2DirEntry *dirent,
+		      Ext2DirEntryTail **tail)
+{
+  Ext2DirEntry *d = dirent;
+  Ext2DirEntryTail *t;
+  void *top = EXT2_DIRENT_TAIL (dirent, sb->sb_blksize);
+
+  while ((void *) d < top)
+    {
+      if (d->d_rec_len < 8 || (d->d_rec_len & 3))
+	return -EUCLEAN;
+      d = (Ext2DirEntry *) ((char *) d + d->d_rec_len);
+    }
+  if ((char *) d > (char *) dirent + sb->sb_blksize)
+    return -EUCLEAN;
+  if (d != top)
+    return -ENOSPC;
+
+  t = (Ext2DirEntryTail *) d;
+  if (t->det_reserved_zero1 != 0 || t->det_rec_len != sizeof (Ext2DirEntryTail)
+      || t->det_reserved_name_len != EXT2_DIR_NAME_LEN_CHECKSUM)
+    return -ENOSPC;
+  if (tail != NULL)
+    *tail = t;
+  return 0;
+}
+
+static int
+ext2_get_dx_count_limit (VFSSuperblock *sb, Ext2DirEntry *dirent,
+			 Ext2DXCountLimit **cl, int *offset)
+{
+  Ext2DirEntry *d;
+  Ext2DXRootInfo *root;
+  Ext2DXCountLimit *c;
+  int count_offset;
+  int max_entries;
+  unsigned int rec_len = dirent->d_rec_len;
+
+  if (rec_len == sb->sb_blksize && dirent->d_name_len == 0)
+    count_offset = 8;
+  else if (rec_len == 12)
+    {
+      d = (Ext2DirEntry *) ((char *) dirent + 12);
+      rec_len = d->d_rec_len;
+      if (rec_len != sb->sb_blksize - 12)
+	return -EINVAL;
+      root = (Ext2DXRootInfo *) ((char *) d + 12);
+      if (root->i_reserved_zero != 0
+	  || root->i_info_length != sizeof (Ext2DXRootInfo))
+	return -EINVAL;
+      count_offset = 32;
+    }
+  else
+    return -EINVAL;
+
+  c = (Ext2DXCountLimit *) ((char *) dirent + count_offset);
+  max_entries = (sb->sb_blksize - count_offset) / sizeof (Ext2DXEntry);
+  if (c->cl_limit > max_entries || c->cl_count > max_entries)
+    return -ENOSPC;
+
+  if (offset != NULL)
+    *offset = count_offset;
+  if (cl != NULL)
+    *cl = c;
+  return 0;
+}
+
 int
 ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group)
 {
@@ -507,7 +1058,7 @@ ext2_super_bgd_loc (VFSSuperblock *sb, unsigned int group, block_t *super,
   unsigned int meta_bg;
   size_t meta_bg_size;
   blkcnt64_t nblocks = 0;
-  block_t old_desc_blocks;;
+  block_t old_desc_blocks;
   int has_super;
 
   group_block = ext2_group_first_block (fs, group);
@@ -1954,179 +2505,318 @@ ext2_create_inode (VFSSuperblock *sb, int prefbg)
 }
 
 int
-ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name)
+ext2_get_rec_len (VFSSuperblock *sb, Ext2DirEntry *dirent,
+		  unsigned int *rec_len)
 {
-  Ext2Superblock *esb = &((Ext2Filesystem *) dir->vi_sb->sb_private)->f_super;
-  Ext2DirEntry *newent;
-  VFSDirectory *d;
-  VFSDirEntry *entry;
-  void *data;
-  size_t size;
-  block_t block;
-  block_t realblock;
-  block_t ret;
+  unsigned int len = dirent->d_rec_len;
+  if (sb->sb_blksize < 65536)
+    *rec_len = len;
+  else if (len == 65535 || len == 0)
+    *rec_len = sb->sb_blksize;
+  else
+    *rec_len = (len & 65532) | ((len & 3) << 16);
+  return 0;
+}
 
+int
+ext2_set_rec_len (VFSSuperblock *sb, unsigned int len, Ext2DirEntry *dirent)
+{
+  if (len > sb->sb_blksize || sb->sb_blksize > 262144 || len & 3)
+    return -EINVAL;
+  if (len < 65536)
+    {
+      dirent->d_rec_len = len;
+      return 0;
+    }
+  if (len == sb->sb_blksize)
+    {
+      if (sb->sb_blksize == 65536)
+	dirent->d_rec_len = 65535;
+      else
+	dirent->d_rec_len = 0;
+    }
+  else
+    dirent->d_rec_len = (len & 65532) | ((len >> 16) & 3);
+  return 0;
+}
+
+int
+ext2_block_iterate (VFSSuperblock *sb, VFSInode *dir, int flags, char *blockbuf,
+		    int (*func) (VFSSuperblock *, block_t *, blkcnt64_t,
+				 block_t, int, void *), void *private)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2File *file = dir->vi_private;
+  Ext2Inode *inode = &file->f_inode;
+  Ext2BlockContext ctx;
+  block_t block;
+  int limit;
+  int i;
+  int r;
+  int ret = 0;
+  if (inode->i_flags & EXT4_INLINE_DATA_FL)
+    return -ENOTSUP;
+
+  if (flags & BLOCK_FLAG_NO_LARGE)
+    {
+      if (!S_ISDIR (inode->i_mode) && inode->i_size_high != 0)
+	return -EFBIG;
+    }
+
+  limit = sb->sb_blksize >> 2;
+  ctx.b_sb = sb;
+  ctx.b_func = func;
+  ctx.b_private = private;
+  ctx.b_flags = flags;
+  ctx.b_blkcnt = 0;
+  if (blockbuf != NULL)
+    ctx.b_ind_buf = blockbuf;
+  else
+    {
+      ctx.b_ind_buf = kmalloc (sb->sb_blksize * 3);
+      if (unlikely (ctx.b_ind_buf == NULL))
+	return -ENOMEM;
+    }
+  ctx.b_dind_buf = ctx.b_ind_buf + sb->sb_blksize;
+  ctx.b_tind_buf = ctx.b_dind_buf + sb->sb_blksize;
+
+  if (fs->f_super.s_creator_os == EXT2_OS_HURD
+      && !(flags & BLOCK_FLAG_DATA_ONLY))
+    {
+      if (inode->osd1.hurd1.h_i_translator != 0)
+	{
+	  block = inode->osd1.hurd1.h_i_translator;
+	  ret |= ctx.b_func (sb, &block, BLOCK_COUNT_TRANSLATOR, 0, 0, private);
+	  inode->osd1.hurd1.h_i_translator = (uint32_t) block;
+	  if (ret & BLOCK_ABORT)
+	    goto err;
+	  if ((ctx.b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+	    {
+	      ctx.b_err = -EROFS;
+	      ret |= BLOCK_ABORT | BLOCK_ERROR;
+	      goto err;
+	    }
+	}
+    }
+
+  if (inode->i_flags & EXT4_EXTENTS_FL)
+    {
+      Ext3ExtentHandle *handle;
+      Ext3GenericExtent extent;
+      Ext3GenericExtent next;
+      blkcnt64_t blkcnt = 0;
+      block_t block;
+      block_t new_block;
+      int op = EXT2_EXTENT_ROOT;
+      int uninit;
+      unsigned int j;
+
+      ctx.b_err = ext3_extent_open (sb, dir->vi_ino, inode, &handle);
+      if (ctx.b_err != 0)
+	goto err;
+
+      while (1)
+	{
+	  if (op == EXT2_EXTENT_CURRENT)
+	    ctx.b_err = 0;
+	  else
+	    ctx.b_err = ext3_extent_get (handle, op, &extent);
+	  if (ctx.b_err != 0)
+	    {
+	      if (ctx.b_err != -ESRCH)
+		break;
+	      ctx.b_err = 0;
+	      if (!(flags & BLOCK_FLAG_APPEND))
+		break;
+
+	    next_block_set:
+	      block = 0;
+	      r = ctx.b_func (sb, &block, blkcnt, 0, 0, private);
+	      ret |= r;
+	      if ((ctx.b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+		{
+		  ctx.b_err = -EROFS;
+		  ret |= BLOCK_ABORT | BLOCK_ERROR;
+		  goto err;
+		}
+	      if (r & BLOCK_CHANGED)
+		{
+		  ctx.b_err = ext3_extent_set_bmap (handle, blkcnt++, block, 0);
+		  if (ctx.b_err != 0 || (ret & BLOCK_ABORT))
+		    break;
+		  if (block != 0)
+		    goto next_block_set;
+		}
+	      break;
+	    }
+
+	  op = EXT2_EXTENT_NEXT;
+	  block = extent.e_pblk;
+	  if (!(extent.e_flags & EXT2_EXTENT_FLAGS_LEAF))
+	    {
+	      if (ctx.b_flags & BLOCK_FLAG_DATA_ONLY)
+		continue;
+	      if ((!(extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)
+		   && !(ctx.b_flags & BLOCK_FLAG_DEPTH_TRAVERSE))
+		  || ((extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)
+		      && (ctx.b_flags & BLOCK_FLAG_DEPTH_TRAVERSE)))
+		{
+		  ret |= ctx.b_func (sb, &block, -1, 0, 0, private);
+		  if (ret & BLOCK_CHANGED)
+		    {
+		      extent.e_pblk = block;
+		      ctx.b_err = ext3_extent_replace (handle, 0, &extent);
+		      if (ctx.b_err != 0)
+			break;
+		    }
+		  if (ret & BLOCK_ABORT)
+		    break;
+		}
+	      continue;
+	    }
+
+	  uninit = 0;
+	  if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT)
+	    uninit = EXT2_EXTENT_SET_BMAP_UNINIT;
+	  ret = ext3_extent_get (handle, op, &next);
+
+	  if (extent.e_lblk + extent.e_len <= (block_t) blkcnt)
+	    continue;
+	  if (extent.e_lblk > blkcnt)
+	    blkcnt=  extent.e_lblk;
+	  j = blkcnt - extent.e_lblk;
+	  block += j;
+	  for (blkcnt = extent.e_lblk, j = 0; j < extent.e_len;
+	       block++, blkcnt++, j++)
+	    {
+	      new_block = block;
+	      r = ctx.b_func (sb, &new_block, blkcnt, 0, 0, private);
+	      ret |= r;
+	      if ((ctx.b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+		{
+		  ctx.b_err = -EROFS;
+		  ret |= BLOCK_ABORT | BLOCK_ERROR;
+		  goto err;
+		}
+	      if (r & BLOCK_CHANGED)
+		{
+		  ctx.b_err = ext3_extent_set_bmap (handle, blkcnt, new_block,
+						    uninit);
+		  if (ctx.b_err != 0)
+		    goto done;
+		}
+	      if (ret & BLOCK_ABORT)
+		goto done;
+		}
+	  if (ret == 0)
+	    {
+	      extent = next;
+	      op = EXT2_EXTENT_CURRENT;
+	    }
+	}
+
+    done:
+      ext3_extent_free (handle);
+      ret |= BLOCK_ERROR;
+      goto end;
+    }
+
+  for (i = 0; i < EXT2_NDIR_BLOCKS; i++, ctx.b_blkcnt++)
+    {
+      if (inode->i_block[i] != 0 || (flags & BLOCK_FLAG_APPEND))
+	{
+	  block = inode->i_block[i];
+	  ret |= ctx.b_func (sb, &block, ctx.b_blkcnt, 0, i, private);
+	  inode->i_block[i] = (uint32_t) block;
+	  if (ret & BLOCK_ABORT)
+	    goto err;
+	}
+    }
+  if ((ctx.b_flags & BLOCK_FLAG_READ_ONLY) && (ret & BLOCK_CHANGED))
+    {
+      ctx.b_err = -EROFS;
+      ret |= BLOCK_ABORT | BLOCK_ERROR;
+      goto err;
+    }
+
+  if (inode->i_block[EXT2_IND_BLOCK] != 0 || (flags & BLOCK_FLAG_APPEND))
+    {
+      ret |= ext2_block_iterate_ind (&inode->i_block[EXT2_IND_BLOCK], 0,
+				     EXT2_IND_BLOCK, &ctx);
+      if (ret & BLOCK_ABORT)
+	goto err;
+    }
+  else
+    ctx.b_blkcnt += limit;
+
+  if (inode->i_block[EXT2_DIND_BLOCK] != 0 || (flags & BLOCK_FLAG_APPEND))
+    {
+      ret |= ext2_block_iterate_dind (&inode->i_block[EXT2_DIND_BLOCK], 0,
+				      EXT2_DIND_BLOCK, &ctx);
+      if (ret & BLOCK_ABORT)
+	goto err;
+    }
+  else
+    ctx.b_blkcnt += limit * limit;
+
+  if (inode->i_block[EXT2_TIND_BLOCK] != 0 || (flags & BLOCK_FLAG_APPEND))
+    {
+      ret |= ext2_block_iterate_tind (&inode->i_block[EXT2_TIND_BLOCK], 0,
+				      EXT2_TIND_BLOCK, &ctx);
+      if (ret & BLOCK_ABORT)
+	goto err;
+    }
+
+ err:
+  if (ret & BLOCK_CHANGED)
+    {
+      ret = ext2_update_inode (sb, dir->vi_ino, inode);
+      if (ret != 0)
+	{
+	  ret |= BLOCK_ERROR;
+	  ctx.b_err = ret;
+	}
+    }
+
+ end:
+  if (blockbuf == NULL)
+    kfree (ctx.b_ind_buf);
+  return ret & BLOCK_ERROR ? ctx.b_err : 0;
+}
+
+int
+ext2_dir_iterate (VFSSuperblock *sb, VFSInode *dir, int flags, char *blockbuf,
+		  int (*func) (VFSInode *, int, Ext2DirEntry *, int, blksize_t,
+			       char *, void *), void *private)
+{
+  Ext2DirContext ctx;
+  int ret;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
 
-  size = strlen (name);
-  if (size > EXT2_MAX_NAME_LEN)
-    return -ENAMETOOLONG;
-  data = kmalloc (dir->vi_sb->sb_blksize);
-  if (unlikely (data == NULL))
-    return -ENOMEM;
-
-  d = ext2_alloc_dir (dir, dir->vi_sb);
-  if (d == NULL)
-    {
-      kfree (data);
-      return -ENOMEM;
-    }
-
-  while (1)
-    {
-      ret = ext2_readdir (&entry, d, dir->vi_sb);
-      if (ret < 0)
-	return ret;
-      else if (ret == 1)
-	break;
-      if (strcmp (entry->d_name, name) == 0)
-	{
-	  kfree (d->vd_buffer);
-	  kfree (d);
-	  kfree (data);
-	  vfs_destroy_dir_entry (entry);
-	  return -EEXIST;
-	}
-      vfs_destroy_dir_entry (entry);
-    }
-
-  for (block = 0; block * dir->vi_sb->sb_blksize < dir->vi_size;
-       block++)
-    {
-      int i = 0;
-      ret =
-	ext2_data_blocks (dir->vi_private, dir->vi_sb, block, 1, &realblock);
-      if (ret < 0)
-	{
-	  kfree (data);
-	  return ret;
-	}
-      ret = ext2_read_blocks (data, dir->vi_sb, realblock, 1);
-      if (ret != 0)
-	{
-	  kfree (data);
-	  return ret;
-	}
-
-      while (i < dir->vi_sb->sb_blksize)
-	{
-	  Ext2DirEntry *guess = (Ext2DirEntry *) (data + i);
-	  size_t testsize = guess->ed_namelenl;
-	  size_t extra;
-	  if ((esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE) == 0)
-	    testsize |= guess->ed_namelenh << 8;
-	  extra = (guess->ed_size - sizeof (Ext2DirEntry) - testsize) & ~3;
-	  if (guess->ed_inode == 0 || guess->ed_size == 0)
-	    i += 4;
-	  else if (extra >= size + sizeof (Ext2DirEntry))
-	    {
-	      size_t skip = testsize + sizeof (Ext2DirEntry);
-	      Ext2DirEntry *new;
-
-	      /* Align to 4 bytes */
-	      if (skip & 3)
-		{
-		  skip &= ~3;
-		  skip += 4;
-		}
-
-	      /* Fill new entry data */
-	      new = (Ext2DirEntry *) (data + i + skip);
-	      new->ed_inode = inode->vi_ino;
-	      new->ed_size = guess->ed_size - skip;
-	      new->ed_namelenl = size & 0xff;
-	      if (esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
-		{
-		  if (S_ISREG (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_FILE;
-		  else if (S_ISDIR (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_DIR;
-		  else if (S_ISCHR (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_CHRDEV;
-		  else if (S_ISBLK (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_BLKDEV;
-		  else if (S_ISFIFO (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_FIFO;
-		  else if (S_ISSOCK (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_SOCKET;
-		  else if (S_ISLNK (inode->vi_mode))
-		    new->ed_namelenh = EXT2_DIRTYPE_LINK;
-		  else
-		    new->ed_namelenh = EXT2_DIRTYPE_NONE;
-		}
-	      else
-		new->ed_namelenh = size >> 8 & 0xff;
-
-	      /* Write filename and update size */
-	      memcpy ((char *) new + sizeof (Ext2DirEntry), name, size);
-	      guess->ed_size = skip;
-
-	      ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
-	      kfree (data);
-	      return ret;
-	    }
-	  else
-	    i += guess->ed_size;
-	}
-    }
-
-  memset (data, 0, dir->vi_sb->sb_blksize);
-  newent = data;
-  newent->ed_inode = inode->vi_ino;
-  newent->ed_size = dir->vi_sb->sb_blksize;
-  newent->ed_namelenl = size & 0xff;
-  if (esb->s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
-    {
-      if (S_ISREG (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_FILE;
-      else if (S_ISDIR (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_DIR;
-      else if (S_ISCHR (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_CHRDEV;
-      else if (S_ISBLK (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_BLKDEV;
-      else if (S_ISFIFO (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_FIFO;
-      else if (S_ISSOCK (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_SOCKET;
-      else if (S_ISLNK (inode->vi_mode))
-	newent->ed_namelenh = EXT2_DIRTYPE_LINK;
-      else
-	newent->ed_namelenh = EXT2_DIRTYPE_NONE;
-    }
+  ctx.d_dir = dir;
+  ctx.d_flags = flags;
+  if (blockbuf != NULL)
+    ctx.d_buffer = blockbuf;
   else
-    newent->ed_namelenh = (size >> 8) & 0xff;
+    {
+      ctx.d_buffer = kmalloc (sb->sb_blksize);
+      if (unlikely (ctx.d_buffer == NULL))
+	return -ENOMEM;
+    }
+  ctx.d_func = func;
+  ctx.d_private = private;
+  ctx.d_err = 0;
+  ret = ext2_block_iterate (sb, dir, BLOCK_FLAG_READ_ONLY, 0,
+			    ext2_process_dir_block, &ctx);
 
-  /* Directory inode size should always be multiple of block size */
-  block = dir->vi_size / dir->vi_sb->sb_blksize;
-  inode->vi_size += inode->vi_sb->sb_blksize;
-  inode->vi_sectors += inode->vi_sb->sb_blksize / ATA_SECTSIZE;
-  ret = ext2_extend_inode (dir, block, block + 1);
+  if (blockbuf == NULL)
+    kfree (ctx.d_buffer);
+  if (ret == -ENOTSUP)
+    return -ENOTSUP; /* TODO Support iterating over inline data */
   if (ret != 0)
-    {
-      kfree (data);
-      return ret;
-    }
-  ret = ext2_data_blocks (dir->vi_private, dir->vi_sb, block, 1, &realblock);
-  if (ret < 0)
-    {
-      kfree (data);
-      return ret;
-    }
-  ret = ext2_write_blocks (data, dir->vi_sb, realblock, 1);
-  kfree (data);
-  return ret;
+    return ret;
+  return ctx.d_err;
 }
 
 int
@@ -2442,4 +3132,131 @@ ext2_inode_bitmap_checksum_update (VFSSuperblock *sb, unsigned int group,
   gdp->bg_inode_bitmap_csum_lo = crc & 0xffff;
   if (EXT2_DESC_SIZE (fs->f_super) >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
     gdp->bg_inode_bitmap_csum_hi = crc >> 16;
+}
+
+uint32_t
+ext2_dirent_checksum (VFSSuperblock *sb, VFSInode *dir, Ext2DirEntry *dirent,
+		      size_t size)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2File *file = dir->vi_private;
+  uint32_t gen = file->f_inode.i_generation;
+  uint32_t crc = crc32 (fs->f_checksum_seed, &file->f_ino, sizeof (ino64_t));
+  crc = crc32 (crc, &gen, 4);
+  crc = crc32 (crc, dirent, size);
+  return crc;
+}
+
+int
+ext2_dirent_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+			    Ext2DirEntry *dirent)
+{
+  Ext2DirEntryTail *t;
+  int ret = ext2_get_dirent_tail (sb, dirent, &t);
+  if (ret != 0)
+    return 1;
+  return t->det_checksum ==
+    ext2_dirent_checksum (sb, dir, dirent, (char *) t - (char *) dirent);
+}
+
+int
+ext2_dirent_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+			     Ext2DirEntry *dirent)
+{
+  Ext2DirEntryTail *t;
+  int ret = ext2_get_dirent_tail (sb, dirent, &t);
+  if (ret != 0)
+    return ret;
+  t->det_checksum =
+    ext2_dirent_checksum (sb, dir, dirent, (char *) t - (char *) dirent);
+  return 0;
+}
+
+int
+ext2_dx_checksum (VFSSuperblock *sb, VFSInode *dir, Ext2DirEntry *dirent,
+		  uint32_t *crc, Ext2DXTail **tail)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2File *file = dir->vi_private;
+  Ext2DXTail *t;
+  Ext2DXCountLimit *c;
+  uint32_t dummy_checksum = 0;
+  size_t size;
+  uint32_t gen;
+  int count_offset;
+  int limit;
+  int count;
+  int ret = ext2_get_dx_count_limit (sb, dirent, &c, &count_offset);
+  if (ret != 0)
+    return ret;
+  limit = c->cl_limit;
+  count = c->cl_count;
+  if (count_offset + limit * sizeof (Ext2DXEntry) > sb->sb_blksize -
+      sizeof (Ext2DXTail))
+    return -ENOSPC;
+
+  t = (Ext2DXTail *) ((Ext2DXEntry *) c + limit);
+  size = count_offset + count * sizeof (Ext2DXEntry);
+  gen = file->f_inode.i_generation;
+
+  *crc = crc32 (fs->f_checksum_seed, &file->f_ino, sizeof (ino64_t));
+  *crc = crc32 (*crc, &gen, 4);
+  *crc = crc32 (*crc, dirent, size);
+  *crc = crc32 (*crc, t, 4);
+  *crc = crc32 (*crc, &dummy_checksum, 4);
+
+  if (tail != NULL)
+    *tail = t;
+  return 0;
+}
+
+int
+ext2_dx_checksum_valid (VFSSuperblock *sb, VFSInode *dir, Ext2DirEntry *dirent)
+{
+  Ext2DXTail *t;
+  uint32_t crc;
+  int ret = ext2_dx_checksum (sb, dir, dirent, &crc, &t);
+  if (ret != 0)
+    return 0;
+  return t->dt_checksum == crc;
+}
+
+int
+ext2_dx_checksum_update (VFSSuperblock *sb, VFSInode *dir, Ext2DirEntry *dirent)
+{
+  Ext2DXTail *t;
+  uint32_t crc;
+  int ret = ext2_dx_checksum (sb, dir, dirent, &crc, &t);
+  if (ret != 0)
+    return ret;
+  t->dt_checksum = crc;
+  return 0;
+}
+
+int
+ext2_dir_block_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+			       Ext2DirEntry *dirent)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+  if (ext2_get_dirent_tail (sb, dirent, NULL) == 0)
+    return ext2_dirent_checksum_valid (sb, dir, dirent);
+  if (ext2_get_dx_count_limit (sb, dirent, NULL, NULL) == 0)
+    return ext2_dx_checksum_valid (sb, dir, dirent);
+  return 0;
+}
+
+int
+ext2_dir_block_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+				Ext2DirEntry *dirent)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return 1;
+  if (ext2_get_dirent_tail (sb, dirent, NULL) == 0)
+    return ext2_dirent_checksum_update (sb, dir, dirent);
+  if (ext2_get_dx_count_limit (sb, dirent, NULL, NULL) == 0)
+    return ext2_dx_checksum_update (sb, dir, dirent);
+  return -ENOSPC;
 }

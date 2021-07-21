@@ -38,16 +38,25 @@
 #define EXT2_ROOT_INODE    2
 #define EXT2_MAX_NAME_LEN  255
 
-#define EXT3_EXTENT_MAGIC 0xf30a
+#define EXT3_EXTENT_MAGIC          0xf30a
+#define EXT2_DIR_NAME_LEN_CHECKSUM 0xde00
 
 #define EXT2_DIRTYPE_NONE   0
-#define EXT2_DIRTYPE_FILE   1
+#define EXT2_DIRTYPE_REG    1
 #define EXT2_DIRTYPE_DIR    2
 #define EXT2_DIRTYPE_CHRDEV 3
 #define EXT2_DIRTYPE_BLKDEV 4
 #define EXT2_DIRTYPE_FIFO   5
 #define EXT2_DIRTYPE_SOCKET 6
 #define EXT2_DIRTYPE_LINK   7
+
+/* Operating systems */
+
+#define EXT2_OS_LINUX      0
+#define EXT2_OS_HURD       1
+#define EXT2_OBSO_OS_MASIX 2
+#define EXT2_OS_FREEBSD    3
+#define EXT2_OS_LITES      4
 
 /* Superblock feature flags */
 
@@ -185,6 +194,11 @@
 #define EXT4_BG_INODE_BITMAP_CSUM_HI_END			\
   (offsetof (Ext4GroupDesc, bg_inode_bitmap_csum_hi) + 2)
 
+#define EXT2_DIR_ENTRY_HEADER_LEN 8
+#define EXT2_DIR_ENTRY_HASH_LEN   8
+#define EXT2_DIR_PAD              4
+#define EXT2_DIR_ROUND            (EXT2_DIR_PAD - 1)
+
 #define EXT2_FLAG_CHANGED  0x01
 #define EXT2_FLAG_DIRTY    0x02
 #define EXT2_FLAG_VALID    0x04
@@ -198,10 +212,6 @@
 #define BMAP_ZERO   0x0008
 
 #define BMAP_RET_UNINIT 0x0001
-
-#define BLOCK_ALLOC_UNKNOWN  0
-#define BLOCK_ALLOC_DATA     1
-#define BLOCK_ALLOC_METADATA 2
 
 #define EXT2_BITMAP_BLOCK 0x0001
 #define EXT2_BITMAP_INODE 0x0002
@@ -218,6 +228,41 @@
 #define EXT2_BG_INODE_UNINIT 0x0001
 #define EXT2_BG_BLOCK_UNINIT 0x0002
 #define EXT2_BG_BLOCK_ZEROED 0x0004
+
+#define BLOCK_CHANGED        0x01
+#define BLOCK_ABORT          0x02
+#define BLOCK_ERROR          0x04
+#define BLOCK_INLINE_CHANGED 0x08
+
+#define BLOCK_FLAG_APPEND         0x01
+#define BLOCK_FLAG_DEPTH_TRAVERSE 0x02
+#define BLOCK_FLAG_DATA_ONLY      0x04
+#define BLOCK_FLAG_READ_ONLY      0x08
+#define BLOCK_FLAG_NO_LARGE       0x10
+
+#define BLOCK_COUNT_IND        (-1)
+#define BLOCK_COUNT_DIND       (-2)
+#define BLOCK_COUNT_TIND       (-3)
+#define BLOCK_COUNT_TRANSLATOR (-4)
+
+#define BLOCK_ALLOC_UNKNOWN  0
+#define BLOCK_ALLOC_DATA     1
+#define BLOCK_ALLOC_METADATA 2
+
+#define DIRENT_CHANGED 1
+#define DIRENT_ABORT   2
+#define DIRENT_ERROR   3
+
+#define DIRENT_FLAG_EMPTY    0x01
+#define DIRENT_FLAG_REMOVED  0x02
+#define DIRENT_FLAG_CHECKSUM 0x04
+#define DIRENT_FLAG_INLINE   0x08
+
+#define DIRENT_DOT_FILE     1
+#define DIRENT_DOT_DOT_FILE 2
+#define DIRENT_OTHER_FILE   3
+#define DIRENT_DELETED_FILE 4
+#define DIRENT_CHECKSUM     5
 
 #define EXT2_INIT_MAX_LEN   (1 << 15)
 #define EXT2_UNINIT_MAX_LEN (EXT2_INIT_MAX_LEN - 1)
@@ -291,6 +336,8 @@
   (sizeof (Ext3ExtentHeader) + sizeof (Ext3Extent) * (h)->eh_max)
 #define EXT2_EXTENT_TAIL(h)						\
   ((Ext3ExtentTail *) ((char *) h + EXT2_EXTENT_TAIL_OFFSET (h)))
+#define EXT2_DIRENT_TAIL(block, size)					\
+  ((Ext2DirEntryTail *) ((char *) (block) + (size) - sizeof (Ext2DirEntryTail)))
 
 typedef struct
 {
@@ -557,11 +604,46 @@ typedef struct
 
 typedef struct
 {
-  uint32_t ed_inode;
-  uint16_t ed_size;
-  uint8_t ed_namelenl;
-  uint8_t ed_namelenh;
+  uint32_t e_hash;
+  uint32_t e_block;
+} Ext2DXEntry;
+
+typedef struct
+{
+  uint16_t cl_limit;
+  uint16_t cl_count;
+} Ext2DXCountLimit;
+
+typedef struct
+{
+  uint32_t i_reserved_zero;
+  unsigned char i_hash_version;
+  unsigned char i_info_length;
+  unsigned char i_indirect_levels;
+  unsigned char i_unused_flags;
+} Ext2DXRootInfo;
+
+typedef struct
+{
+  uint32_t dt_reserved;
+  uint32_t dt_checksum;
+} Ext2DXTail;
+
+typedef struct
+{
+  uint32_t d_inode;
+  uint16_t d_rec_len;
+  uint16_t d_name_len;
+  char d_name[EXT2_MAX_NAME_LEN];
 } Ext2DirEntry;
+
+typedef struct
+{
+  uint32_t det_reserved_zero1;
+  uint16_t det_rec_len;
+  uint16_t det_reserved_name_len;
+  uint32_t det_checksum;
+} Ext2DirEntryTail;
 
 typedef struct
 {
@@ -778,6 +860,42 @@ typedef struct
   int bc_flags;
 } Ext2BlockAllocContext;
 
+typedef struct
+{
+  VFSSuperblock *b_sb;
+  int (*b_func) (VFSSuperblock *, block_t *, blkcnt64_t, block_t, int, void *);
+  blkcnt64_t b_blkcnt;
+  int b_flags;
+  int b_err;
+  char *b_ind_buf;
+  char *b_dind_buf;
+  char *b_tind_buf;
+  void *b_private;
+} Ext2BlockContext;
+
+typedef struct
+{
+  VFSInode *d_dir;
+  int d_flags;
+  char *d_buffer;
+  size_t d_bufsize;
+  int (*d_func) (VFSInode *, int, Ext2DirEntry *, int, blksize_t, char *,
+		 void *);
+  void *d_private;
+  int d_err;
+} Ext2DirContext;
+
+typedef struct
+{
+  VFSSuperblock *l_sb;
+  const char *l_name;
+  size_t l_namelen;
+  ino64_t l_inode;
+  int l_flags;
+  int l_done;
+  int l_err;
+} Ext2Link;
+
 __BEGIN_DECLS
 
 extern const VFSSuperblockOps ext2_sops;
@@ -920,6 +1038,16 @@ ext2_needs_large_file (uint64_t size)
   return size >= 0x80000000ULL;
 }
 
+static inline unsigned int
+ext2_dir_rec_len (unsigned char name_len, int extended)
+{
+  unsigned int rec_len = name_len + EXT2_DIR_ENTRY_HEADER_LEN + EXT2_DIR_ROUND;
+  rec_len &= ~EXT2_DIR_ROUND;
+  if (extended)
+    rec_len += EXT2_DIR_ENTRY_HASH_LEN;
+  return rec_len;
+}
+
 void ext2_init (void);
 
 int ext2_bg_has_super (Ext2Filesystem *fs, unsigned int group);
@@ -1012,6 +1140,11 @@ int ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		      block_t *result, Ext2BlockAllocContext *ctx);
 int ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			 char *blockbuf, block_t start, block_t end);
+int ext2_add_index_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
+			 ino64_t ino, int flags);
+int ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
+		   ino64_t ino, int flags);
+int ext2_dir_type (mode_t mode);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
@@ -1025,7 +1158,19 @@ int ext2_unalloc_data_blocks (VFSInode *inode, block_t start,
 int ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode);
 block_t ext2_old_alloc_block (VFSSuperblock *sb, int prefbg);
 ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
-int ext2_add_entry (VFSInode *dir, VFSInode *inode, const char *name);
+int ext2_get_rec_len (VFSSuperblock *sb, Ext2DirEntry *dirent,
+		      unsigned int *rec_len);
+int ext2_set_rec_len (VFSSuperblock *sb, unsigned int len,
+		      Ext2DirEntry *dirent);
+int ext2_block_iterate (VFSSuperblock *sb, VFSInode *dir, int flags,
+			char *blockbuf, int (*func) (VFSSuperblock *, block_t *,
+						     blkcnt64_t, block_t, int,
+						     void *), void *private);
+int ext2_dir_iterate (VFSSuperblock *sb, VFSInode *dir, int flags,
+		      char *blockbuf, int (*func) (VFSInode *, int,
+						   Ext2DirEntry *, int,
+						   blksize_t, char *, void *),
+		      void *private);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
 int ext2_superblock_checksum_valid (Ext2Filesystem *fs);
 uint16_t ext2_bg_checksum (VFSSuperblock *sb, unsigned int group);
@@ -1056,6 +1201,26 @@ int ext2_inode_bitmap_checksum_valid (VFSSuperblock *sb, unsigned int group,
 				      char *bitmap, int size);
 void ext2_inode_bitmap_checksum_update (VFSSuperblock *sb, unsigned int group,
 					char *bitmap, int size);
+int ext2_dir_block_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+				   Ext2DirEntry *dirent);
+int ext2_dir_block_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+				    Ext2DirEntry *dirent);
+uint32_t ext2_dirent_checksum (VFSSuperblock *sb, VFSInode *dir,
+			       Ext2DirEntry *dirent, size_t size);
+int ext2_dirent_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+				Ext2DirEntry *dirent);
+int ext2_dirent_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+				 Ext2DirEntry *dirent);
+int ext2_dx_checksum (VFSSuperblock *sb, VFSInode *dir, Ext2DirEntry *dirent,
+		      uint32_t *crc, Ext2DXTail **tail);
+int ext2_dx_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+			    Ext2DirEntry *dirent);
+int ext2_dx_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+			     Ext2DirEntry *dirent);
+int ext2_dir_block_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
+				   Ext2DirEntry *dirent);
+int ext2_dir_block_checksum_update (VFSSuperblock *sb, VFSInode *dir,
+				    Ext2DirEntry *dirent);
 
 int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);

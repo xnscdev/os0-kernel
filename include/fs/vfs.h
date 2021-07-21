@@ -141,6 +141,7 @@ struct _VFSDirEntry
   VFSInode *d_inode;
   int d_mounted;
   char *d_name;
+  void *d_private;
   const VFSDirEntryOps *d_ops;
 };
 
