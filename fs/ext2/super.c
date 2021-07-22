@@ -282,6 +282,16 @@ ext2_mount (VFSMount *mp, int flags, void *data)
       return ret;
     }
 
+  if (!(mp->vfs_sb.sb_mntflags & MNT_RDONLY))
+    {
+      /* Update mount time and count */
+      fs->f_super.s_mnt_count++;
+      fs->f_super.s_mtime = time (NULL);
+      fs->f_super.s_state &= ~EXT2_STATE_VALID;
+      fs->f_flags |= EXT2_FLAG_CHANGED | EXT2_FLAG_DIRTY;
+      ext2_flush (&mp->vfs_sb, 0);
+    }
+
   mp->vfs_sb.sb_root = vfs_alloc_inode (&mp->vfs_sb);
   if (unlikely (mp->vfs_sb.sb_root == NULL))
     {
@@ -297,7 +307,7 @@ ext2_mount (VFSMount *mp, int flags, void *data)
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
-  return 0;
+  return ext2_flush (&mp->vfs_sb, 0);
 }
 
 VFSInode *

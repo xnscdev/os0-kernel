@@ -35,16 +35,18 @@ ext2_new_file (VFSInode *dir, const char *name, mode_t mode, VFSInode **result)
   Ext2Inode *ei;
   ino64_t ino;
   time_t t = time (NULL);
-  int ret;
+  int ret = ext2_read_bitmaps (dir->vi_sb);
+  if (ret != 0)
+    return ret;
 
   inode = vfs_alloc_inode (dir->vi_sb);
   if (unlikely (inode == NULL))
     return -ENOMEM;
-  ino = ext2_create_inode (dir->vi_sb, dir->vi_ino / esb->s_inodes_per_group);
-  if (ino == 0)
+  ret = ext2_new_inode (dir->vi_sb, dir->vi_ino, fs->f_inode_bitmap, &ino);
+  if (ret != 0)
     {
       vfs_unref_inode (inode);
-      return -ENOSPC;
+      return ret;
     }
 
   file = kzalloc (sizeof (Ext2File));
@@ -615,11 +617,11 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
       for (i = 0; i < len && i < size && i < 48; i++)
 	buffer[i] = ((char *) ei->i_block)[i];
       for (; i < len && i < size && i < 52; i++)
-	buffer[i] = ((char *) &ei->i_block[12])[i - 48];
+	buffer[i] = ((char *) &ei->i_block[EXT2_IND_BLOCK])[i - 48];
       for (; i < len && i < size && i < 56; i++)
-	buffer[i] = ((char *) &ei->i_block[13])[i - 52];
+	buffer[i] = ((char *) &ei->i_block[EXT2_DIND_BLOCK])[i - 52];
       for (; i < len && i < size && i < 60; i++)
-	buffer[i] = ((char *) &ei->i_block[14])[i - 56];
+	buffer[i] = ((char *) &ei->i_block[EXT2_TIND_BLOCK])[i - 56];
     }
   else
     {

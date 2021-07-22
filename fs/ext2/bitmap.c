@@ -24,6 +24,7 @@
  * %End-Header%
  */
 
+#include <bits/mount.h>
 #include <fs/ext2.h>
 #include <libk/libk.h>
 #include <vm/heap.h>
@@ -228,7 +229,6 @@ ext2_free_bitmap (Ext2Bitmap *bmap)
   b->b_magic = 0;
   kfree (b);
 }
-    
 
 static int
 ext2_prepare_read_bitmap (VFSSuperblock *sb, int flags)
@@ -419,6 +419,150 @@ ext2_read_bitmap (VFSSuperblock *sb, int flags, unsigned int start,
   return ret;
 }
 
+int
+ext2_read_bitmaps (VFSSuperblock *sb)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  int flags = 0;
+  if (fs->f_inode_bitmap == NULL)
+    flags |= EXT2_BITMAP_INODE;
+  if (fs->f_block_bitmap == NULL)
+    flags |= EXT2_BITMAP_BLOCK;
+  if (flags == 0)
+    return 0;
+  return ext2_read_bitmap (sb, flags, 0, fs->f_group_desc_count - 1);
+}
+
+int
+ext2_write_bitmaps (VFSSuperblock *sb)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  int do_inode =
+    fs->f_inode_bitmap != NULL && (fs->f_flags & EXT2_FLAG_IB_DIRTY);
+  int do_block =
+    fs->f_block_bitmap != NULL && (fs->f_flags & EXT2_FLAG_BB_DIRTY);
+  unsigned int i;
+  unsigned int j;
+  int block_nbytes;
+  int inode_nbytes;
+  unsigned int nbits;
+  char *blockbuf = NULL;
+  char *inodebuf = NULL;
+  int csum_flag;
+  block_t block;
+  block_t blkitr = EXT2_B2C (fs, fs->f_super.s_first_data_block);
+  ino64_t inoitr = 1;
+  int ret;
+  if (sb->sb_mntflags & MNT_RDONLY)
+    return -EROFS;
+  if (!do_block && !do_inode)
+    return 0;
+  csum_flag = ext2_has_group_desc_checksum (&fs->f_super);
+
+  block_nbytes = 0;
+  inode_nbytes = 0;
+  if (do_block)
+    {
+      block_nbytes = fs->f_super.s_clusters_per_group / 8;
+      blockbuf = kmalloc (sb->sb_blksize);
+      if (unlikely (blockbuf == NULL))
+	goto err;
+      memset (blockbuf, 0xff, sb->sb_blksize);
+    }
+  if (do_inode)
+    {
+      inode_nbytes = (size_t) ((fs->f_super.s_inodes_per_group + 7) / 8);
+      inodebuf = kmalloc (sb->sb_blksize);
+      if (unlikely (inodebuf == NULL))
+	goto err;
+      memset (inodebuf, 0xff, sb->sb_blksize);
+    }
+
+  for (i = 0; i < fs->f_group_desc_count; i++)
+    {
+      if (!do_block)
+	goto skip_block;
+      if (csum_flag && ext2_bg_test_flags (sb, i, EXT2_BG_BLOCK_UNINIT))
+	goto skip_curr_block;
+
+      ret = ext2_get_bitmap_range (fs->f_block_bitmap, blkitr,
+				   block_nbytes << 3, blockbuf);
+      if (ret != 0)
+	goto err;
+      if (i == fs->f_group_desc_count - 1)
+	{
+	  nbits = EXT2_NUM_B2C (fs, (ext2_blocks_count (&fs->f_super) -
+				     (block_t) fs->f_super.s_first_data_block)
+				% (block_t) fs->f_super.s_blocks_per_group);
+	  if (nbits != 0)
+	    {
+	      for (j = nbits; j < sb->sb_blksize * 8; j++)
+		fast_set_bit (blockbuf, j);
+	    }
+	}
+
+      ext2_block_bitmap_checksum_update (sb, i, blockbuf, block_nbytes);
+      ext2_group_desc_checksum_update (sb, i);
+      fs->f_flags |= EXT2_FLAG_DIRTY;
+
+      block = ext2_block_bitmap_loc (sb, i);
+      if (block != 0)
+	{
+	  ret = ext2_write_blocks (blockbuf, sb, block, 1);
+	  if (ret != 0)
+	    goto err;
+	}
+
+    skip_curr_block:
+      blkitr += block_nbytes << 3;
+
+    skip_block:
+      if (!do_inode)
+	continue;
+      if (csum_flag && ext2_bg_test_flags (sb, i, EXT2_BG_INODE_UNINIT))
+	goto skip_curr_inode;
+
+      ret = ext2_get_bitmap_range (fs->f_inode_bitmap, inoitr,
+				   inode_nbytes << 3, inodebuf);
+      if (ret != 0)
+	goto err;
+
+      ext2_inode_bitmap_checksum_update (sb, i, inodebuf, inode_nbytes);
+      ext2_group_desc_checksum_update (sb, i);
+      fs->f_flags |= EXT2_FLAG_DIRTY;
+
+      block = ext2_inode_bitmap_loc (sb, i);
+      if (block != 0)
+	{
+	  ret = ext2_write_blocks (inodebuf, sb, block, 1);
+	  if (ret != 0)
+	    goto err;
+	}
+
+    skip_curr_inode:
+      inoitr += inode_nbytes << 3;
+    }
+
+  if (do_block)
+    {
+      fs->f_flags &= ~EXT2_FLAG_BB_DIRTY;
+      kfree (blockbuf);
+    }
+  if (do_inode)
+    {
+      fs->f_flags &= ~EXT2_FLAG_IB_DIRTY;
+      kfree (inodebuf);
+    }
+  return 0;
+
+ err:
+  if (inodebuf != NULL)
+    kfree (inodebuf);
+  if (blockbuf != NULL)
+    kfree (blockbuf);
+  return ret;
+}
+
 void
 ext2_mark_bitmap (Ext2Bitmap *bmap, uint64_t arg)
 {
@@ -464,6 +608,30 @@ ext2_unmark_bitmap (Ext2Bitmap *bmap, uint64_t arg)
       if (arg < b->b_start || arg > b->b_end)
 	return;
       b->b_ops->b_unmark_bmap (b, arg);
+    }
+}
+
+int
+ext2_test_bitmap (Ext2Bitmap *bmap, uint64_t arg)
+{
+  Ext2Bitmap64 *b = (Ext2Bitmap64 *) bmap;
+  if (b == NULL)
+    return 0;
+  if (EXT2_BITMAP_IS_32 (b))
+    {
+      Ext2Bitmap32 *b32 = (Ext2Bitmap32 *) bmap;
+      if (arg & ~0xffffffffULL)
+	return 0;
+      if (arg < b32->b_start || arg > b32->b_end)
+	return 0;
+      return fast_test_bit (b32->b_bitmap, arg - b32->b_start);
+    }
+  else
+    {
+      arg >>= b->b_cluster_bits;
+      if (arg < b->b_start || arg > b->b_end)
+	return 0;
+      return b->b_ops->b_test_bmap (b, arg);
     }
 }
 
@@ -522,6 +690,30 @@ ext2_set_bitmap_range (Ext2Bitmap *bmap, uint64_t start, unsigned int num,
 }
 
 int
+ext2_get_bitmap_range (Ext2Bitmap *bmap, uint64_t start, unsigned int num,
+		       void *data)
+{
+  Ext2Bitmap64 *b = (Ext2Bitmap64 *) bmap;
+  if (b == NULL)
+    return -EINVAL;
+  if (EXT2_BITMAP_IS_32 (b))
+    {
+      Ext2Bitmap32 *b32 = (Ext2Bitmap32 *) bmap;
+      if ((start + num - 1) & ~0xffffffffULL)
+	return -EINVAL;
+      if (start < b32->b_start || start + num - 1 > b32->b_real_end)
+	return -EINVAL;
+      memcpy (data, b32->b_bitmap + ((start - b32->b_start) >> 3),
+	      (num + 7) >> 3);
+      return 0;
+    }
+  if (!EXT2_BITMAP_IS_64 (b))
+    return -EINVAL;
+  b->b_ops->b_get_bmap_range (b, start, num, data);
+  return 0;
+}
+
+int
 ext2_find_first_zero_bitmap (Ext2Bitmap *bmap, block_t start, block_t end,
 			     block_t *result)
 {
@@ -535,13 +727,23 @@ ext2_find_first_zero_bitmap (Ext2Bitmap *bmap, block_t start, block_t end,
     return -EINVAL;
   if (EXT2_BITMAP_IS_32 (bmap))
     {
-      block_t block = 0;
+      Ext2Bitmap32 *b32 = (Ext2Bitmap32 *) bmap;
+      uint32_t block;
       if ((start & ~0xffffffffULL) || (end & ~0xffffffffULL))
 	return -EINVAL;
-      ret = ext2_find_first_zero_bitmap (bmap, start, end, &block);
-      if (ret == 0)
-	*result = block;
-      return ret;
+      if (start < b32->b_start || end > b32->b_end || start > end)
+	return -EINVAL;
+      while (start <= end)
+	{
+	  block = fast_test_bit (b32->b_bitmap, start - b32->b_start);
+	  if (block == 0)
+	    {
+	      *result = start;
+	      return 0;
+	    }
+	  start++;
+	}
+      return -ENOENT;
     }
   if (!EXT2_BITMAP_IS_64 (bmap))
     return -EINVAL;

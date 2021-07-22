@@ -108,6 +108,7 @@ struct _VFSSuperblock
   const VFSSuperblockOps *sb_ops;
   int sb_flags;
   int sb_mntflags;
+  unsigned int sb_mntslot;
   unsigned long sb_magic;
   VFSInode *sb_root;
   const VFSFilesystem *sb_fstype;

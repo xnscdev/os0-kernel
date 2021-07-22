@@ -161,6 +161,8 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
 	return -ENOSPC;
       mount_table[j].vfs_fstype = &fs_table[i];
       mount_table[j].vfs_sb.sb_mntflags = flags;
+      mount_table[j].vfs_sb.sb_mntslot = j;
+      mount_table[j].vfs_sb.sb_fstype = &fs_table[i];
 
       /* Filesystem-specific mount */
       ret = fs_table[i].vfs_mount (&mount_table[j], flags, data);
@@ -174,6 +176,30 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       return vfs_open_file (&mount_table[j].vfs_mntpoint, dir, 1);
     }
   return -EINVAL; /* No such filesystem type */
+}
+
+int
+vfs_unmount (VFSSuperblock *sb, int flags)
+{
+  int ret;
+  int i;
+
+  /* Check if any file descriptors using the filesystem are still active */
+  for (i = 0; i < PROCESS_SYS_FILE_LIMIT; i++)
+    {
+      if (process_fd_table[i].pf_inode != NULL
+	  && process_fd_table[i].pf_inode->vi_sb == sb)
+	return -EBUSY;
+    }
+
+  /* Run file-specific unmount function and clear mount table entry */
+  ret = sb->sb_fstype->vfs_unmount (&mount_table[sb->sb_mntslot], flags);
+  if (ret != 0)
+    return ret;
+  if (sb->sb_ops->sb_free != NULL)
+    sb->sb_ops->sb_free (sb);
+  memset (&mount_table[sb->sb_mntslot], 0, sizeof (VFSMount));
+  return 0;
 }
 
 VFSInode *

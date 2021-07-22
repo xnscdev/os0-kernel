@@ -58,6 +58,13 @@
 #define EXT2_OS_FREEBSD    3
 #define EXT2_OS_LITES      4
 
+/* Filesystem state */
+
+#define EXT2_STATE_VALID     0x01
+#define EXT2_STATE_ERROR     0x02
+#define EXT3_STATE_ORPHANS   0x04
+#define EXT4_STATE_FC_REPLAY 0x20
+
 /* Superblock feature flags */
 
 #define EXT2_FT_COMPAT_DIR_PREALLOC     0x0001
@@ -310,6 +317,8 @@
 #define EXT2_DESC_SIZE(s)				\
   (s.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?	\
    s.s_desc_size : EXT2_MIN_DESC_SIZE)
+#define EXT2_FIRST_INODE(s)						\
+  (s.s_rev_level == EXT2_OLD_REV ? EXT2_OLD_FIRST_INODE : s.s_first_ino)
 #define EXT2_INODES_PER_BLOCK(s) (EXT2_BLOCK_SIZE (s) / EXT2_INODE_SIZE (s))
 #define EXT2_DESC_PER_BLOCK(s) (EXT2_BLOCK_SIZE (s) / EXT2_DESC_SIZE (s))
 #define EXT2_MAX_BLOCKS_PER_GROUP(s)				\
@@ -320,6 +329,9 @@
 #define EXT2_GROUPS_TO_BLOCKS(s, g) ((block_t) s.s_blocks_per_group * (g))
 #define EXT2_GROUPS_TO_CLUSTERS(s, g) ((block_t) s.s_clusters_per_group * (g))
 #define EXT2_B2C(fs, block) ((block) >> (fs)->f_cluster_ratio_bits)
+#define EXT2_C2B(fs, cluster) ((cluster) << (fs)->f_cluster_ratio_bits)
+#define EXT2_NUM_B2C(fs, blocks) (((blocks) + EXT2_CLUSTER_MASK (fs)) >> \
+				  (fs)->f_cluster_ratio_bits)
 #define EXT2_I_SIZE(i) ((i).i_size | (uint64_t) (i).i_size_high << 32)
 #define EXT2_MAX_STRIDE_LENGTH(sb) (4194304 / (int) sb->sb_blksize)
 #define EXT2_FIRST_EXTENT(h) ((Ext3Extent *) ((char *) (h) +		\
@@ -1077,11 +1089,16 @@ void ext2_bg_free_inodes_count_set (VFSSuperblock *sb, unsigned int group,
 				    uint32_t inodes);
 int ext2_read_bitmap (VFSSuperblock *sb, int flags, unsigned int start,
 		      unsigned int end);
+int ext2_read_bitmaps (VFSSuperblock *sb);
+int ext2_write_bitmaps (VFSSuperblock *sb);
 void ext2_mark_bitmap (Ext2Bitmap *bmap, uint64_t arg);
 void ext2_unmark_bitmap (Ext2Bitmap *bmap, uint64_t arg);
+int ext2_test_bitmap (Ext2Bitmap *bmap, uint64_t arg);
 void ext2_mark_block_bitmap_range (Ext2Bitmap *bmap, block_t block,
 				   blkcnt64_t num);
 int ext2_set_bitmap_range (Ext2Bitmap *bmap, uint64_t start, unsigned int num,
+			   void *data);
+int ext2_get_bitmap_range (Ext2Bitmap *bmap, uint64_t start, unsigned int num,
 			   void *data);
 int ext2_find_first_zero_bitmap (Ext2Bitmap *bmap, block_t start, block_t end,
 				 block_t *result);
@@ -1091,6 +1108,10 @@ void ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 int ext2_map_cluster_block (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			    block_t block, block_t *physblock);
 void ext2_block_alloc_stats (VFSSuperblock *sb, block_t block, int inuse);
+int ext2_write_backup_superblock (VFSSuperblock *sb, unsigned int group,
+				  block_t group_block, Ext2Superblock *s);
+int ext2_write_primary_superblock (VFSSuperblock *sb, Ext2Superblock *s);
+int ext2_flush (VFSSuperblock *sb, int flags);
 int ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file);
 int ext2_file_block_offset_too_big (VFSSuperblock *sb, Ext2Inode *inode,
 				    block_t offset);
@@ -1136,6 +1157,10 @@ int ext2_iblk_add_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_iblk_sub_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num,
 		      block_t *result, int *count);
+int ext2_new_block (VFSSuperblock *sb, block_t goal, Ext2Bitmap *map,
+		    block_t *result, Ext2BlockAllocContext *ctx);
+int ext2_new_inode (VFSSuperblock *sb, ino64_t dir, Ext2Bitmap *map,
+		    ino64_t *result);
 int ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		      block_t *result, Ext2BlockAllocContext *ctx);
 int ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
@@ -1172,7 +1197,9 @@ int ext2_dir_iterate (VFSSuperblock *sb, VFSInode *dir, int flags,
 						   blksize_t, char *, void *),
 		      void *private);
 uint32_t ext2_bgdt_size (Ext2Superblock *esb);
+uint32_t ext2_superblock_checksum (Ext2Superblock *s);
 int ext2_superblock_checksum_valid (Ext2Filesystem *fs);
+void ext2_superblock_checksum_update (Ext2Filesystem *fs, Ext2Superblock *s);
 uint16_t ext2_bg_checksum (VFSSuperblock *sb, unsigned int group);
 void ext2_bg_checksum_update (VFSSuperblock *sb, unsigned int group,
 			      uint16_t checksum);

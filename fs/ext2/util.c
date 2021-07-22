@@ -250,6 +250,24 @@ ext2_clear_block_uninit (VFSSuperblock *sb, unsigned int group)
   fs->f_flags |= EXT2_FLAG_CHANGED | EXT2_FLAG_DIRTY | EXT2_FLAG_BB_DIRTY;
 }
 
+static void
+ext2_check_inode_uninit (VFSSuperblock *sb, Ext2Bitmap *map, unsigned int group)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  ino64_t ino;
+  ino64_t i;
+  if (group >= fs->f_group_desc_count
+      || !ext2_has_group_desc_checksum (&fs->f_super)
+      || !ext2_bg_test_flags (sb, group, EXT2_BG_INODE_UNINIT))
+    return;
+  ino = group * fs->f_super.s_inodes_per_group + 1;
+  for (i = 0; i < fs->f_super.s_inodes_per_group; i++, ino++)
+    ext2_unmark_bitmap (map, ino);
+  ext2_bg_clear_flags (sb, group, EXT2_BG_INODE_UNINIT | EXT2_BG_BLOCK_UNINIT);
+  ext2_group_desc_checksum_update (sb, group);
+  fs->f_flags |= EXT2_FLAG_CHANGED | EXT2_FLAG_DIRTY | EXT2_FLAG_IB_DIRTY;
+}
+
 static int
 ext2_file_zero_remainder (Ext2File *file, off64_t offset)
 {
@@ -1280,6 +1298,109 @@ ext2_block_alloc_stats (VFSSuperblock *sb, block_t block, int inuse)
 }
 
 int
+ext2_write_backup_superblock (VFSSuperblock *sb, unsigned int group,
+			      block_t group_block, Ext2Superblock *s)
+{
+  unsigned int sgroup = group;
+  if (sgroup > 65535)
+    sgroup = 65535;
+  s->s_block_group_nr = sgroup;
+  ext2_superblock_checksum_update (sb->sb_private, s);
+  return sb->sb_dev->sd_write (sb->sb_dev, s, sizeof (Ext2Superblock),
+			       group_block * sb->sb_blksize);
+}
+
+int
+ext2_write_primary_superblock (VFSSuperblock *sb, Ext2Superblock *s)
+{
+  return sb->sb_dev->sd_write (sb->sb_dev, s, sizeof (Ext2Superblock), 1024);
+}
+
+int
+ext2_flush (VFSSuperblock *sb, int flags)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  unsigned int state;
+  unsigned int i;
+  Ext2Superblock *super_shadow = NULL;
+  Ext2GroupDesc *group_shadow = NULL;
+  char *group_ptr;
+  block_t old_desc_blocks;
+  int ret;
+  if (fs->f_super.s_magic != EXT2_MAGIC)
+    return -EINVAL;
+  if (!(fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_JOURNAL_DEV)
+      && fs->f_group_desc == NULL)
+    return -EINVAL;
+
+  state = fs->f_super.s_state;
+  fs->f_super.s_wtime = fs->f_now != 0 ? fs->f_now : time (NULL);
+  fs->f_super.s_block_group_nr = 0;
+  fs->f_super.s_state &= ~EXT2_STATE_VALID;
+  fs->f_super.s_feature_incompat &= ~EXT3_FT_INCOMPAT_RECOVER;
+
+  ret = ext2_write_bitmaps (sb);
+  if (ret != 0)
+    return ret;
+
+  super_shadow = &fs->f_super;
+  group_shadow = fs->f_group_desc;
+
+  if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_JOURNAL_DEV)
+    goto write_super;
+
+  group_ptr = (char *) group_shadow;
+  if (fs->f_super.s_feature_incompat & EXT2_FT_INCOMPAT_META_BG)
+    {
+      old_desc_blocks = fs->f_super.s_first_meta_bg;
+      if (old_desc_blocks > fs->f_desc_blocks)
+	old_desc_blocks = fs->f_desc_blocks;
+    }
+  else
+    old_desc_blocks = fs->f_desc_blocks;
+
+  for (i = 0; i < fs->f_group_desc_count; i++)
+    {
+      block_t super_block;
+      block_t old_desc_block;
+      block_t new_desc_block;
+      ext2_super_bgd_loc (sb, i, &super_block, &old_desc_block, &new_desc_block,
+			  NULL);
+      if (i > 0 && super_block != 0)
+	{
+	  ret = ext2_write_backup_superblock (sb, i, super_block, super_shadow);
+	  if (ret != 0)
+	    return ret;
+	}
+      if (old_desc_block != 0)
+	{
+	  ret = ext2_write_blocks (group_ptr, sb, old_desc_block,
+				   old_desc_blocks);
+	  if (ret != 0)
+	    return ret;
+	}
+      if (new_desc_block != 0)
+	{
+	  int meta_bg = i / EXT2_DESC_PER_BLOCK (fs->f_super);
+	  ret = ext2_write_blocks (group_ptr + meta_bg * sb->sb_blksize, sb,
+				   new_desc_block, 1);
+	  if (ret != 0)
+	    return ret;
+	}
+    }
+
+ write_super:
+  fs->f_super.s_block_group_nr = 0;
+  fs->f_super.s_state = state;
+  ext2_superblock_checksum_update (fs, super_shadow);
+  ret = ext2_write_primary_superblock (sb, super_shadow);
+  if (ret != 0)
+    return ret;
+  fs->f_flags &= ~EXT2_FLAG_DIRTY;
+  return 0;
+}
+
+int
 ext2_open_file (VFSSuperblock *sb, ino64_t inode, Ext2File *file)
 {
   int ret = ext2_read_inode (sb, inode, &file->f_inode);
@@ -1916,6 +2037,69 @@ ext2_new_block (VFSSuperblock *sb, block_t goal, Ext2Bitmap *map,
 }
 
 int
+ext2_new_inode (VFSSuperblock *sb, ino64_t dir, Ext2Bitmap *map,
+		ino64_t *result)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  ino64_t start_inode = 0;
+  ino64_t ino_in_group;
+  ino64_t upto;
+  ino64_t first_zero;
+  ino64_t i;
+  unsigned int group;
+  int ret;
+  if (map == NULL)
+    map = fs->f_inode_bitmap;
+  if (map == NULL)
+    return -EINVAL;
+
+  if (dir > 0)
+    {
+      group = (dir - 1) / fs->f_super.s_inodes_per_group;
+      start_inode = group * fs->f_super.s_inodes_per_group + 1;
+    }
+
+  if (start_inode < EXT2_FIRST_INODE (fs->f_super))
+    start_inode = EXT2_FIRST_INODE (fs->f_super);
+  if (start_inode > fs->f_super.s_inodes_count)
+    return -ENOSPC;
+
+  i = start_inode;
+  do
+    {
+      ino_in_group = (i - 1) % fs->f_super.s_inodes_per_group;
+      group = (i - 1) / fs->f_super.s_inodes_per_group;
+
+      ext2_check_inode_uninit (sb, map, group);
+      upto = i + fs->f_super.s_inodes_per_group - ino_in_group;
+
+      if (i < start_inode && upto >= start_inode)
+	upto = start_inode - 1;
+      if (upto > fs->f_super.s_inodes_count)
+	upto = fs->f_super.s_inodes_count;
+
+      ret = ext2_find_first_zero_bitmap (map, i, upto, &first_zero);
+      if (ret == 0)
+	{
+	  i = first_zero;
+	  break;
+	}
+      if (ret != -ENOENT)
+	return -ENOSPC;
+
+      i = upto + 1;
+      if (i > fs->f_super.s_inodes_count)
+	i = EXT2_FIRST_INODE (fs->f_super);
+    }
+  while (i != start_inode);
+
+  if (ext2_test_bitmap (map, i))
+    return -ENOSPC;
+  *result = i;
+  return 0;
+}
+
+int
 ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		  block_t *result, Ext2BlockAllocContext *ctx)
 {
@@ -2158,11 +2342,8 @@ int
 ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
 		   size_t nblocks)
 {
-  int ret = sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
-				  block * sb->sb_blksize);
-  if (ret == 0)
-    ((Ext2Filesystem *) sb->sb_private)->f_super.s_wtime = time (NULL);
-  return ret;
+  return sb->sb_dev->sd_write (sb->sb_dev, buffer, nblocks * sb->sb_blksize,
+			       block * sb->sb_blksize);
 }
 
 int
@@ -2819,17 +3000,27 @@ ext2_dir_iterate (VFSSuperblock *sb, VFSInode *dir, int flags, char *blockbuf,
   return ctx.d_err;
 }
 
+uint32_t
+ext2_superblock_checksum (Ext2Superblock *s)
+{
+  int offset = offsetof (Ext2Superblock, s_checksum);
+  return crc32 (0xffffffff, s, offset);
+}
+
 int
 ext2_superblock_checksum_valid (Ext2Filesystem *fs)
 {
-  uint32_t checksum;
   if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
     return 1;
-  if (fs->f_super.s_checksum_type != EXT2_CRC32C_CHECKSUM)
-    return 0;
-  checksum =
-    crc32 (0xffffffff, &fs->f_super, offsetof (Ext2Superblock, s_checksum));
-  return checksum == fs->f_super.s_checksum;
+  return fs->f_super.s_checksum == ext2_superblock_checksum (&fs->f_super);
+}
+
+void
+ext2_superblock_checksum_update (Ext2Filesystem *fs, Ext2Superblock *s)
+{
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
+    return;
+  s->s_checksum = ext2_superblock_checksum (s);
 }
 
 uint16_t
