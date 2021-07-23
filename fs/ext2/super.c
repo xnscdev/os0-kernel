@@ -432,17 +432,7 @@ ext2_free (VFSSuperblock *sb)
 void
 ext2_update (VFSSuperblock *sb)
 {
-  Ext2Filesystem *fs = sb->sb_private;
-  SpecDevice *dev = sb->sb_dev;
-
-  /* Update superblock */
-  if (dev->sd_write (dev, &fs->f_super, sizeof (Ext2Superblock), 1024) != 0)
-    return;
-
-  /* Update block group descriptor table */
-  dev->sd_write (dev, fs->f_group_desc,
-		 sizeof (Ext2GroupDesc) * ext2_bgdt_size (&fs->f_super),
-		 sb->sb_blksize >= 4096 ? sb->sb_blksize : 2048);
+  ext2_flush (sb, 0);
 }
 
 int

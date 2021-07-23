@@ -332,7 +332,13 @@ sys_umount (const char *dir)
 void
 sys_sync (void)
 {
-  /* There is currently no support for filesystem cache, so this is a no-op */
+  /* Call VFS update() on each mounted filesystem */
+  int i;
+  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+    {
+      if (mount_table[i].vfs_fstype != NULL)
+	vfs_update_sb (&mount_table[i].vfs_sb);
+    }
 }
 
 int
