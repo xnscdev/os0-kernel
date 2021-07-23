@@ -93,8 +93,8 @@
 #define ENOPROTOOPT     92
 #define EPROTONOSUPPORT 93
 #define ESOCKTNOSUPPORT 94
-#define EOPTNOTSUPP     95
-#define ENOTSUP         EOPTNOTSUPP
+#define EOPNOTSUPP      95
+#define ENOTSUP         EOPNOTSUPP
 #define EPFNOSUPPORT    96
 #define EAFNOSUPPORT    97
 #define EADDRINUSE      98
