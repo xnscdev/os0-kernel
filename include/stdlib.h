@@ -19,12 +19,10 @@
 #ifndef _STDLIB_H
 #define _STDLIB_H
 
+#include <libk/compile.h>
 #include <libk/types.h>
 #include <sys/cdefs.h>
 #include <stddef.h>
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 __BEGIN_DECLS
 
@@ -42,6 +40,7 @@ void qsort (void *const pbase, size_t len, size_t size, ComparePredicate cmp);
 uint16_t crc16 (uint16_t seed, const void *data, size_t len);
 uint32_t crc32 (uint32_t seed, const void *data, size_t len);
 
+void low_abort (const char *msg) __low_text __attribute__ ((noreturn));
 void panic (const char *__restrict fmt, ...)
   __attribute__ ((noreturn, cold, format (printf, 1, 2)));
 

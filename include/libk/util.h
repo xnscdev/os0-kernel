@@ -1,5 +1,5 @@
 /*************************************************************************
- * math.h -- This file is part of OS/0.                                  *
+ * util.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,8 +16,8 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _LIBK_MATH_H
-#define _LIBK_MATH_H
+#ifndef _LIBK_UTIL_H
+#define _LIBK_UTIL_H
 
 #include <sys/cdefs.h>
 #include <stdint.h>

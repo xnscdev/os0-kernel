@@ -64,6 +64,9 @@ boot_page_dir:
 	.long boot_page_tbl1 + 0x003
 	.skip PAGE_SIZE - 3080
 
+__die_not_multiboot_msg:
+	.asciz "Bad multiboot magic number"
+
 	.section .bootstrap_stack, "aw", @nobits
 	.align PAGE_SIZE
 stack_bottom:
@@ -74,16 +77,35 @@ stack_top:
 	.global _start
 	.type _start, @function
 _start:
+	/* Disable interrupts */
 	cli
+
+	/* Make sure the kernel was booted with multiboot */
+	cmp	$0x2badb002, %eax
+	je	1f
+
+	pushl	$__die_not_multiboot_msg
+	call	low_abort
+
+1:
+	/* Initialize ACPI. This must be done before initializing the paging
+	   environment, since we need to read raw low memory and the pointers
+	   in ACPI structures may not point to a mapped address once entering
+	   paging mode. */
+	call	acpi_init
+
+	/* Setup initial paging environment */
 	mov	$boot_page_dir, %ecx
 	mov	%ecx, %cr3
-
 	mov	%cr0, %ecx
 	or	$0x80010000, %ecx
 	mov	%ecx, %cr0
 
+	/* Jump to higher half start */
 	lea	higher_start, %ecx
 	jmp	*%ecx
+
+	.size _start, . - _start
 
 	.section .text
 higher_start:
@@ -109,3 +131,5 @@ higher_start:
 1:
 	hlt
 	jmp	1b
+
+	.size higher_start, . - higher_start

@@ -20,6 +20,7 @@
 
 #include <fs/devfs.h>
 #include <libk/libk.h>
+#include <sys/acpi.h>
 #include <sys/ata.h>
 #include <sys/cmdline.h>
 #include <sys/multiboot.h>
@@ -174,12 +175,16 @@ init (void)
 void
 kmain (MultibootInfo *info)
 {
+  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
+
   timer_set_freq (1000);
   vga_init ();
   splash ();
-  cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
+  if (info->mi_flags & MULTIBOOT_FLAG_CMDLINE)
+    cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));
+  if (!acpi_enable ())
+    printk ("acpi: failed to enable\n");
 
-  assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
   heap_init ();
   mem_init (info->mi_memhigh);
   scheduler_init ();

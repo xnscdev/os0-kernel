@@ -19,6 +19,17 @@
 #ifndef _LIBK_COMPILE_H
 #define _LIBK_COMPILE_H
 
+/* Macros for marking data in low memory */
+
+#define __low_text __attribute__ ((section (".multiboot.text")))
+#define __low_data __attribute__ ((section (".multiboot.data")))
+#define __low_rodata __attribute__ ((section (".multiboot.rodata")))
+
+#define LOW_STRING(str) (__extension__ ({		\
+	static const __low_rodata char __c[] = (str);	\
+	(const char *) &__c;				\
+      }))
+
 /* Branch prediction macros */
 
 #define likely(x) __builtin_expect (!!(x), 1)

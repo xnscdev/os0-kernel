@@ -19,6 +19,8 @@
 #ifndef _VM_PAGING_H
 #define _VM_PAGING_H
 
+#include <kconfig.h>
+
 #ifdef ARCH_I386
 #include <i386/paging.h>
 #endif

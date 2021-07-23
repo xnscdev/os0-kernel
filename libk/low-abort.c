@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * low-abort.c -- This file is part of OS/0.                             *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,17 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/stack.h>
-#include <libk/types.h>
-#include <libk/util.h>
-#include <sys/ioctl.h>
-#include <sys/signal.h>
-#include <assert.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
+#include <sys/memory.h>
+#include <video/vga.h>
 #include <stdlib.h>
-#include <string.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
+
+void
+low_abort (const char *msg)
+{
+  size_t i;
+  for (i = 0; msg[i] != '\0'; i++)
+    ((uint16_t *) (VGA_BUFFER - RELOC_VADDR))[i] =
+      vga_mkentry (msg[i], VGA_DEFAULT_COLOR);
+  __asm__ ("hlt");
+  __builtin_unreachable ();
+}

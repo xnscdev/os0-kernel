@@ -1,4 +1,5 @@
 drivers_src = [
+  'acpi.c',
   'ata.c',
   'ata-bio.c',
   'atapi.c',

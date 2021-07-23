@@ -40,6 +40,7 @@ VFSSuperblock pipe_sb = {
   &pipe_sops,
   0,
   0,
+  -1,
   0,
   NULL,
   NULL,

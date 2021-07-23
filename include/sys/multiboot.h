@@ -71,7 +71,7 @@ typedef struct
   unsigned char mi_fbbpp;
   unsigned char mi_fbtype;
   unsigned char mi_fbcolinfo[6];
-} __attribute__ ((packed)) MultibootInfo;
+} MultibootInfo;
 
 #endif
 

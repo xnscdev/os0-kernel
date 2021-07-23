@@ -6,6 +6,7 @@ libk_src = [
   'crc32.c',
   'ctype.c',
   'itoa.c',
+  'low-abort.c',
   'panic.c',
   'pregs.S',
   'printk.c',

@@ -11,6 +11,11 @@ SECTIONS
     *(.multiboot.data)
   }
 
+  .multiboot.rodata :
+  {
+    *(.multiboot.rodata)
+  }
+
   .multiboot.text :
   {
     *(.multiboot.text)
