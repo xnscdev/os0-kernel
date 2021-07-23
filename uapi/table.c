@@ -89,6 +89,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_lstat] = sys_lstat,
   [SYS_fstat] = sys_fstat,
   [SYS_wait4] = sys_wait4,
+  [SYS_uname] = sys_uname,
   [SYS_mprotect] = sys_mprotect,
   [SYS_sigprocmask] = sys_sigprocmask,
   [SYS_getpgid] = sys_getpgid,

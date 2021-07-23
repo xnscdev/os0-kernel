@@ -1,5 +1,5 @@
 /*************************************************************************
- * kconfig.h -- This file is part of OS/0.                               *
+ * utsname.h -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,26 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _KCONFIG_H
-#define _KCONFIG_H
+#ifndef _BITS_UTSNAME_H
+#define _BITS_UTSNAME_H
 
-#define VERSION @VERSION@
+#define __uname_field_width 64
 
-#mesondefine ARCH_I386
-
-#ifdef ARCH_I386
-#define ARCH_STRING "i386"
-#endif
-
-#ifdef ARCH_I386
-#mesondefine INVLPG_SUPPORT
-#else
-#define INVLPG_SUPPORT 1
-#endif
-
-#mesondefine PROCESS_LIMIT
-#mesondefine PROCESS_FILE_LIMIT
-#mesondefine PROCESS_SYS_FILE_LIMIT
-#mesondefine PROCESS_MMAP_LIMIT
+struct utsname
+{
+  char sysname[__uname_field_width];
+  char nodename[__uname_field_width];
+  char release[__uname_field_width];
+  char version[__uname_field_width];
+  char machine[__uname_field_width];
+};
 
 #endif

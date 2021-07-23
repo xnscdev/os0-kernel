@@ -212,6 +212,17 @@ sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage)
 }
 
 int
+sys_uname (struct utsname *name)
+{
+  strcpy (name->sysname, "OS/0");
+  strcpy (name->nodename, "os0_system"); /* Dummy value */
+  strcpy (name->release, VERSION);
+  strcpy (name->version, "Kernel version " VERSION " built " __DATE__);
+  strcpy (name->machine, ARCH_STRING);
+  return 0;
+}
+
+int
 sys_vfork (void)
 {
   int ret;
