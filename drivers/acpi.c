@@ -16,14 +16,10 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <libk/libk.h>
 #include <sys/acpi.h>
 #include <sys/io.h>
-#include <sys/memory.h>
 #include <sys/timer.h>
-#include <stddef.h>
-#include <stdlib.h>
-
-#define acpi_reloc(x) (*((__typeof__ (x) *) ((char *) &(x) + RELOC_VADDR)))
 
 static __low_data unsigned int acpi_smi_cmd;
 static __low_data unsigned char acpi_cmd_enable;
@@ -177,25 +173,25 @@ acpi_init (void)
 int
 acpi_enable (void)
 {
-  if (inw (acpi_reloc (acpi_pm1a_control)) & acpi_reloc (acpi_sci_en))
+  if (inw (LOW_ACCESS (acpi_pm1a_control)) & LOW_ACCESS (acpi_sci_en))
     return 1; /* ACPI already enabled */
-  if (acpi_reloc (acpi_smi_cmd) != 0 && acpi_reloc (acpi_cmd_enable) != 0)
+  if (LOW_ACCESS (acpi_smi_cmd) != 0 && LOW_ACCESS (acpi_cmd_enable) != 0)
     {
       int i;
-      outb (acpi_reloc (acpi_cmd_enable), acpi_reloc (acpi_smi_cmd));
+      outb (LOW_ACCESS (acpi_cmd_enable), LOW_ACCESS (acpi_smi_cmd));
       for (i = 0; i < 300; i++)
 	{
-	  if ((inw (acpi_reloc (acpi_pm1a_control)) &
-	       acpi_reloc (acpi_sci_en)) == 1)
+	  if ((inw (LOW_ACCESS (acpi_pm1a_control)) &
+	       LOW_ACCESS (acpi_sci_en)) == 1)
 	    break;
 	  msleep (10);
 	}
-      if (acpi_reloc (acpi_pm1b_control) != 0)
+      if (LOW_ACCESS (acpi_pm1b_control) != 0)
 	{
 	  for (; i < 300; i++)
 	    {
-	      if ((inw (acpi_reloc (acpi_pm1b_control)) &
-		   acpi_reloc (acpi_sci_en)) == 1)
+	      if ((inw (LOW_ACCESS (acpi_pm1b_control)) &
+		   LOW_ACCESS (acpi_sci_en)) == 1)
 		break;
 	      msleep (10);
 	    }
@@ -204,4 +200,17 @@ acpi_enable (void)
 	return 1;
     }
   return 0;
+}
+
+int
+acpi_shutdown (void)
+{
+  if (LOW_ACCESS (acpi_sci_en) == 0)
+    return -ENOTSUP;
+  outw (LOW_ACCESS (acpi_slp_typa) | LOW_ACCESS (acpi_slp_en),
+	LOW_ACCESS (acpi_pm1a_control));
+  if (LOW_ACCESS (acpi_pm1b_control) != 0)
+    outw (LOW_ACCESS (acpi_slp_typb) | LOW_ACCESS (acpi_slp_en),
+	  LOW_ACCESS (acpi_pm1b_control));
+  return -EAGAIN;
 }

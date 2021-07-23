@@ -19,6 +19,8 @@
 #ifndef _LIBK_COMPILE_H
 #define _LIBK_COMPILE_H
 
+#include <sys/memory.h>
+
 /* Macros for marking data in low memory */
 
 #define __low_text __attribute__ ((section (".multiboot.text")))
@@ -29,6 +31,8 @@
 	static const __low_rodata char __c[] = (str);	\
 	(const char *) &__c;				\
       }))
+
+#define LOW_ACCESS(x) (*((__typeof__ (x) *) ((char *) &(x) + RELOC_VADDR)))
 
 /* Branch prediction macros */
 

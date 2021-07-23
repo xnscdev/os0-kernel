@@ -112,6 +112,7 @@ typedef struct
 __BEGIN_DECLS
 
 int acpi_enable (void);
+int acpi_shutdown (void);
 
 __END_DECLS
 
