@@ -724,9 +724,9 @@ ext2_getattr (VFSInode *inode, struct stat64 *st)
   st->st_gid = inode->vi_gid;
   st->st_rdev = inode->vi_rdev;
   st->st_size = inode->vi_size;
-  st->st_atime = inode->vi_atime.tv_sec;
-  st->st_mtime = inode->vi_mtime.tv_sec;
-  st->st_ctime = inode->vi_ctime.tv_sec;
+  st->st_atim = inode->vi_atime;
+  st->st_mtim = inode->vi_mtime;
+  st->st_ctim = inode->vi_ctime;
   st->st_blksize = inode->vi_sb->sb_blksize;
   st->st_blocks = inode->vi_blocks;
   return 0;

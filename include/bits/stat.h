@@ -23,7 +23,7 @@
 #error  "<bits/stat.h> should not be included directly"
 #endif
 
-#include <sys/types.h>
+#include <bits/time.h>
 
 #define S_IFMT   0170000
 #define S_IFIFO  0010000
@@ -68,9 +68,9 @@ struct stat
   gid_t st_gid;
   dev_t st_rdev;
   off_t st_size;
-  time_t st_atime;
-  time_t st_mtime;
-  time_t st_ctime;
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
   blksize_t st_blksize;
   blkcnt_t st_blocks;
 };
@@ -85,11 +85,15 @@ struct stat64
   gid_t st_gid;
   dev_t st_rdev;
   off64_t st_size;
-  time_t st_atime;
-  time_t st_mtime;
-  time_t st_ctime;
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
   blksize_t st_blksize;
   blkcnt64_t st_blocks;
 };
+
+#define st_atime st_atim.tv_sec
+#define st_mtime st_mtim.tv_sec
+#define st_ctime st_ctim.tv_sec
 
 #endif

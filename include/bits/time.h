@@ -21,10 +21,6 @@
 
 #include <sys/types.h>
 
-#ifndef _SYS_TIME_H
-#error  "<bits/time.h> should not be included directly"
-#endif
-
 #define CLOCKS_PER_SEC 1000
 #define CLK_TCK        CLOCKS_PER_SEC
 
