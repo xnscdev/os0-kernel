@@ -98,7 +98,10 @@ sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags)
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
   if (ret != 0)
-    return ret;
+    {
+      proc->p_cwd = cwd;
+      return ret;
+    }
   ret = vfs_chown (inode, uid, gid);
   vfs_unref_inode (inode);
   proc->p_cwd = cwd;
@@ -123,7 +126,10 @@ sys_futimesat (int fd, const char *path, const struct timeval times[2])
 
   ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
-    return ret;
+    {
+      proc->p_cwd = cwd;
+      return ret;
+    }
   inode->vi_atime.tv_sec = times[0].tv_sec;
   inode->vi_atime.tv_nsec = times[0].tv_usec * 1000;
   inode->vi_mtime.tv_sec = times[1].tv_sec;
@@ -322,7 +328,10 @@ sys_fchmodat (int fd, const char *path, mode_t mode, int flags)
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
   if (ret != 0)
-    return ret;
+    {
+      proc->p_cwd = cwd;
+      return ret;
+    }
   ret = vfs_chmod (inode, mode);
   vfs_unref_inode (inode);
   proc->p_cwd = cwd;
@@ -346,7 +355,10 @@ sys_faccessat (int fd, const char *path, int mode, int flags)
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
   if (ret != 0)
-    return ret;
+    {
+      proc->p_cwd = cwd;
+      return ret;
+    }
   switch (mode)
     {
     case F_OK:
@@ -370,22 +382,48 @@ sys_utimensat (int fd, const char *path, const struct timespec times[2],
 	       int flags)
 {
   Process *proc = &process_table[task_getpid ()];
-  VFSInode *cwd = proc->p_cwd;
+  VFSInode *cwd = NULL;
   VFSInode *inode;
   int ret;
   if (!__sys_utime_ns_valid (times[0].tv_nsec)
       || !__sys_utime_ns_valid (times[1].tv_nsec))
     return -EINVAL;
-  if (fd != AT_FDCWD)
+  if (path == NULL)
     {
-      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
+      inode = inode_from_fd (fd);
+      if (inode == NULL)
 	return -EBADF;
-      proc->p_cwd = proc->p_files[fd]->pf_inode;
+    }
+  else
+    {
+      cwd = proc->p_cwd;
+      if (fd != AT_FDCWD)
+	{
+	  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
+	    return -EBADF;
+	  proc->p_cwd = proc->p_files[fd]->pf_inode;
+	}
     }
 
   ret = vfs_open_file (&inode, path, flags & AT_SYMLINK_NOFOLLOW ? 0 : 1);
   if (ret != 0)
-    return ret;
+    {
+      if (cwd != NULL)
+	proc->p_cwd = cwd;
+      return ret;
+    }
+
+  /* Check that the process has the required permissions */
+  if ((times[0].tv_nsec != UTIME_OMIT || times[1].tv_nsec != UTIME_OMIT)
+      && (proc->p_euid != 0 || proc->p_euid != inode->vi_uid))
+    {
+      if (path != NULL)
+	vfs_unref_inode (inode);
+      if (cwd != NULL)
+	proc->p_cwd = cwd;
+      return -EPERM;
+    }
+
   switch (times[0].tv_nsec)
     {
     case UTIME_NOW:
@@ -409,7 +447,9 @@ sys_utimensat (int fd, const char *path, const struct timespec times[2],
       inode->vi_mtime = times[1];
     }
   ret = vfs_write_inode (inode);
-  vfs_unref_inode (inode);
-  proc->p_cwd = cwd;
+  if (path != NULL)
+    vfs_unref_inode (inode);
+  if (cwd != NULL)
+    proc->p_cwd = cwd;
   return ret;
 }
