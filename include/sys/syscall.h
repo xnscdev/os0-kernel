@@ -115,6 +115,7 @@ int sys_stat (const char *path, struct stat *st);
 int sys_lstat (const char *path, struct stat *st);
 int sys_fstat (int fd, struct stat *st);
 pid_t sys_wait4 (pid_t pid, int *status, int options, struct rusage *usage);
+int sys_fsync (int fd);
 int sys_uname (struct utsname *name);
 int sys_mprotect (void *addr, size_t len, int prot);
 int sys_sigprocmask (int how, const sigset_t *__restrict set,

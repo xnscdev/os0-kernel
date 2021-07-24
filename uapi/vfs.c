@@ -633,6 +633,15 @@ sys_fstat (int fd, struct stat *st)
 }
 
 int
+sys_fsync (int fd)
+{
+  VFSInode *inode = inode_from_fd (fd);
+  if (inode == NULL)
+    return -EBADF;
+  return vfs_write_inode (inode);
+}
+
+int
 sys_fchdir (int fd)
 {
   Process *proc = &process_table[task_getpid ()];
