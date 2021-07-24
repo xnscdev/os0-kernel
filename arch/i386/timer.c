@@ -52,6 +52,12 @@ timer_get_freq (void)
   return timer_freq;
 }
 
+uint32_t
+timer_get_rem_ms (void)
+{
+  return tick % 1000;
+}
+
 void
 msleep (uint32_t ms)
 {

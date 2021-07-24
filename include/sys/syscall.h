@@ -158,6 +158,8 @@ int sys_flistxattr (int fd, char *buffer, size_t len);
 int sys_removexattr (const char *path, const char *name);
 int sys_lremovexattr (const char *path, const char *name);
 int sys_fremovexattr (int fd, const char *name);
+int sys_clock_getres (clockid_t id, struct timespec *tp);
+int sys_clock_gettime (clockid_t id, struct timespec *tp);
 int sys_statfs64 (const char *path, struct statfs64 *st);
 int sys_fstatfs64 (int fd, struct statfs64 *st);
 int sys_utimes (const char *path, const struct timeval times[2]);

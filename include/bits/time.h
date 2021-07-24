@@ -24,6 +24,9 @@
 #define CLOCKS_PER_SEC 1000
 #define CLK_TCK        CLOCKS_PER_SEC
 
+#define CLOCK_REALTIME  1
+#define CLOCK_MONOTONIC 2
+
 #define ITIMER_REAL    0
 #define ITIMER_VIRTUAL 1
 #define ITIMER_PROF    2

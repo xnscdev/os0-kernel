@@ -150,6 +150,8 @@
 #define SYS_removexattr   235
 #define SYS_lremovexattr  236
 #define SYS_fremovexattr  237
+#define SYS_clock_getres  264
+#define SYS_clock_gettime 265
 #define SYS_statfs64      268
 #define SYS_fstatfs64     269
 #define SYS_utimes        271

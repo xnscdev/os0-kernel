@@ -99,3 +99,33 @@ sys_nanosleep (const struct timespec *req, struct timespec *rem)
   msleep (req->tv_sec * 1000 + req->tv_nsec / 1000000);
   return 0;
 }
+
+int
+sys_clock_getres (clockid_t id, struct timespec *tp)
+{
+  switch (id)
+    {
+    case CLOCK_REALTIME:
+    case CLOCK_MONOTONIC:
+      tp->tv_sec = 0;
+      tp->tv_nsec = 1000000;
+      return 0;
+    default:
+      return -EINVAL;
+    }
+}
+
+int
+sys_clock_gettime (clockid_t id, struct timespec *tp)
+{
+  switch (id)
+    {
+    case CLOCK_REALTIME:
+    case CLOCK_MONOTONIC:
+      tp->tv_sec = time (NULL);
+      tp->tv_nsec = timer_get_rem_ms () * 1000000;
+      return 0;
+    default:
+      return -EINVAL;
+    }
+}
