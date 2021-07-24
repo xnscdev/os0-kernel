@@ -2,7 +2,7 @@ project('os0-kernel', 'c', version: '0.0.1',
 	default_options: ['c_std=gnu99', 'b_staticpic=false'],
 	license: 'GPL-3.0-or-later', meson_version: '>= 0.55.0')
 add_project_arguments('-ffreestanding', '-fno-common', '-U_FILE_OFFSET_BITS',
-		      language: 'c', native: false)
+		      '-DKERNEL=1', language: 'c', native: false)
 
 cc = meson.get_compiler('c')
 if cc.has_argument('-Wpointer-sign')
