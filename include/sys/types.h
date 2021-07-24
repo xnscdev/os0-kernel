@@ -21,6 +21,8 @@
 
 #include <stdint.h>
 
+#define howmany(x, y) ((x) % (y) == 0 ? (x) / (y) : (x) / (y) + 1)
+
 /* POSIX types */
 
 typedef int32_t blksize_t;
