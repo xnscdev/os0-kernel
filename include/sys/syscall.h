@@ -21,6 +21,7 @@
 
 #include <bits/syscall.h>
 #include <bits/uio.h>
+#include <bits/utime.h>
 #include <bits/utsname.h>
 #include <fs/vfs.h>
 #include <sys/cdefs.h>
@@ -60,6 +61,7 @@ int sys_setuid (uid_t uid);
 uid_t sys_getuid (void);
 unsigned int sys_alarm (unsigned int seconds);
 int sys_pause (void);
+int sys_utime (const char *path, const struct utimbuf *times);
 int sys_access (const char *path, int mode);
 void sys_sync (void);
 int sys_kill (pid_t pid, int sig);
@@ -154,10 +156,12 @@ int sys_lremovexattr (const char *path, const char *name);
 int sys_fremovexattr (int fd, const char *name);
 int sys_statfs64 (const char *path, struct statfs64 *st);
 int sys_fstatfs64 (int fd, struct statfs64 *st);
+int sys_utimes (const char *path, const struct timeval times[2]);
 int sys_openat (int fd, const char *path, int flags, mode_t mode);
 int sys_mkdirat (int fd, const char *path, mode_t mode);
 int sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev);
 int sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags);
+int sys_futimesat (int fd, const char *path, const struct timeval times[2]);
 int sys_unlinkat (int fd, const char *path, int flags);
 int sys_renameat (int oldfd, const char *old, int newfd, const char *new);
 int sys_linkat (int oldfd, const char *old, int newfd, const char *new,
@@ -167,6 +171,8 @@ int sys_readlinkat (int fd, const char *__restrict path,
 		    char *__restrict buffer, size_t len);
 int sys_fchmodat (int fd, const char *path, mode_t mode, int flags);
 int sys_faccessat (int fd, const char *path, int mode, int flags);
+int sys_utimensat (int fd, const char *path, const struct timespec times[2],
+		   int flags);
 
 /* Utility functions */
 

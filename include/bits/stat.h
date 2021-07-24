@@ -25,6 +25,9 @@
 
 #include <bits/time.h>
 
+#define UTIME_NOW  1000000001
+#define UTIME_OMIT 1000000007
+
 #define S_IFMT   0170000
 #define S_IFIFO  0010000
 #define S_IFCHR  0020000

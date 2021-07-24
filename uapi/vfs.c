@@ -342,6 +342,13 @@ sys_sync (void)
 }
 
 int
+sys_utime (const char *path, const struct utimbuf *times)
+{
+  struct timeval timevals[2] = {{times->actime, 0}, {times->modtime, 0}};
+  return sys_utimes (path, timevals);
+}
+
+int
 sys_access (const char *path, int mode)
 {
   VFSInode *inode;
@@ -887,4 +894,23 @@ sys_fstatfs64 (int fd, struct statfs64 *st)
   if (inode == NULL)
     return -EBADF;
   return vfs_statfs (inode->vi_sb, st);
+}
+
+int
+sys_utimes (const char *path, const struct timeval times[2])
+{
+  VFSInode *inode;
+  int ret;
+  if (times[0].tv_usec >= 1000000 || times[1].tv_usec >= 1000000)
+    return -EINVAL;
+  ret = vfs_open_file (&inode, path, 1);
+  if (ret != 0)
+    return ret;
+  inode->vi_atime.tv_sec = times[0].tv_sec;
+  inode->vi_atime.tv_nsec = times[0].tv_usec * 1000;
+  inode->vi_mtime.tv_sec = times[1].tv_sec;
+  inode->vi_mtime.tv_nsec = times[1].tv_usec * 1000;
+  ret = vfs_write_inode (inode);
+  vfs_unref_inode (inode);
+  return ret;
 }

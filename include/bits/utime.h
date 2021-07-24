@@ -1,5 +1,5 @@
 /*************************************************************************
- * time.h -- This file is part of OS/0.                                  *
+ * utime.h -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,4 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#ifndef _BITS_UTIME_H
+#define _BITS_UTIME_H
+
 #include <bits/time.h>
+
+struct utimbuf
+{
+  time_t actime;
+  time_t modtime;
+};
+
+#endif

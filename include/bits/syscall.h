@@ -152,10 +152,12 @@
 #define SYS_fremovexattr  237
 #define SYS_statfs64      268
 #define SYS_fstatfs64     269
+#define SYS_utimes        271
 #define SYS_openat        295
 #define SYS_mkdirat       296
 #define SYS_mknodat       297
 #define SYS_fchownat      298
+#define SYS_futimesat     299
 #define SYS_fstatat64     300
 #define SYS_unlinkat      301
 #define SYS_renameat      302
@@ -164,7 +166,8 @@
 #define SYS_readlinkat    305
 #define SYS_fchmodat      306
 #define SYS_faccessat     307
+#define SYS_utimensat     320
 
-#define NR_syscalls 308
+#define NR_syscalls 384
 
 #endif
