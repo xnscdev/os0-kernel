@@ -63,6 +63,7 @@ unsigned int sys_alarm (unsigned int seconds);
 int sys_pause (void);
 int sys_utime (const char *path, const struct utimbuf *times);
 int sys_access (const char *path, int mode);
+int sys_nice (int inc);
 void sys_sync (void);
 int sys_kill (pid_t pid, int sig);
 int sys_rename (const char *old, const char *new);
@@ -103,6 +104,8 @@ int sys_truncate (const char *path, off_t len);
 int sys_ftruncate (int fd, off_t len);
 int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
+int sys_getpriority (int which, int who);
+int sys_setpriority (int which, int who, int prio);
 int sys_statfs (const char *path, struct statfs *st);
 int sys_fstatfs (int fd, struct statfs *st);
 int sys_setitimer (int which, const struct itimerval *__restrict new,

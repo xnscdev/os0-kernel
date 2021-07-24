@@ -30,6 +30,10 @@
 #define RUSAGE_BOTH     (-2)
 #define RUSAGE_THREAD   1
 
+#define PRIO_PROCESS 1
+#define PRIO_PGRP    2
+#define PRIO_USER    3
+
 struct rusage
 {
   struct timeval ru_utime;

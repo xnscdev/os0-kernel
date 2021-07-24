@@ -47,6 +47,9 @@ scheduler_init (void)
   task_current->t_eip = 0;
   task_current->t_pgdir = curr_page_dir;
   task_current->t_fini = NULL;
+  task_current->t_pgcopied = 0;
+  task_current->t_priority = 19; /* The kernel will be just waiting for init,
+				    so give it the least priority */
   task_current->t_prev = task_current;
   task_current->t_next = NULL;
 
@@ -90,6 +93,8 @@ task_timer_tick (void)
   /* Update real-time interval timer for all processes */
   for (i = 0; i < PROCESS_LIMIT; i++)
     {
+      if (process_table[i].p_task == NULL)
+	continue;
       tp = &process_table[i].p_itimers[ITIMER_REAL].it_value;
       if (tp->tv_sec != 0 || tp->tv_usec != 0)
 	{
@@ -267,6 +272,7 @@ _task_fork (int copy_pgdir)
   task->t_pgdir = dir;
   task->t_fini = NULL;
   task->t_pgcopied = copy_pgdir;
+  task->t_priority = 0;
   task->t_next = NULL;
 
   proc = &process_table[pid];

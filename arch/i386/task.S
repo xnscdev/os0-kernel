@@ -63,7 +63,7 @@ irq8:
 
 1:
 	/* Switch to next task */
-	mov	28(%edi), %edi
+	mov	32(%edi), %edi
 	test	%edi, %edi
 	jnz	2f
 	mov	task_queue, %edi

@@ -45,6 +45,7 @@ typedef struct _ProcessTask
   uint32_t *t_pgdir;
   void (*t_fini) (void);
   int t_pgcopied;
+  int t_priority;
   volatile struct _ProcessTask *t_prev;
   volatile struct _ProcessTask *t_next;
 } ProcessTask;

@@ -77,6 +77,21 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
 }
 
 int
+sys_nice (int inc)
+{
+  Process *proc = &process_table[task_getpid ()];
+  int prio = proc->p_task->t_priority + inc;
+  if (proc->p_euid != 0 && inc < 0)
+    return -EPERM - 20;
+  if (prio < -20)
+    prio = -20;
+  if (prio > 19)
+    prio = 19;
+  proc->p_task->t_priority = prio;
+  return prio;
+}
+
+int
 sys_dup (int fd)
 {
   return fcntl (fd, F_DUPFD, 0);
@@ -203,6 +218,127 @@ sys_getrusage (int who, struct rusage *usage)
       return -EINVAL;
     }
   return 0;
+}
+
+int
+sys_getpriority (int which, int who)
+{
+  pid_t pid = who != 0 ? who : task_getpid ();
+  uid_t uid = who != 0 ? who : process_table[task_getpid ()].p_uid;
+  int lowest = 20;
+  int i;
+  if (who < 0)
+    return -ESRCH - 20;
+  switch (which)
+    {
+    case PRIO_PROCESS:
+      if (who >= PROCESS_LIMIT)
+	return -ESRCH - 20;
+      if (!process_valid (pid))
+	return -ESRCH - 20;
+      return process_table[pid].p_task->t_priority;
+    case PRIO_PGRP:
+      if (who >= PROCESS_LIMIT)
+	return -ESRCH - 20;
+      if (!process_valid (pid))
+	return -ESRCH - 20;
+      for (i = 0; i < PROCESS_LIMIT; i++)
+	{
+	  if (process_table[i].p_task != NULL && process_table[i].p_pgid == pid)
+	    {
+	      int p = process_table[i].p_task->t_priority;
+	      if (p < lowest)
+		lowest = p;
+	    }
+	}
+      return lowest;
+    case PRIO_USER:
+      if (who >= 65535)
+	return -ESRCH - 20;
+      for (i = 0; i < PROCESS_LIMIT; i++)
+	{
+	  if (process_table[i].p_task != NULL && process_table[i].p_uid == uid)
+	    {
+	      int p = process_table[i].p_task->t_priority;
+	      if (p < lowest)
+		lowest = p;
+	    }
+	}
+      return lowest > 19 ? -ESRCH - 20 : lowest;
+    default:
+      return -EINVAL - 20;
+    }
+}
+
+int
+sys_setpriority (int which, int who, int prio)
+{
+  Process *proc = &process_table[task_getpid ()];
+  pid_t pid = who != 0 ? who : proc->p_task->t_pid;
+  uid_t uid = who != 0 ? who : proc->p_uid;
+  int super = proc->p_euid == 0;
+  int i;
+  if (who < 0)
+    return -ESRCH;
+  if (prio < -20)
+    prio = -20;
+  if (prio > 19)
+    prio = 19;
+  switch (which)
+    {
+    case PRIO_PROCESS:
+      if (who >= PROCESS_LIMIT)
+	return -ESRCH;
+      if (!process_valid (pid))
+	return -ESRCH;
+      if (!super)
+	{
+	  if (prio < process_table[pid].p_task->t_priority)
+	    return -EPERM;
+	  if (process_table[pid].p_euid != proc->p_uid
+	      && process_table[pid].p_euid != proc->p_euid)
+	    return -EPERM;
+	}
+      process_table[pid].p_task->t_priority = prio;
+      return 0;
+    case PRIO_PGRP:
+      if (who >= PROCESS_LIMIT)
+	return -ESRCH;
+      if (!process_valid (pid))
+	return -ESRCH;
+      if (!super)
+	{
+	  if (prio < process_table[pid].p_task->t_priority)
+	    return -EPERM;
+	  if (process_table[pid].p_euid != proc->p_uid
+	      && process_table[pid].p_euid != proc->p_euid)
+	    return -EPERM;
+	}
+      for (i = 0; i < PROCESS_LIMIT; i++)
+	{
+	  if (process_table[i].p_task != NULL && process_table[i].p_pgid == pid)
+	    process_table[i].p_task->t_priority = prio;
+	}
+      return 0;
+    case PRIO_USER:
+      if (who >= 65535)
+	return -ESRCH;
+      if (!super)
+	{
+	  if (prio < process_table[pid].p_task->t_priority)
+	    return -EPERM;
+	  if (proc->p_uid != uid && proc->p_euid != uid)
+	    return -EPERM;
+	}
+      for (i = 0; i < PROCESS_LIMIT; i++)
+	{
+	  if (process_table[i].p_task != NULL && process_table[i].p_uid == uid)
+	    process_table[i].p_task->t_priority = prio;
+	}
+      return 0;
+    default:
+      return -EINVAL;
+    }
 }
 
 pid_t
