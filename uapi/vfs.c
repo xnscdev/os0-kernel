@@ -899,6 +899,7 @@ sys_fstatfs64 (int fd, struct statfs64 *st)
 int
 sys_utimes (const char *path, const struct timeval times[2])
 {
+  Process *proc = &process_table[task_getpid ()];
   VFSInode *inode;
   int ret;
   if (times[0].tv_usec >= 1000000 || times[1].tv_usec >= 1000000)
@@ -906,6 +907,11 @@ sys_utimes (const char *path, const struct timeval times[2])
   ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
+
+  /* Check that the process has the required permissions */
+  if (proc->p_euid != 0 || proc->p_euid != inode->vi_uid)
+    return -EPERM;
+
   inode->vi_atime.tv_sec = times[0].tv_sec;
   inode->vi_atime.tv_nsec = times[0].tv_usec * 1000;
   inode->vi_mtime.tv_sec = times[1].tv_sec;

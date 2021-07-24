@@ -130,6 +130,14 @@ sys_futimesat (int fd, const char *path, const struct timeval times[2])
       proc->p_cwd = cwd;
       return ret;
     }
+
+  /* Check that the process has the required permissions */
+  if (proc->p_euid != 0 || proc->p_euid != inode->vi_uid)
+    {
+      proc->p_cwd = cwd;
+      return -EPERM;
+    }
+
   inode->vi_atime.tv_sec = times[0].tv_sec;
   inode->vi_atime.tv_nsec = times[0].tv_usec * 1000;
   inode->vi_mtime.tv_sec = times[1].tv_sec;
