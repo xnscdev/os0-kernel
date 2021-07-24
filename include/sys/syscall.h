@@ -104,8 +104,8 @@ int sys_truncate (const char *path, off_t len);
 int sys_ftruncate (int fd, off_t len);
 int sys_fchmod (int fd, mode_t mode);
 int sys_fchown (int fd, uid_t uid, gid_t gid);
-int sys_getpriority (int which, int who);
-int sys_setpriority (int which, int who, int prio);
+int sys_getpriority (int which, id_t who);
+int sys_setpriority (int which, id_t who, int prio);
 int sys_statfs (const char *path, struct statfs *st);
 int sys_fstatfs (int fd, struct statfs *st);
 int sys_setitimer (int which, const struct itimerval *__restrict new,

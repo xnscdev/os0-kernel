@@ -221,25 +221,19 @@ sys_getrusage (int who, struct rusage *usage)
 }
 
 int
-sys_getpriority (int which, int who)
+sys_getpriority (int which, id_t who)
 {
   pid_t pid = who != 0 ? who : task_getpid ();
   uid_t uid = who != 0 ? who : process_table[task_getpid ()].p_uid;
   int lowest = 20;
   int i;
-  if (who < 0)
-    return -ESRCH - 20;
   switch (which)
     {
     case PRIO_PROCESS:
-      if (who >= PROCESS_LIMIT)
-	return -ESRCH - 20;
       if (!process_valid (pid))
 	return -ESRCH - 20;
       return process_table[pid].p_task->t_priority;
     case PRIO_PGRP:
-      if (who >= PROCESS_LIMIT)
-	return -ESRCH - 20;
       if (!process_valid (pid))
 	return -ESRCH - 20;
       for (i = 0; i < PROCESS_LIMIT; i++)
@@ -253,8 +247,6 @@ sys_getpriority (int which, int who)
 	}
       return lowest;
     case PRIO_USER:
-      if (who >= 65535)
-	return -ESRCH - 20;
       for (i = 0; i < PROCESS_LIMIT; i++)
 	{
 	  if (process_table[i].p_task != NULL && process_table[i].p_uid == uid)
@@ -271,15 +263,13 @@ sys_getpriority (int which, int who)
 }
 
 int
-sys_setpriority (int which, int who, int prio)
+sys_setpriority (int which, id_t who, int prio)
 {
   Process *proc = &process_table[task_getpid ()];
   pid_t pid = who != 0 ? who : proc->p_task->t_pid;
   uid_t uid = who != 0 ? who : proc->p_uid;
   int super = proc->p_euid == 0;
   int i;
-  if (who < 0)
-    return -ESRCH;
   if (prio < -20)
     prio = -20;
   if (prio > 19)
@@ -287,8 +277,6 @@ sys_setpriority (int which, int who, int prio)
   switch (which)
     {
     case PRIO_PROCESS:
-      if (who >= PROCESS_LIMIT)
-	return -ESRCH;
       if (!process_valid (pid))
 	return -ESRCH;
       if (!super)
@@ -302,8 +290,6 @@ sys_setpriority (int which, int who, int prio)
       process_table[pid].p_task->t_priority = prio;
       return 0;
     case PRIO_PGRP:
-      if (who >= PROCESS_LIMIT)
-	return -ESRCH;
       if (!process_valid (pid))
 	return -ESRCH;
       if (!super)
@@ -321,8 +307,6 @@ sys_setpriority (int which, int who, int prio)
 	}
       return 0;
     case PRIO_USER:
-      if (who >= 65535)
-	return -ESRCH;
       if (!super)
 	{
 	  if (prio < process_table[pid].p_task->t_priority)
