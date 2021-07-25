@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <libk/libk.h>
+#include <sys/io.h>
 #include <sys/process.h>
 #include <video/vga.h>
 
@@ -310,4 +311,14 @@ kbd_get_input (void *buffer, size_t len, int block)
   kbdbuf->kbd_currpos += len;
   kbd_flush_input = 0;
   return len;
+}
+
+void
+kbd_cpu_reset (void)
+{
+  unsigned char c = 2;
+  while (c & 2)
+    c = inb (KBD_PORT_STATUS);
+  outb (0xfe, KBD_PORT_STATUS);
+  halt ();
 }

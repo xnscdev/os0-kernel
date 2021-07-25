@@ -43,6 +43,7 @@ uint32_t crc32 (uint32_t seed, const void *data, size_t len);
 void low_abort (const char *msg) __low_text __attribute__ ((noreturn));
 void panic (const char *__restrict fmt, ...)
   __attribute__ ((noreturn, cold, format (printf, 1, 2)));
+void halt (void) __attribute__ ((noreturn, cold));
 
 __END_DECLS
 

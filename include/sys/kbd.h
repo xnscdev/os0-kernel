@@ -59,6 +59,7 @@ void kbd_handle (int scancode);
 void kbd_await_press (int key);
 int kbd_key_pressed (int key);
 int kbd_get_input (void *buffer, size_t len, int block);
+void kbd_cpu_reset (void) __attribute__ ((noreturn));
 
 __END_DECLS
 

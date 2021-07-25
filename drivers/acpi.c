@@ -19,7 +19,9 @@
 #include <libk/libk.h>
 #include <sys/acpi.h>
 #include <sys/io.h>
+#include <sys/kbd.h>
 #include <sys/timer.h>
+#include <vm/paging.h>
 
 static __low_data unsigned int acpi_smi_cmd;
 static __low_data unsigned char acpi_cmd_enable;
@@ -31,6 +33,10 @@ static __low_data uint16_t acpi_slp_typb;
 static __low_data uint16_t acpi_slp_en;
 static __low_data uint16_t acpi_sci_en;
 static __low_data unsigned char acpi_pm1_control_len;
+static __low_data uintptr_t acpi_reset_reg;
+static __low_data unsigned char acpi_reset_space;
+static __low_data unsigned char acpi_reset_val;
+static __low_data unsigned char acpi_reset_avail;
 
 static __low_text int
 acpi_signature_match (const char *a, const char *b, size_t len)
@@ -142,6 +148,7 @@ acpi_init (void)
   if (i == dsdt_len)
     low_abort (LOW_STRING ("acpi: could not find \\_S5 object"));
 
+  /* Read shutdown parameters */
   if ((s5_addr[-1] == 0x08 || (s5_addr[-2] == 0x08 && s5_addr[-1] == '\\'))
       && s5_addr[4] == 0x12)
     {
@@ -168,6 +175,17 @@ acpi_init (void)
     }
   else
     low_abort (LOW_STRING ("acpi: failed to parse \\_S5 object"));
+
+  /* Read reset parameters */
+  if (fadt->f_header.h_revision >= 2 && (fadt->f_flags & (1 << 10)))
+    {
+      acpi_reset_reg = fadt->f_reset_reg.a_addr;
+      acpi_reset_space = fadt->f_reset_reg.a_space;
+      acpi_reset_val = fadt->f_reset_value;
+      acpi_reset_avail = 1;
+    }
+  else
+    acpi_reset_avail = 0;
 }
 
 int
@@ -213,4 +231,27 @@ acpi_shutdown (void)
     outw (LOW_ACCESS (acpi_slp_typb) | LOW_ACCESS (acpi_slp_en),
 	  LOW_ACCESS (acpi_pm1b_control));
   return -EAGAIN;
+}
+
+void
+acpi_reset (void)
+{
+  if (LOW_ACCESS (acpi_reset_avail))
+    {
+      /* ACPI reset */
+      switch (LOW_ACCESS (acpi_reset_space))
+	{
+	case ACPI_SPACE_RAM:
+	  map_page (curr_page_dir, acpi_reset_reg & 0xfffff000, PAGE_COPY_VADDR,
+		    PAGE_FLAG_WRITE);
+	  *((unsigned char *) (PAGE_COPY_VADDR +
+			       (LOW_ACCESS (acpi_reset_reg) & 0xfff))) =
+	    LOW_ACCESS (acpi_reset_val);
+	  halt ();
+	case ACPI_SPACE_IO:
+	  outb (LOW_ACCESS (acpi_reset_val), LOW_ACCESS (acpi_reset_reg));
+	  halt ();
+	}
+    }
+  kbd_cpu_reset ();
 }

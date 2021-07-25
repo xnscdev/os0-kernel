@@ -22,6 +22,18 @@
 #include <sys/cdefs.h>
 #include <stdint.h>
 
+#define ACPI_SPACE_RAM    0
+#define ACPI_SPACE_IO     1
+#define ACPI_SPACE_PCI    2
+#define ACPI_SPACE_EMBED  3
+#define ACPI_SPACE_SMB    4
+#define ACPI_SPACE_CMOS   5
+#define ACPI_SPACE_BAR    6
+#define ACPI_SPACE_IPMI   7
+#define ACPI_SPACE_GPIO   8
+#define ACPI_SPACE_SERIAL 9
+#define ACPI_SPACE_PCC    10
+
 typedef struct
 {
   unsigned char r_signature[8];
@@ -113,6 +125,7 @@ __BEGIN_DECLS
 
 int acpi_enable (void);
 int acpi_shutdown (void);
+void acpi_reset (void) __attribute__ ((noreturn));
 
 __END_DECLS
 
