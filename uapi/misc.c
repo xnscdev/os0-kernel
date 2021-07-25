@@ -19,7 +19,9 @@
 #include <bits/mman.h>
 #include <fs/pipe.h>
 #include <libk/libk.h>
+#include <sys/acpi.h>
 #include <sys/process.h>
+#include <sys/reboot.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <vm/heap.h>
@@ -218,6 +220,28 @@ sys_getrusage (int who, struct rusage *usage)
       return -EINVAL;
     }
   return 0;
+}
+
+int
+sys_reboot (int cmd)
+{
+  uid_t uid = process_table[task_getpid ()].p_euid;
+  if (uid != 0)
+    return -EPERM;
+  switch (cmd)
+    {
+    case RB_HALT_SYSTEM:
+      printk ("System halted.\n");
+      return acpi_shutdown ();
+    case RB_POWER_OFF:
+      printk ("Power down.\n");
+      return acpi_shutdown ();
+    case RB_AUTOBOOT:
+      printk ("Restarting system.\n");
+      acpi_reset ();
+    default:
+      return -EINVAL;
+    }
 }
 
 int

@@ -77,6 +77,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_gettimeofday] = sys_gettimeofday,
   [SYS_symlink] = sys_symlink,
   [SYS_readlink] = sys_readlink,
+  [SYS_reboot] = sys_reboot,
   [SYS_mmap] = sys_mmap,
   [SYS_munmap] = sys_munmap,
   [SYS_truncate] = sys_truncate,

@@ -97,6 +97,7 @@ int sys_gettimeofday (struct timeval *__restrict tv,
 		      struct timezone *__restrict tz);
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
+int sys_reboot (int cmd);
 void *sys_mmap (void *addr, size_t len, int prot, int flags, int fd,
 		off_t offset);
 int sys_munmap (void *addr, size_t len);
