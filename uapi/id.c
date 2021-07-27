@@ -192,6 +192,23 @@ sys_setregid (gid_t rgid, gid_t egid)
   return 0;
 }
 
+int
+sys_getgroups (int size, gid_t list[])
+{
+  /* Kernel does not currently support supplementary group IDs */
+  return 0;
+}
+
+int
+sys_setgroups (size_t size, const gid_t *list)
+{
+  Process *proc = &process_table[task_getpid ()];
+  if (proc->p_euid != 0)
+    return -EPERM;
+  /* Kernel does not currently support supplementary group IDs */
+  return -ENOTSUP;
+}
+
 pid_t
 sys_getpgid (pid_t pid)
 {

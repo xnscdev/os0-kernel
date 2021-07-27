@@ -95,6 +95,8 @@ int sys_sigpending (sigset_t *set);
 int sys_getrusage (int who, struct rusage *usage);
 int sys_gettimeofday (struct timeval *__restrict tv,
 		      struct timezone *__restrict tz);
+int sys_getgroups (int size, gid_t list[]);
+int sys_setgroups (size_t size, const gid_t *list);
 int sys_symlink (const char *old, const char *new);
 int sys_readlink (const char *path, char *buffer, size_t len);
 int sys_reboot (int cmd);

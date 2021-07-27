@@ -81,6 +81,8 @@
 #define SYS_getrusage     77
 #define SYS_gettimeofday  78
 #define SYS_settimeofday  79
+#define SYS_getgroups     80
+#define SYS_setgroups     81
 #define SYS_symlink       83
 #define SYS_readlink      85
 #define SYS_swapon        87
