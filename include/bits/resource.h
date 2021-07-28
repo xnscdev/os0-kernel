@@ -34,6 +34,9 @@
 #define PRIO_PGRP    2
 #define PRIO_USER    3
 
+#define PRIO_MIN -20
+#define PRIO_MAX 19
+
 struct rusage
 {
   struct timeval ru_utime;

@@ -85,10 +85,10 @@ sys_nice (int inc)
   int prio = proc->p_task->t_priority + inc;
   if (proc->p_euid != 0 && inc < 0)
     return -EPERM - 20;
-  if (prio < -20)
-    prio = -20;
-  if (prio > 19)
-    prio = 19;
+  if (prio < PRIO_MIN)
+    prio = PRIO_MIN;
+  if (prio > PRIO_MAX)
+    prio = PRIO_MAX;
   proc->p_task->t_priority = prio;
   return prio;
 }
@@ -294,10 +294,10 @@ sys_setpriority (int which, id_t who, int prio)
   uid_t uid = who != 0 ? who : proc->p_uid;
   int super = proc->p_euid == 0;
   int i;
-  if (prio < -20)
-    prio = -20;
-  if (prio > 19)
-    prio = 19;
+  if (prio < PRIO_MIN)
+    prio = PRIO_MIN;
+  if (prio > PRIO_MAX)
+    prio = PRIO_MAX;
   switch (which)
     {
     case PRIO_PROCESS:

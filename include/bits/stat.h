@@ -54,6 +54,7 @@
 #define S_ISVTX 01000
 
 #define DEFFILEMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
+#define ACCESSPERMS (S_IRWXU | S_IRWXG | S_IRWXO)
 
 #define S_ISBLK(x) (((x) & S_IFMT) == S_IFBLK)
 #define S_ISCHR(x) (((x) & S_IFMT) == S_IFCHR)
