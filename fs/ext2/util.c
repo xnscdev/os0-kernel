@@ -1573,7 +1573,7 @@ ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
   unsigned int i;
   int clen;
   int ret;
-  if (sb->sb_mntflags & MNT_RDONLY)
+  if (sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
 
   winode = kmalloc (len);

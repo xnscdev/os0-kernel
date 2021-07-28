@@ -299,7 +299,7 @@ int
 vfs_create (VFSInode *dir, const char *name, mode_t mode)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
@@ -332,7 +332,7 @@ int
 vfs_link (VFSInode *old, VFSInode *dir, const char *new)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
@@ -348,7 +348,7 @@ int
 vfs_unlink (VFSInode *dir, const char *name)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
@@ -364,7 +364,7 @@ int
 vfs_symlink (VFSInode *dir, const char *old, const char *new)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
@@ -398,7 +398,7 @@ int
 vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   int ret;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
@@ -425,7 +425,7 @@ int
 vfs_chmod (VFSInode *inode, mode_t mode)
 {
   uid_t euid;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   euid = sys_geteuid ();
   if (euid != 0 && euid != inode->vi_uid)
@@ -439,7 +439,7 @@ int
 vfs_chown (VFSInode *inode, uid_t uid, gid_t gid)
 {
   uid_t euid;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   euid = sys_geteuid ();
   if (euid != 0 && euid != inode->vi_uid)
@@ -453,7 +453,7 @@ int
 vfs_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
@@ -469,7 +469,7 @@ int
 vfs_rmdir (VFSInode *dir, const char *name)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
@@ -485,7 +485,7 @@ int
 vfs_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
   int ret;
-  if (dir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (dir, 0);
   if (ret != 0)
@@ -502,8 +502,8 @@ vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 	    const char *newname)
 {
   int ret;
-  if (olddir->vi_sb->sb_mntflags & MNT_RDONLY
-      || newdir->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (olddir->vi_sb->sb_mntflags & MS_RDONLY
+      || newdir->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (olddir, 0);
   if (ret != 0)
@@ -536,7 +536,7 @@ int
 vfs_truncate (VFSInode *inode)
 {
   int ret;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
@@ -559,7 +559,7 @@ vfs_setxattr (VFSInode *inode, const char *name, const void *value,
 	      size_t len, int flags)
 {
   int ret;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)
@@ -595,7 +595,7 @@ int
 vfs_removexattr (VFSInode *inode, const char *name)
 {
   int ret;
-  if (inode->vi_sb->sb_mntflags & MNT_RDONLY)
+  if (inode->vi_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   ret = vfs_perm_check_write (inode, 0);
   if (ret != 0)

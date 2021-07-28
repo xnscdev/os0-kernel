@@ -99,7 +99,7 @@ ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name, ino64_t ino,
   Ext2Inode *inode = dir->vi_private;
   Ext2Link l;
   int ret;
-  if (sb->sb_mntflags & MNT_RDONLY)
+  if (sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
 
   if (inode->i_flags & EXT2_INDEX_FL)

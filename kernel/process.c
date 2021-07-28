@@ -19,6 +19,7 @@
 #include <kconfig.h>
 
 #include <bits/mman.h>
+#include <bits/mount.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <video/vga.h>
@@ -259,6 +260,16 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
 
   proc->p_mregions = mregions;
   kfree (ehdr);
+
+  /* If the executable is setuid/setgid and the filesystem is not mounted with
+     nosuid, change the process UID/GID */
+  if (!(inode->vi_sb->sb_mntflags & MS_NOSUID))
+    {
+      if (inode->vi_mode & S_ISUID)
+	proc->p_euid = inode->vi_uid;
+      if (inode->vi_mode & S_ISGID)
+	proc->p_egid = inode->vi_gid;
+    }
   return 0;
 
  end:

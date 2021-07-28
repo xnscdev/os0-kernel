@@ -103,7 +103,7 @@ ext2_openfs (SpecDevice *dev, VFSSuperblock *sb, Ext2Filesystem *fs)
 
   /* Check for unsupported features */
   if ((fs->f_super.s_feature_incompat & ~EXT2_INCOMPAT_SUPPORTED)
-      || (!(sb->sb_mntflags & MNT_RDONLY)
+      || (!(sb->sb_mntflags & MS_RDONLY)
 	  && (fs->f_super.s_feature_ro_compat & ~EXT2_RO_COMPAT_SUPPORTED)))
     return -ENOTSUP;
   if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_JOURNAL_DEV)
@@ -222,7 +222,7 @@ ext2_openfs (SpecDevice *dev, VFSSuperblock *sb, Ext2Filesystem *fs)
 
   fs->f_stride = fs->f_super.s_raid_stride;
   if ((fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_MMP)
-      && !(sb->sb_mntflags & MNT_RDONLY))
+      && !(sb->sb_mntflags & MS_RDONLY))
     {
       ret = ext4_mmp_start (sb);
       if (ret != 0)
@@ -282,7 +282,7 @@ ext2_mount (VFSMount *mp, int flags, void *data)
       return ret;
     }
 
-  if (!(mp->vfs_sb.sb_mntflags & MNT_RDONLY))
+  if (!(mp->vfs_sb.sb_mntflags & MS_RDONLY))
     {
       /* Update mount time and count */
       fs->f_super.s_mnt_count++;

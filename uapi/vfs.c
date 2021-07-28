@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <bits/mount.h>
 #include <libk/libk.h>
 #include <sys/process.h>
 #include <sys/syscall.h>
@@ -116,6 +117,14 @@ sys_open (const char *path, int flags, mode_t mode)
     }
   if (ret != 0)
     return ret;
+
+  /* Don't allow opening device files if the filesystem is mounted with nodev */
+  if ((inode->vi_sb->sb_mntflags & MS_NODEV)
+      && (S_ISBLK (inode->vi_mode) || S_ISCHR (inode->vi_mode)))
+    {
+      vfs_unref_inode (inode);
+      return -ENXIO;
+    }
 
   proc->p_files[i]->pf_inode = inode;
   switch (flags & O_ACCMODE)

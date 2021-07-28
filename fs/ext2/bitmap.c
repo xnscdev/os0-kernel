@@ -453,7 +453,7 @@ ext2_write_bitmaps (VFSSuperblock *sb)
   block_t blkitr = EXT2_B2C (fs, fs->f_super.s_first_data_block);
   ino64_t inoitr = 1;
   int ret;
-  if (sb->sb_mntflags & MNT_RDONLY)
+  if (sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (!do_block && !do_inode)
     return 0;

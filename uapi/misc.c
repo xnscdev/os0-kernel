@@ -17,6 +17,7 @@
  *************************************************************************/
 
 #include <bits/mman.h>
+#include <bits/mount.h>
 #include <fs/pipe.h>
 #include <libk/libk.h>
 #include <sys/acpi.h>
@@ -68,6 +69,11 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
   int ret = vfs_open_file (&inode, path, 1);
   if (ret != 0)
     return ret;
+  if (inode->vi_sb->sb_mntflags & MS_NOEXEC)
+    {
+      vfs_unref_inode (inode);
+      return -EACCES;
+    }
   memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
   DISABLE_TASK_SWITCH;
   ret = process_exec (inode, &eip, argv, envp, &dlinfo);

@@ -19,11 +19,11 @@
 #ifndef _BITS_MOUNT_H
 #define _BITS_MOUNT_H
 
-#define MNT_RDONLY      0x0001
-#define MNT_NOEXEC      0x0002
-#define MNT_NOSUID      0x0004
-#define MNT_NODEV       0x0008
-#define MNT_UNION       0x0010
-#define MNT_SYNCHRONOUS 0x0020
+#define MS_NOATIME     0x0001
+#define MS_NODEV       0x0002
+#define MS_NOEXEC      0x0004
+#define MS_NOSUID      0x0008
+#define MS_SYNCHRONOUS 0x0010
+#define MS_RDONLY      0x0020
 
 #endif

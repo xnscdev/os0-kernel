@@ -520,7 +520,7 @@ ext3_extent_node_split (Ext3ExtentHandle *handle, int canexpand)
   int to_copy;
   int no_balance;
   int ret;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (handle->eh_path == NULL)
     return -ENOENT;
@@ -702,7 +702,7 @@ ext3_extent_fix_parents (Ext3ExtentHandle *handle)
   block_t start;
   int orig_height;
   int ret = 0;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (handle->eh_path == NULL)
     return -ENOENT;
@@ -747,7 +747,7 @@ ext3_extent_insert (Ext3ExtentHandle *handle, int flags,
   Ext3ExtentIndex *index;
   Ext3ExtentHeader *eh;
   int ret;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (handle->eh_path == NULL)
     return -ENOENT;
@@ -810,7 +810,7 @@ ext3_extent_replace (Ext3ExtentHandle *handle, int flags,
   Ext3GenericExtentPath *path;
   Ext3ExtentIndex *index;
   Ext3Extent *ex;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (handle->eh_path == NULL)
     return -ENOENT;
@@ -858,7 +858,7 @@ ext3_extent_delete (Ext3ExtentHandle *handle, int flags)
   Ext3GenericExtentPath *path;
   char *ptr;
   int ret = 0;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
   if (handle->eh_path == NULL)
     return -ENOENT;
@@ -1146,7 +1146,7 @@ ext3_extent_set_bmap (Ext3ExtentHandle *handle, block_t logical,
   Ext3ExtentInfo info;
   int ec;
   int ret;
-  if (handle->eh_sb->sb_mntflags & MNT_RDONLY)
+  if (handle->eh_sb->sb_mntflags & MS_RDONLY)
     return -EROFS;
 
   if (handle->eh_path == NULL)
