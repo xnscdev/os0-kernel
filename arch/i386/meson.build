@@ -1,6 +1,7 @@
 arch_src = [
   'dt-load.S',
   'features.c',
+  'features.S',
   'gdt.c',
   'halt.S',
   'isr.c',

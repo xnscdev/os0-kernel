@@ -27,4 +27,7 @@ cpu_features_init (void)
 {
   uint32_t ignore;
   __get_cpuid (1, &ignore, &ignore, &cpu_features_ecx, &cpu_features_edx);
+
+  if (cpu_features_edx & bit_SSE)
+    cpu_enable_sse ();
 }

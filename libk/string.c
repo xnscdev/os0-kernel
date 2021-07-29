@@ -193,67 +193,6 @@ const char *const sys_signame[NSIG] = {
   "SIGSYS"
 };
 
-void *
-memcpy (void *__restrict dest, const void *__restrict src, size_t len)
-{
-  size_t i;
-  if ((uint32_t) dest % 2 == 0 && (uint32_t) src % 2 == 0 && len % 2 == 0)
-    {
-      for (i = 0; i < len / 2; i++)
-	((uint16_t *) dest)[i] = ((uint16_t *) src)[i];
-    }
-  else
-    {
-      for (i = 0; i < len; i++)
-	((unsigned char *) dest)[i] = ((unsigned char *) src)[i];
-    }
-  return dest;
-}
-
-void *
-memmove (void *dest, const void *src, size_t len)
-{
-  size_t i;
-  if (dest < src)
-    return memcpy (dest, src, len);
-  if ((uint32_t) dest % 2 == 0 && (uint32_t) src % 2 == 0 && len % 2 == 0)
-    {
-      for (i = len / 2; i > 0; i--)
-	((uint16_t *) dest)[i - 1] = ((uint16_t *) src)[i - 1];
-    }
-  else
-    {
-      for (i = len; i > 0; i--)
-	((unsigned char *) dest)[i - 1] = ((unsigned char *) src)[i - 1];
-    }
-  return dest;
-}
-
-void *
-memset (void *ptr, int c, size_t len)
-{
-  size_t i;
-  for (i = 0; i < len; i++)
-    ((unsigned char *) ptr)[i] = c;
-  return ptr;
-}
-
-int
-memcmp (const void *a, const void *b, size_t len)
-{
-  unsigned char *ca = (unsigned char *) a;
-  unsigned char *cb = (unsigned char *) b;
-  size_t i;
-  for (i = 0; i < len; i++)
-    {
-      if (ca[i] > cb[i])
-	return 1;
-      else if (ca[i] < cb[i])
-	return -1;
-    }
-  return 0;
-}
-
 size_t
 strlen (const char *s)
 {
@@ -292,15 +231,14 @@ stpncpy (char *dest, const char *src, size_t len)
   size_t i = 0;
   while (i < len)
     {
-      *dest = *src++;
-      if (*dest == '\0')
+      dest[i] = src[i];
+      if (dest[i] == '\0')
         break;
-      dest++;
       i++;
     }
   while (i < len)
     dest[i++] = '\0';
-  return dest;
+  return dest + len - 1;
 }
 
 char *

@@ -1,5 +1,5 @@
 /*************************************************************************
- * features.h -- This file is part of OS/0.                              *
+ * features.S -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,19 +16,17 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_FEATURES_H
-#define _I386_FEATURES_H
+	.section .text
+	.global cpu_enable_sse
+	.type cpu_enable_sse, @function
+cpu_enable_sse:
+	mov	%cr0, %eax
+	and	$0xfffb, %ax
+	or	$2, %ax
+	mov	%eax, %cr0
+	mov	%cr4, %eax
+	or	$0x600, %eax
+	mov	%eax, %cr4
+	ret
 
-#include <sys/cdefs.h>
-#include <stdint.h>
-
-__BEGIN_DECLS
-
-extern uint32_t cpu_features_edx;
-extern uint32_t cpu_features_ecx;
-
-void cpu_enable_sse (void);
-
-__END_DECLS
-
-#endif
+	.size cpu_enable_sse, . - cpu_enable_sse

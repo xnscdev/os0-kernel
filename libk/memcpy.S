@@ -1,5 +1,5 @@
 /*************************************************************************
- * features.h -- This file is part of OS/0.                              *
+ * memcpy.S -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,19 +16,42 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_FEATURES_H
-#define _I386_FEATURES_H
+	.section .text
+	.global memcpy
+	.type memcpy, @function
+memcpy:
+	push	%esi
+	push	%edi
+	mov	12(%esp), %edi
+	mov	16(%esp), %esi
+	mov	20(%esp), %ecx
+	mov	%edi, %eax
 
-#include <sys/cdefs.h>
-#include <stdint.h>
-
-__BEGIN_DECLS
-
-extern uint32_t cpu_features_edx;
-extern uint32_t cpu_features_ecx;
-
-void cpu_enable_sse (void);
-
-__END_DECLS
-
+#ifdef MEMMOVE
+	cmp	%esi, %edi
+	ja	.backward
+	je	.done
 #endif
+
+	rep
+	movsb
+	pop	%edi
+	pop	%esi
+	ret
+
+#ifdef MEMMOVE
+.backward:
+	lea	-1(%edi,%ecx,1), %edi
+	lea	-1(%edi,%ecx,1), %esi
+	std
+	rep
+	movsb
+	cld
+
+.done:
+	pop	%edi
+	pop	%esi
+	ret
+#endif
+
+	.size memcpy, . - memcpy
