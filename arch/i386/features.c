@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * features.c -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,22 +16,15 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/hash.h>
-#include <libk/stack.h>
-#include <libk/types.h>
-#include <libk/util.h>
-#include <sys/ioctl.h>
-#include <sys/signal.h>
-#include <assert.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
+#include <i386/features.h>
+#include <cpuid.h>
+
+uint32_t cpu_features_edx;
+uint32_t cpu_features_ecx;
+
+void
+cpu_features_init (void)
+{
+  uint32_t ignore;
+  __get_cpuid (1, &ignore, &ignore, &cpu_features_ecx, &cpu_features_edx);
+}

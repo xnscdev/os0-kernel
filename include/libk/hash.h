@@ -1,5 +1,5 @@
 /*************************************************************************
- * libk.h -- This file is part of OS/0.                                  *
+ * hash.h -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,22 +16,18 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <libk/array.h>
-#include <libk/compile.h>
-#include <libk/hash.h>
-#include <libk/stack.h>
-#include <libk/types.h>
-#include <libk/util.h>
-#include <sys/ioctl.h>
-#include <sys/signal.h>
-#include <assert.h>
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <termios.h>
-#include <time.h>
-#include <unistd.h>
+#ifndef _LIBK_HASH_H
+#define _LIBK_HASH_H
+
+#include <sys/cdefs.h>
+#include <stddef.h>
+#include <stdint.h>
+
+__BEGIN_DECLS
+
+uint16_t crc16 (uint16_t seed, const void *data, size_t len);
+uint32_t crc32 (uint32_t seed, const void *data, size_t len);
+
+__END_DECLS
+
+#endif

@@ -118,10 +118,15 @@ higher_start:
 	/* Set new stack pointer */
 	mov	$SYSCALL_STACK_ADDR, %esp
 
+	/* Initialize GDT */
 	call	gdt_init
+
+	/* Initialize optional CPU features */
+	call	cpu_features_init
+
+	/* Start interrupts and clock */
 	call	idt_init
 	call	rtc_init
-
 	sti
 
 	pushl	$stack_bottom
