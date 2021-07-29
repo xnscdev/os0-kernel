@@ -21,7 +21,6 @@
 
 #include <libk/types.h>
 #include <sys/cdefs.h>
-#include <stddef.h>
 
 typedef struct
 {

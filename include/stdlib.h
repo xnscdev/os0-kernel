@@ -22,7 +22,6 @@
 #include <libk/compile.h>
 #include <libk/types.h>
 #include <sys/cdefs.h>
-#include <stddef.h>
 
 __BEGIN_DECLS
 

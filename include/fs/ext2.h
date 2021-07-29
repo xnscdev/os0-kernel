@@ -28,9 +28,6 @@
 #define _FS_EXT2_H
 
 #include <fs/vfs.h>
-#include <sys/cdefs.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define EXT2_MAGIC         0xef53
 #define EXT2_FS_NAME       "ext2"

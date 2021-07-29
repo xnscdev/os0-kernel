@@ -27,12 +27,10 @@
 #include <sys/cdefs.h>
 #include <sys/time.h>
 #include <sys/times.h>
-#include <sys/types.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <stddef.h>
 
 __BEGIN_DECLS
 

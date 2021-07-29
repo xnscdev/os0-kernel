@@ -19,6 +19,7 @@
 #ifndef _SYS_TYPES_H
 #define _SYS_TYPES_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define howmany(x, y) ((x) % (y) == 0 ? (x) / (y) : (x) / (y) + 1)

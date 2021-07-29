@@ -20,10 +20,7 @@
 #define _FS_DEVFS_H
 
 #include <fs/vfs.h>
-#include <sys/cdefs.h>
 #include <sys/sysmacros.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define DEVFS_FS_NAME    "devfs"
 #define DEVFS_ROOT_INODE 0

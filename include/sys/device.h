@@ -21,8 +21,6 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define DEVICE_TABLE_SIZE 64
 

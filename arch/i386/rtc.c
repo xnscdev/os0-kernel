@@ -19,7 +19,6 @@
 #include <sys/cmos.h>
 #include <sys/io.h>
 #include <sys/types.h>
-#include <stddef.h>
 #include <time.h>
 
 static unsigned char dpm[] = {

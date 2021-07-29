@@ -23,8 +23,6 @@
 #include <sys/device.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <time.h>
 
 #define VFS_FS_TABLE_SIZE 8

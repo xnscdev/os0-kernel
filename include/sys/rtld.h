@@ -24,7 +24,6 @@
 #include <libk/array.h>
 #include <sys/memory.h>
 #include <elf.h>
-#include <stddef.h>
 
 /* Macros for determining valid ELF header machine type */
 #ifdef  ARCH_I386
