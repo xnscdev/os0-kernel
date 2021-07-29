@@ -54,8 +54,8 @@ int sys_chmod (const char *path, mode_t mode);
 int sys_lchown (const char *path, uid_t uid, gid_t gid);
 off_t sys_lseek (int fd, off_t offset, int whence);
 pid_t sys_getpid (void);
-int sys_mount (const char *src, const char *dir, const char *type, int flags,
-	       void *data);
+int sys_mount (const char *src, const char *dir, const char *type,
+	       unsigned long flags, const void *data);
 int sys_umount (const char *dir);
 int sys_setuid (uid_t uid);
 uid_t sys_getuid (void);

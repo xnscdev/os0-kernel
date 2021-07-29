@@ -107,7 +107,7 @@ struct _VFSSuperblock
   size_t sb_maxsize;
   const VFSSuperblockOps *sb_ops;
   int sb_flags;
-  int sb_mntflags;
+  unsigned long sb_mntflags;
   unsigned int sb_mntslot;
   unsigned long sb_magic;
   VFSInode *sb_root;

@@ -326,8 +326,8 @@ sys_lseek (int fd, off_t offset, int whence)
 }
 
 int
-sys_mount (const char *src, const char *dir, const char *type, int flags,
-	   void *data)
+sys_mount (const char *src, const char *dir, const char *type,
+	   unsigned long flags, const void *data)
 {
   return -ENOSYS;
 }
