@@ -1,5 +1,5 @@
 /*************************************************************************
- * features.h -- This file is part of OS/0.                              *
+ * random.S -- This file is part of OS/0.                               *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,20 +16,25 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _I386_FEATURES_H
-#define _I386_FEATURES_H
+#define RANDOM_ATTEMPTS 100
 
-#include <sys/cdefs.h>
-#include <stdint.h>
+	.section .text
+	.align 16
+	.global cpu_random
+	.type cpu_random, @function
+cpu_random:
+	mov	$RANDOM_ATTEMPTS, %ecx
+1:
+	rdrand	%eax
+	jc	2f
+	loop	1b
 
-__BEGIN_DECLS
+	mov	$-1, %eax
+	ret
 
-extern uint32_t cpu_features_edx;
-extern uint32_t cpu_features_ecx;
+2:
+	mov	%eax, 4(%esp)
+	xor	%eax, %eax
+	ret
 
-void cpu_enable_sse (void);
-int cpu_random (unsigned long *n);
-
-__END_DECLS
-
-#endif
+	.size cpu_random, . - cpu_random

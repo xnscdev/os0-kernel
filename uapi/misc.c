@@ -28,6 +28,11 @@
 #include <sys/wait.h>
 #include <vm/heap.h>
 
+#ifdef ARCH_I386
+#include <i386/features.h>
+#include <cpuid.h>
+#endif
+
 extern int exit_task;
 
 void
@@ -387,7 +392,43 @@ ssize_t
 sys_getrandom (void *buffer, size_t len, unsigned int flags)
 {
   if (flags & GRND_RANDOM)
-    return -ENOTSUP; /* TODO Add environmental RNG */
+    {
+#ifdef ARCH_I386
+#define NEXT_RANDOM if (flags & GRND_NONBLOCK)	\
+	{					\
+	  if (cpu_random (&n) != 0)		\
+	    return -EAGAIN;			\
+	}					\
+      else					\
+	{					\
+	  while (1)				\
+	    {					\
+	      if (cpu_random (&n) != 0)		\
+		break;				\
+	    }					\
+	}
+
+      /* Use RDRAND if supported */
+      if (cpu_features_ecx & bit_RDRND)
+	{
+	  unsigned long *ptr = buffer;
+	  unsigned long n;
+	  size_t i;
+	  for (i = 0; i < (len & ~(sizeof (unsigned long) - 1));
+	       i += sizeof (unsigned long))
+	    {
+	      NEXT_RANDOM;
+	      *ptr++ = n;
+	    }
+	  if (i < len)
+	    {
+	      NEXT_RANDOM;
+	      memcpy (buffer + i, &n, len - i);
+	    }
+	  return len;
+	}
+#endif
+    }
   get_entropy (buffer, len);
   return len;
 }

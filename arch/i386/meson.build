@@ -9,6 +9,7 @@ arch_src = [
   'paging.c',
   'paging.S',
   'pic.c',
+  'random.S',
   'read-ip.S',
   'syscall.S',
   'rtc.c',
