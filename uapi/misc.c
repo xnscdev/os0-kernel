@@ -18,6 +18,7 @@
 
 #include <bits/mman.h>
 #include <bits/mount.h>
+#include <bits/random.h>
 #include <fs/pipe.h>
 #include <libk/libk.h>
 #include <sys/acpi.h>
@@ -380,4 +381,13 @@ sys_vfork (void)
   ret = task_fork (0);
   task_switch_enabled = 1;
   return ret;
+}
+
+ssize_t
+sys_getrandom (void *buffer, size_t len, unsigned int flags)
+{
+  if (flags & GRND_RANDOM)
+    return -ENOTSUP; /* TODO Add environmental RNG */
+  get_entropy (buffer, len);
+  return len;
 }

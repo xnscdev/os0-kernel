@@ -23,10 +23,29 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define SHA256_DIGEST_SIZE 32
+#define SHA256_CHUNK_SIZE  64
+
+typedef struct
+{
+  unsigned char *s_digest;
+  unsigned char s_chunk[SHA256_CHUNK_SIZE];
+  unsigned char *s_ptr;
+  size_t s_rem;
+  size_t s_len;
+  uint32_t s_h[8];
+} SHA256Context;
+
 __BEGIN_DECLS
 
 uint16_t crc16 (uint16_t seed, const void *data, size_t len);
 uint32_t crc32 (uint32_t seed, const void *data, size_t len);
+
+void sha256_init (SHA256Context *ctx, unsigned char digest[SHA256_DIGEST_SIZE]);
+void sha256_write (SHA256Context *ctx, const void *data, size_t len);
+unsigned char *sha256_close (SHA256Context *ctx);
+void sha256_data (unsigned char digest[SHA256_DIGEST_SIZE], const void *data,
+		  size_t len);
 
 __END_DECLS
 

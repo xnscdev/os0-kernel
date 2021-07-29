@@ -185,6 +185,7 @@ kmain (MultibootInfo *info)
   if (!acpi_enable ())
     printk ("acpi: failed to enable\n");
 
+  random_init ();
   heap_init ();
   mem_init (info->mi_memhigh);
   scheduler_init ();

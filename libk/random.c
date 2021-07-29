@@ -1,5 +1,5 @@
 /*************************************************************************
- * memcpy.S -- This file is part of OS/0.                                *
+ * random.c -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,42 +16,43 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-	.section .text
-	.global memcpy
-	.type memcpy, @function
-memcpy:
-	push	%esi
-	push	%edi
-	mov	12(%esp), %edi
-	mov	16(%esp), %esi
-	mov	20(%esp), %ecx
-	mov	%edi, %eax
+#include <libk/libk.h>
 
-#ifdef MEMMOVE
-	cmp	%esi, %edi
-	ja	.backward
-	je	.done
-#endif
+unsigned char entropy_pool[SHA256_DIGEST_SIZE];
 
-	rep
-	movsb
-	pop	%edi
-	pop	%esi
-	ret
+void
+add_entropy (const void *data, size_t len)
+{
+  SHA256Context ctx;
+  unsigned char buffer[SHA256_DIGEST_SIZE];
+  memcpy (buffer, entropy_pool, SHA256_DIGEST_SIZE);
+  sha256_init (&ctx, buffer);
+  sha256_write (&ctx, entropy_pool, SHA256_DIGEST_SIZE);
+  sha256_write (&ctx, data, len);
+  sha256_close (&ctx);
+  memcpy (entropy_pool, buffer, SHA256_DIGEST_SIZE);
+}
 
-#ifdef MEMMOVE
-.backward:
-	lea	-1(%edi,%ecx,1), %edi
-	lea	-1(%esi,%ecx,1), %esi
-	std
-	rep
-	movsb
-	cld
+void
+get_entropy (void *data, size_t len)
+{
+  unsigned char buffer[SHA256_DIGEST_SIZE];
+  while (len > 0)
+    {
+      size_t l;
+      sha256_data (buffer, entropy_pool, SHA256_DIGEST_SIZE);
+      add_entropy (buffer, SHA256_DIGEST_SIZE);
 
-.done:
-	pop	%edi
-	pop	%esi
-	ret
-#endif
+      l = len < SHA256_DIGEST_SIZE ? len : SHA256_DIGEST_SIZE;
+      memcpy (data, buffer, l);
+      data += l;
+      len -= l;
+    }
+}
 
-	.size memcpy, . - memcpy
+void
+random_init (void)
+{
+  time_t t = time (NULL);
+  sha256_data (entropy_pool, &t, sizeof (time_t));
+}

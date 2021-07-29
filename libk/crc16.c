@@ -1,5 +1,5 @@
 /*************************************************************************
- * crc32.c -- This file is part of OS/0.                                 *
+ * crc16.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <stdlib.h>
+#include <libk/hash.h>
 
 static const uint16_t crc16_table[256] = {
   0x0000, 0xc0c1, 0xc181, 0x0140, 0xc301, 0x03c0, 0x0280, 0xc241,

@@ -15,6 +15,8 @@ libk_src = [
   'pregs.S',
   'printk.c',
   'qsort.c',
+  'random.c',
+  'sha256.c',
   'signal.c',
   'stack.c',
   'string.c'

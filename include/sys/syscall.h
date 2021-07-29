@@ -182,6 +182,7 @@ int sys_fchmodat (int fd, const char *path, mode_t mode, int flags);
 int sys_faccessat (int fd, const char *path, int mode, int flags);
 int sys_utimensat (int fd, const char *path, const struct timespec times[2],
 		   int flags);
+ssize_t sys_getrandom (void *buffer, size_t len, unsigned int flags);
 
 /* Utility functions */
 

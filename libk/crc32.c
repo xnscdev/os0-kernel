@@ -16,7 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <stdlib.h>
+#include <libk/hash.h>
 
 static uint32_t crc32_table[0x100];
 static uint32_t crc32_wtable[0x400];

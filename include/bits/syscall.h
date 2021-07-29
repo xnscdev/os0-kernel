@@ -171,6 +171,7 @@
 #define SYS_fchmodat      306
 #define SYS_faccessat     307
 #define SYS_utimensat     320
+#define SYS_getrandom     355
 
 #define NR_syscalls 384
 

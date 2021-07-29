@@ -19,6 +19,7 @@
 #include <libk/array.h>
 #include <libk/compile.h>
 #include <libk/hash.h>
+#include <libk/random.h>
 #include <libk/stack.h>
 #include <libk/types.h>
 #include <libk/util.h>

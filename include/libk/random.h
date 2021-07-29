@@ -1,5 +1,5 @@
 /*************************************************************************
- * memcpy.S -- This file is part of OS/0.                                *
+ * random.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,42 +16,20 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-	.section .text
-	.global memcpy
-	.type memcpy, @function
-memcpy:
-	push	%esi
-	push	%edi
-	mov	12(%esp), %edi
-	mov	16(%esp), %esi
-	mov	20(%esp), %ecx
-	mov	%edi, %eax
+#ifndef _LIBK_RANDOM_H
+#define _LIBK_RANDOM_H
 
-#ifdef MEMMOVE
-	cmp	%esi, %edi
-	ja	.backward
-	je	.done
+#include <libk/hash.h>
+#include <sys/cdefs.h>
+
+__BEGIN_DECLS
+
+extern unsigned char entropy_pool[SHA256_DIGEST_SIZE];
+
+void add_entropy (const void *data, size_t len);
+void get_entropy (void *data, size_t len);
+void random_init (void);
+
+__END_DECLS
+
 #endif
-
-	rep
-	movsb
-	pop	%edi
-	pop	%esi
-	ret
-
-#ifdef MEMMOVE
-.backward:
-	lea	-1(%edi,%ecx,1), %edi
-	lea	-1(%esi,%ecx,1), %esi
-	std
-	rep
-	movsb
-	cld
-
-.done:
-	pop	%edi
-	pop	%esi
-	ret
-#endif
-
-	.size memcpy, . - memcpy

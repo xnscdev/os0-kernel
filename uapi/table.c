@@ -148,5 +148,6 @@ void *syscall_table[NR_syscalls] = {
   [SYS_readlinkat] = sys_readlinkat,
   [SYS_fchmodat] = sys_fchmodat,
   [SYS_faccessat] = sys_faccessat,
-  [SYS_utimensat] = sys_utimensat
+  [SYS_utimensat] = sys_utimensat,
+  [SYS_getrandom] = sys_getrandom
 };
