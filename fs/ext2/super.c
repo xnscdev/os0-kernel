@@ -406,6 +406,7 @@ ext2_write_inode (VFSInode *inode)
   Ext2Inode *ei = inode->vi_private;
 
   /* Update disk inode structure */
+  ei->i_mode = inode->vi_mode;
   ei->i_uid = inode->vi_uid;
   ei->i_size = inode->vi_size & 0xffffffff;
   ei->i_atime = inode->vi_atime.tv_sec;
@@ -419,7 +420,8 @@ ext2_write_inode (VFSInode *inode)
     ei->i_size_high = inode->vi_size >> 32;
 
   /* Write new inode to disk */
-  return ext2_update_inode (inode->vi_sb, inode->vi_ino, ei);
+  return ext2_update_inode (inode->vi_sb, inode->vi_ino, ei,
+			    sizeof (Ext2Inode));
 }
 
 void

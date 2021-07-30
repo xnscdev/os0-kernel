@@ -37,7 +37,8 @@ ext3_extent_update_path (Ext3ExtentHandle *handle)
   block_t block;
   int ret;
   if (handle->eh_level == 0)
-    ret = ext2_update_inode (handle->eh_sb, handle->eh_ino, handle->eh_inode);
+    ret = ext2_update_inode (handle->eh_sb, handle->eh_ino, handle->eh_inode,
+			     sizeof (Ext2Inode));
   else
     {
       index = handle->eh_path[handle->eh_level - 1].p_curr;
@@ -684,7 +685,8 @@ ext3_extent_node_split (Ext3ExtentHandle *handle, int canexpand)
     goto end;
 
   ext2_iblk_add_blocks (handle->eh_sb, handle->eh_inode, 1);
-  ret = ext2_update_inode (handle->eh_sb, handle->eh_ino, handle->eh_inode);
+  ret = ext2_update_inode (handle->eh_sb, handle->eh_ino, handle->eh_inode,
+			   sizeof (Ext2Inode));
 
  end:
   if (new_path != NULL)
@@ -894,8 +896,8 @@ ext3_extent_delete (Ext3ExtentHandle *handle, int flags)
 	  ret = ext3_extent_delete (handle, flags);
 	  handle->eh_inode->i_blocks -=
 	    (handle->eh_sb->sb_blksize * EXT2_CLUSTER_RATIO (fs)) / 512;
-	  ret =
-	    ext2_update_inode (handle->eh_sb, handle->eh_ino, handle->eh_inode);
+	  ret = ext2_update_inode (handle->eh_sb, handle->eh_ino,
+				   handle->eh_inode, sizeof (Ext2Inode));
 	  ext2_block_alloc_stats (handle->eh_sb, extent.e_pblk, -1);
 	}
     }

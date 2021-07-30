@@ -20,6 +20,7 @@
 #include <fs/ext2.h>
 #include <libk/libk.h>
 #include <sys/ata.h>
+#include <sys/process.h>
 #include <vm/heap.h>
 
 #define EXT2_INDIR1_THRESH (blksize + EXT2_STORED_INODES)
@@ -1232,6 +1233,48 @@ ext2_bg_free_inodes_count_set (VFSSuperblock *sb, unsigned int group,
     gdp->bg_free_inodes_count_hi = inodes >> 16;
 }
 
+uint32_t
+ext2_bg_used_dirs_count (VFSSuperblock *sb, unsigned int group)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
+  return gdp->bg_used_dirs_count |
+    (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?
+     (uint32_t) gdp->bg_used_dirs_count_hi << 16 : 0);
+}
+
+void
+ext2_bg_used_dirs_count_set (VFSSuperblock *sb, unsigned int group,
+			     uint32_t dirs)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
+  gdp->bg_used_dirs_count = dirs;
+  if (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT)
+    gdp->bg_used_dirs_count_hi = dirs >> 16;
+}
+
+uint32_t
+ext2_bg_itable_unused (VFSSuperblock *sb, unsigned int group)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
+  return gdp->bg_itable_unused |
+    (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT ?
+     (uint32_t) gdp->bg_itable_unused_hi << 16 : 0);
+}
+
+void
+ext2_bg_itable_unused_set (VFSSuperblock *sb, unsigned int group,
+			   uint32_t unused)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext4GroupDesc *gdp = ext4_group_desc (sb, fs->f_group_desc, group);
+  gdp->bg_itable_unused = unused;
+  if (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_64BIT)
+    gdp->bg_itable_unused_hi = unused >> 16;
+}
+
 void
 ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 		    Ext3ExtentHandle *handle, block_t block, block_t *physblock)
@@ -1275,6 +1318,38 @@ ext2_map_cluster_block (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
   ext2_cluster_alloc (sb, ino, inode, handle, block, physblock);
   ext3_extent_free (handle);
   return 0;
+}
+
+void
+ext2_inode_alloc_stats (VFSSuperblock *sb, ino64_t ino, int inuse, int isdir)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  unsigned int group = ext2_group_of_inode (fs, ino);
+  if (ino > fs->f_super.s_inodes_count)
+    return;
+  if (inuse > 0)
+    ext2_mark_bitmap (fs->f_inode_bitmap, ino);
+  else
+    ext2_unmark_bitmap (fs->f_inode_bitmap, ino);
+  ext2_bg_free_inodes_count_set (sb, group,
+				 ext2_bg_free_inodes_count (sb, group) - inuse);
+  if (isdir)
+    ext2_bg_used_dirs_count_set (sb, group,
+				 ext2_bg_used_dirs_count (sb, group) - inuse);
+  ext2_bg_clear_flags (sb, group, EXT2_BG_INODE_UNINIT);
+  if (ext2_has_group_desc_checksum (&fs->f_super))
+    {
+      ino64_t first_unused_inode =
+	fs->f_super.s_inodes_per_group - ext2_bg_itable_unused (sb, group) +
+	group * fs->f_super.s_inodes_per_group + 1;
+      if (ino >= first_unused_inode)
+	ext2_bg_itable_unused_set (sb, group, group *
+				   fs->f_super.s_inodes_per_group +
+				   fs->f_super.s_inodes_per_group - ino);
+      ext2_group_desc_checksum_update (sb, group);
+    }
+  fs->f_super.s_free_inodes_count -= inuse;
+  fs->f_flags |= EXT2_FLAG_CHANGED | EXT2_FLAG_DIRTY | EXT2_FLAG_IB_DIRTY;
 }
 
 void
@@ -1458,7 +1533,8 @@ ext2_file_set_size (Ext2File *file, off64_t size)
 
   if (file->f_ino != 0)
     {
-      ret = ext2_update_inode (file->f_sb, file->f_ino, &file->f_inode);
+      ret = ext2_update_inode (file->f_sb, file->f_ino, &file->f_inode,
+			       sizeof (Ext2Inode));
       if (ret != 0)
 	return ret;
     }
@@ -1559,11 +1635,11 @@ ext2_read_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
 }
 
 int
-ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
+ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		   size_t bufsize)
 {
   Ext2Filesystem *fs = sb->sb_private;
   int len = EXT2_INODE_SIZE (fs->f_super);
-  size_t bufsize = sizeof (Ext2Inode);
   Ext2LargeInode *winode;
   block_t blockno;
   unsigned long block;
@@ -1659,6 +1735,7 @@ ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
       len -= clen;
       blockno++;
     }
+  fs->f_flags |= EXT2_FLAG_CHANGED;
   kfree (winode);
   return 0;
 }
@@ -2100,6 +2177,99 @@ ext2_new_inode (VFSSuperblock *sb, ino64_t dir, Ext2Bitmap *map,
 }
 
 int
+ext2_write_new_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2Inode *buffer;
+  Ext2LargeInode *large;
+  int size = EXT2_INODE_SIZE (fs->f_super);
+  time_t t = fs->f_now != 0 ? fs->f_now : time (NULL);
+  int ret;
+  if (inode->i_ctime == 0)
+    inode->i_ctime = t;
+  if (inode->i_mtime == 0)
+    inode->i_mtime = t;
+  if (inode->i_atime == 0)
+    inode->i_atime = t;
+
+  if (size == sizeof (Ext2Inode))
+    return ext2_update_inode (sb, ino, inode, sizeof (Ext2Inode));
+
+  buffer = kzalloc (size);
+  if (unlikely (buffer == NULL))
+    return -ENOMEM;
+  memcpy (buffer, inode, sizeof (Ext2Inode));
+
+  large = (Ext2LargeInode *) buffer;
+  large->i_extra_isize = sizeof (Ext2LargeInode) - EXT2_OLD_INODE_SIZE;
+  if (large->i_crtime == 0)
+    large->i_crtime = t;
+
+  ret = ext2_update_inode (sb, ino, buffer, size);
+  kfree (buffer);
+  return ret;
+}
+
+int
+ext2_new_file (VFSInode *dir, const char *name, mode_t mode, VFSInode **result)
+{
+  Ext2Filesystem *fs = dir->vi_sb->sb_private;
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *inode;
+  Ext2File *file;
+  Ext2Inode *ei;
+  ino64_t ino;
+  int ret = ext2_read_bitmaps (dir->vi_sb);
+  if (ret != 0)
+    return ret;
+
+  inode = vfs_alloc_inode (dir->vi_sb);
+  if (unlikely (inode == NULL))
+    return -ENOMEM;
+  ret = ext2_new_inode (dir->vi_sb, dir->vi_ino, fs->f_inode_bitmap, &ino);
+  if (ret != 0)
+    {
+      vfs_unref_inode (inode);
+      return ret;
+    }
+
+  file = kzalloc (sizeof (Ext2File));
+  if (unlikely (file == NULL))
+    {
+      vfs_unref_inode (inode);
+      return -ENOMEM;
+    }
+  inode->vi_private = file;
+  ret = ext2_open_file (dir->vi_sb, ino, file);
+  if (ret != 0)
+    {
+      vfs_unref_inode (inode);
+      return ret;
+    }
+
+  ei = &file->f_inode;
+  ei->i_mode = mode;
+  ei->i_uid = proc->p_euid;
+  ei->i_gid = proc->p_egid;
+  ei->i_links_count = 1;
+  ext2_write_new_inode (dir->vi_sb, ino, ei);
+  ext2_inode_alloc_stats (dir->vi_sb, ino, 1, S_ISDIR (ei->i_mode));
+  ret = ext2_add_link (dir->vi_sb, dir, name, ino, ext2_dir_type (mode));
+
+  inode->vi_ino = ino;
+  inode->vi_mode = ei->i_mode;
+  inode->vi_uid = ei->i_uid;
+  inode->vi_gid = ei->i_gid;
+  inode->vi_nlink = ei->i_links_count;
+
+  if (result == NULL)
+    vfs_unref_inode (inode);
+  else
+    *result = inode;
+  return ret;
+}
+
+int
 ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		  block_t *result, Ext2BlockAllocContext *ctx)
 {
@@ -2155,7 +2325,7 @@ ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
     ret = ext2_dealloc_indirect (sb, inode, blockbuf, start, end);
   if (ret != 0)
     return ret;
-  return ext2_update_inode (sb, ino, inode);
+  return ext2_update_inode (sb, ino, inode, sizeof (Ext2Inode));
 }
 
 int
@@ -2951,7 +3121,7 @@ ext2_block_iterate (VFSSuperblock *sb, VFSInode *dir, int flags, char *blockbuf,
  err:
   if (ret & BLOCK_CHANGED)
     {
-      ret = ext2_update_inode (sb, dir->vi_ino, inode);
+      ret = ext2_update_inode (sb, dir->vi_ino, inode, sizeof (Ext2Inode));
       if (ret != 0)
 	{
 	  ret |= BLOCK_ERROR;
@@ -3444,7 +3614,7 @@ ext2_dir_block_checksum_update (VFSSuperblock *sb, VFSInode *dir,
 {
   Ext2Filesystem *fs = sb->sb_private;
   if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM))
-    return 1;
+    return 0;
   if (ext2_get_dirent_tail (sb, dirent, NULL) == 0)
     return ext2_dirent_checksum_update (sb, dir, dirent);
   if (ext2_get_dx_count_limit (sb, dirent, NULL, NULL) == 0)

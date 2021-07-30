@@ -1084,6 +1084,12 @@ void ext2_bg_free_blocks_count_set (VFSSuperblock *sb, unsigned int group,
 uint32_t ext2_bg_free_inodes_count (VFSSuperblock *sb, unsigned int group);
 void ext2_bg_free_inodes_count_set (VFSSuperblock *sb, unsigned int group,
 				    uint32_t inodes);
+uint32_t ext2_bg_used_dirs_count (VFSSuperblock *sb, unsigned int group);
+void ext2_bg_used_dirs_count_set (VFSSuperblock *sb, unsigned int group,
+				  uint32_t dirs);
+uint32_t ext2_bg_itable_unused (VFSSuperblock *sb, unsigned int group);
+void ext2_bg_itable_unused_set (VFSSuperblock *sb, unsigned int group,
+				uint32_t unused);
 int ext2_read_bitmap (VFSSuperblock *sb, int flags, unsigned int start,
 		      unsigned int end);
 int ext2_read_bitmaps (VFSSuperblock *sb);
@@ -1104,6 +1110,8 @@ void ext2_cluster_alloc (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			 block_t *physblock);
 int ext2_map_cluster_block (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			    block_t block, block_t *physblock);
+void ext2_inode_alloc_stats (VFSSuperblock *sb, ino64_t ino, int inuse,
+			     int isdir);
 void ext2_block_alloc_stats (VFSSuperblock *sb, block_t block, int inuse);
 int ext2_write_backup_superblock (VFSSuperblock *sb, unsigned int group,
 				  block_t group_block, Ext2Superblock *s);
@@ -1114,7 +1122,8 @@ int ext2_file_block_offset_too_big (VFSSuperblock *sb, Ext2Inode *inode,
 				    block_t offset);
 int ext2_file_set_size (Ext2File *file, off64_t size);
 int ext2_read_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
-int ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
+int ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
+		       size_t bufsize);
 int ext2_inode_set_size (VFSSuperblock *sb, Ext2Inode *inode, off64_t size);
 block_t ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			      block_t block);
@@ -1158,6 +1167,9 @@ int ext2_new_block (VFSSuperblock *sb, block_t goal, Ext2Bitmap *map,
 		    block_t *result, Ext2BlockAllocContext *ctx);
 int ext2_new_inode (VFSSuperblock *sb, ino64_t dir, Ext2Bitmap *map,
 		    ino64_t *result);
+int ext2_write_new_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
+int ext2_new_file (VFSInode *dir, const char *name, mode_t mode,
+		   VFSInode **result);
 int ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 		      block_t *result, Ext2BlockAllocContext *ctx);
 int ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,

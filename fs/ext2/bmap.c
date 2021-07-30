@@ -277,7 +277,7 @@ ext2_bmap (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode, char *blockbuf,
   if (ret == 0 && (blocks_alloc || inode_dirty))
     {
       ext2_iblk_add_blocks (sb, inode, blocks_alloc);
-      ret = ext2_update_inode (sb, ino, inode);
+      ret = ext2_update_inode (sb, ino, inode, sizeof (Ext2Inode));
     }
   return ret;
 }
