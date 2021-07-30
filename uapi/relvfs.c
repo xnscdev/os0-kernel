@@ -149,6 +149,26 @@ sys_futimesat (int fd, const char *path, const struct timeval times[2])
 }
 
 int
+sys_fstatat64 (int fd, const char *path, struct stat64 *st, int flags)
+{
+  Process *proc = &process_table[task_getpid ()];
+  VFSInode *cwd = proc->p_cwd;
+  int ret;
+  if (fd != AT_FDCWD)
+    {
+      if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
+	return -EBADF;
+      proc->p_cwd = proc->p_files[fd]->pf_inode;
+    }
+  if (flags & AT_SYMLINK_NOFOLLOW)
+    ret = sys_lstat64 (path, st);
+  else
+    ret = sys_stat64 (path, st);
+  proc->p_cwd = cwd;
+  return ret;
+}
+
+int
 sys_unlinkat (int fd, const char *path, int flags)
 {
   Process *proc = &process_table[task_getpid ()];

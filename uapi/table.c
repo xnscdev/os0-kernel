@@ -141,6 +141,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_mknodat] = sys_mknodat,
   [SYS_fchownat] = sys_fchownat,
   [SYS_futimesat] = sys_futimesat,
+  [SYS_fstatat64] = sys_fstatat64,
   [SYS_unlinkat] = sys_unlinkat,
   [SYS_renameat] = sys_renameat,
   [SYS_linkat] = sys_linkat,

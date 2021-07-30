@@ -169,6 +169,7 @@ int sys_mkdirat (int fd, const char *path, mode_t mode);
 int sys_mknodat (int fd, const char *path, mode_t mode, dev_t dev);
 int sys_fchownat (int fd, const char *path, uid_t uid, gid_t gid, int flags);
 int sys_futimesat (int fd, const char *path, const struct timeval times[2]);
+int sys_fstatat64 (int fd, const char *path, struct stat64 *st, int flags);
 int sys_unlinkat (int fd, const char *path, int flags);
 int sys_renameat (int oldfd, const char *old, int newfd, const char *new);
 int sys_linkat (int oldfd, const char *old, int newfd, const char *new,
