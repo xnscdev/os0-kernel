@@ -681,6 +681,14 @@ typedef struct
 
 typedef struct
 {
+  const char *name;
+  int namelen;
+  ino64_t *inode;
+  int found;
+} Ext2Lookup;
+
+typedef struct
+{
   ino64_t e_ino;
   Ext2Inode *e_inode;
 } Ext2InodeCacheEntry;
@@ -1124,6 +1132,7 @@ int ext2_file_set_size (Ext2File *file, off64_t size);
 int ext2_read_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode);
 int ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 		       size_t bufsize);
+void ext2_update_vfs_inode (VFSInode *inode);
 int ext2_inode_set_size (VFSSuperblock *sb, Ext2Inode *inode, off64_t size);
 block_t ext2_find_inode_goal (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
 			      block_t block);
@@ -1179,6 +1188,8 @@ int ext2_add_index_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
 int ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
 		   ino64_t ino, int flags);
 int ext2_dir_type (mode_t mode);
+int ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
+		       int namelen, char *buffer, ino64_t *inode);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,

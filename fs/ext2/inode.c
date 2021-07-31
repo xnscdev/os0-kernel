@@ -35,89 +35,60 @@ int
 ext2_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	     const char *name, int symcount)
 {
-  VFSDirEntry *entry;
-  VFSDirectory *d = ext2_alloc_dir (dir, sb);
-  if (d == NULL)
+  ino64_t ino;
+  Ext2File *file;
+  VFSInode *vi;
+  int ret = ext2_lookup_inode (sb, dir, name, strlen (name), NULL, &ino);
+  if (ret != 0)
+    return ret;
+
+  vi = vfs_alloc_inode (sb);
+  if (unlikely (vi == NULL))
     return -ENOMEM;
-
-  while (1)
+  file = kzalloc (sizeof (Ext2File));
+  if (unlikely (file == NULL))
     {
-      int ret = ext2_readdir (&entry, d, sb);
-      if (ret < 0)
-	{
-	  ext2_destroy_dir (d);
-	  return ret;
-	}
-      else if (ret == 1)
-	{
-	  ext2_destroy_dir (d);
-	  return -ENOENT;
-	}
-      if (strcmp (entry->d_name, name) == 0)
-	{
-	  Process *proc;
-	  VFSInode *cwd;
-	  char *buffer;
-	  VFSInode *i = entry->d_inode;
-	  VFSInode *temp;
-	  int ret;
-
-	  i->vi_refcnt = 1;
-	  kfree (entry->d_name);
-	  kfree (entry);
-
-	  /* If not a symlink, return the inode that was found */
-	  if (symcount < 0 || !S_ISLNK (i->vi_mode))
-	    {
-	      *inode = i;
-	      ext2_destroy_dir (d);
-	      return 0;
-	    }
-
-	  /* Switch working directory to path directory for relative
-	     symlinks and save the original directory */
-	  proc = &process_table[task_getpid ()];
-	  cwd = proc->p_cwd;
-	  proc->p_cwd = dir;
-
-	  buffer = kmalloc (PATH_MAX);
-	  if (buffer == NULL)
-	    {
-	      vfs_unref_inode (i);
-	      ext2_destroy_dir (d);
-	      return -ENOMEM;
-	    }
-
-	  /* Read symlink path */
-	  memset (buffer, 0, PATH_MAX);
-	  ret = ext2_readlink (i, buffer, PATH_MAX);
-	  if (ret < 0)
-	    goto err;
-
-	  /* Open symlink path */
-	  ret = vfs_open_file (&temp, buffer, 0);
-	  if (ret < 0)
-	    goto err;
-
-	  vfs_unref_inode (i);
-	  kfree (buffer);
-	  ext2_destroy_dir (d);
-	  proc->p_cwd = cwd;
-	  *inode = temp;
-	  return 0;
-
-	err:
-	  vfs_unref_inode (i);
-	  kfree (buffer);
-	  ext2_destroy_dir (d);
-	  proc->p_cwd = cwd;
-	  return ret;
-	}
-      vfs_destroy_dir_entry (entry);
+      kfree (vi);
+      return -ENOMEM;
+    }
+  vi->vi_ino = ino;
+  vi->vi_private = file;
+  ret = ext2_fill_inode (vi);
+  if (ret != 0)
+    {
+      vfs_unref_inode (vi);
+      return ret;
     }
 
-  ext2_destroy_dir (d);
-  return -ENOENT;
+  if (symcount >= 0 && S_ISLNK (vi->vi_mode))
+    {
+      /* Change working directory for relative symlinks */
+      Process *proc = &process_table[task_getpid ()];
+      VFSInode *cwd = proc->p_cwd;
+      char *buffer = kzalloc (PATH_MAX);
+      if (unlikely (buffer == NULL))
+	{
+	  vfs_unref_inode (vi);
+	  return -ENOMEM;
+	}
+      proc->p_cwd = dir;
+
+      /* Read symlink contents */
+      ret = ext2_readlink (vi, buffer, PATH_MAX);
+      if (ret < 0)
+	goto end;
+
+      /* Open symlink path */
+      ret = vfs_open_file (inode, buffer, 0);
+    end:
+      vfs_unref_inode (vi);
+      kfree (buffer);
+      proc->p_cwd = cwd;
+      return ret;
+    }
+  else
+    *inode = vi;
+  return 0;
 }
 
 int

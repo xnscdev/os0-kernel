@@ -317,7 +317,6 @@ ext2_alloc_inode (VFSSuperblock *sb)
   if (unlikely (inode == NULL))
     return NULL;
   inode->vi_ops = &ext2_iops;
-  inode->vi_sb = sb;
   return inode;
 }
 
@@ -364,8 +363,6 @@ ext2_destroy_dir (VFSDirectory *dir)
 int
 ext2_fill_inode (VFSInode *inode)
 {
-  Ext2Filesystem *fs = inode->vi_sb->sb_private;
-  Ext2Superblock *esb = &fs->f_super;
   Ext2File *file = kmalloc (sizeof (Ext2File));
   int ret;
   if (unlikely (file == NULL))
@@ -373,29 +370,8 @@ ext2_fill_inode (VFSInode *inode)
   ret = ext2_open_file (inode->vi_sb, inode->vi_ino, file);
   if (ret != 0)
     return ret;
-  inode->vi_uid = file->f_inode.i_uid;
-  inode->vi_gid = file->f_inode.i_gid;
-  inode->vi_nlink = file->f_inode.i_links_count;
-  inode->vi_size = file->f_inode.i_size;
-  if (S_ISREG (file->f_inode.i_mode) && esb->s_rev_level > 0
-      && (esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
-    inode->vi_size |= (off64_t) file->f_inode.i_size_high << 32;
-  inode->vi_atime.tv_sec = file->f_inode.i_atime;
-  inode->vi_atime.tv_nsec = 0;
-  inode->vi_mtime.tv_sec = file->f_inode.i_mtime;
-  inode->vi_mtime.tv_nsec = 0;
-  inode->vi_ctime.tv_sec = file->f_inode.i_ctime;
-  inode->vi_ctime.tv_nsec = 0;
-  inode->vi_sectors = file->f_inode.i_blocks;
-  inode->vi_blocks =
-    file->f_inode.i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
-
-  /* Set mode and device numbers if applicable */
-  inode->vi_mode = file->f_inode.i_mode & S_IFMT;
-  if (S_ISBLK (inode->vi_mode) || S_ISCHR (inode->vi_mode))
-    inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
-  inode->vi_mode |= file->f_inode.i_mode & 07777;
   inode->vi_private = file;
+  ext2_update_vfs_inode (inode);
   return 0;
 }
 

@@ -911,6 +911,20 @@ ext2_process_dir_block (VFSSuperblock *sb, block_t *blockno, blkcnt64_t blkcnt,
 }
 
 static int
+ext2_process_lookup (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
+		     int blocksize, char *buffer, void *priv)
+{
+  Ext2Lookup *l = priv;
+  if (l->namelen != (dirent->d_name_len & 0xff))
+    return 0;
+  if (strncmp (l->name, dirent->d_name, dirent->d_name_len & 0xff) != 0)
+    return 0;
+  *l->inode = dirent->d_inode;
+  l->found = 1;
+  return DIRENT_ABORT;
+}
+
+static int
 ext2_get_dirent_tail (VFSSuperblock *sb, Ext2DirEntry *dirent,
 		      Ext2DirEntryTail **tail)
 {
@@ -1740,6 +1754,35 @@ ext2_update_inode (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
   return 0;
 }
 
+void
+ext2_update_vfs_inode (VFSInode *inode)
+{
+  Ext2Filesystem *fs = inode->vi_sb->sb_private;
+  Ext2File *file = inode->vi_private;
+  inode->vi_uid = file->f_inode.i_uid;
+  inode->vi_gid = file->f_inode.i_gid;
+  inode->vi_nlink = file->f_inode.i_links_count;
+  inode->vi_size = file->f_inode.i_size;
+  if (S_ISREG (file->f_inode.i_mode) && fs->f_super.s_rev_level > 0
+      && (fs->f_super.s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE))
+    inode->vi_size |= (off64_t) file->f_inode.i_size_high << 32;
+  inode->vi_atime.tv_sec = file->f_inode.i_atime;
+  inode->vi_atime.tv_nsec = 0;
+  inode->vi_mtime.tv_sec = file->f_inode.i_mtime;
+  inode->vi_mtime.tv_nsec = 0;
+  inode->vi_ctime.tv_sec = file->f_inode.i_ctime;
+  inode->vi_ctime.tv_nsec = 0;
+  inode->vi_sectors = file->f_inode.i_blocks;
+  inode->vi_blocks =
+    file->f_inode.i_blocks * ATA_SECTSIZE / inode->vi_sb->sb_blksize;
+
+  /* Set mode and device numbers if applicable */
+  inode->vi_mode = file->f_inode.i_mode & S_IFMT;
+  if (S_ISBLK (inode->vi_mode) || S_ISCHR (inode->vi_mode))
+    inode->vi_rdev = *((dev_t *) file->f_inode.i_block);
+  inode->vi_mode |= file->f_inode.i_mode & 07777;
+}
+
 int
 ext2_inode_set_size (VFSSuperblock *sb, Ext2Inode *inode, off64_t size)
 {
@@ -2326,6 +2369,22 @@ ext2_dealloc_blocks (VFSSuperblock *sb, ino64_t ino, Ext2Inode *inode,
   if (ret != 0)
     return ret;
   return ext2_update_inode (sb, ino, inode, sizeof (Ext2Inode));
+}
+
+int
+ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
+		   int namelen, char *buffer, ino64_t *inode)
+{
+  Ext2Lookup l;
+  int ret;
+  l.name = name;
+  l.namelen = namelen;
+  l.inode = inode;
+  l.found = 0;
+  ret = ext2_dir_iterate (sb, dir, 0, buffer, ext2_process_lookup, &l);
+  if (ret != 0)
+    return ret;
+  return l.found ? 0 : -ENOENT;
 }
 
 int
