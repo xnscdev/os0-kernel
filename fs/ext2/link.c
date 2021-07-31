@@ -68,7 +68,7 @@ ext2_process_link (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
       next = (Ext2DirEntry *) (buffer + offset + dirent->d_rec_len);
       next->d_inode = 0;
       next->d_name_len = 0;
-      l->l_err = ext2_set_rec_len (l->l_sb, rec_len, dirent);
+      l->l_err = ext2_set_rec_len (l->l_sb, rec_len, next);
       if (l->l_err != 0)
 	return DIRENT_ABORT;
       return DIRENT_CHANGED;

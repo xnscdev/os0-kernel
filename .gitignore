@@ -1,4 +1,5 @@
 build
+contrib/printers/__pycache__
 
 .DS_Store
 *~
