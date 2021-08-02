@@ -109,7 +109,93 @@ ext2_unlink (VFSInode *dir, const char *name)
 int
 ext2_symlink (VFSInode *dir, const char *old, const char *new)
 {
-  return -ENOSYS;
+  Process *proc = &process_table[task_getpid ()];
+  Ext2Filesystem *fs = dir->vi_sb->sb_private;
+  blksize_t blksize = dir->vi_sb->sb_blksize;
+  block_t block;
+  unsigned int target_len;
+  ino64_t ino;
+  Ext2Inode inode;
+  char *blockbuf = NULL;
+  int fast_link;
+  int inline_link;
+  int drop_ref = 0;
+  int ret;
+
+  target_len = strnlen (old, blksize + 1);
+  if (target_len >= blksize)
+    return -ENAMETOOLONG;
+
+  blockbuf = kzalloc (blksize);
+  if (unlikely (blockbuf == NULL))
+    return -ENOMEM;
+  strncpy (blockbuf, old, blksize);
+
+  fast_link = target_len < 60;
+  if (!fast_link)
+    {
+      ret = ext2_new_block (dir->vi_sb,
+			    ext2_find_inode_goal (dir->vi_sb, dir->vi_ino, NULL,
+						  0), NULL, &block, NULL);
+      if (ret != 0)
+	goto end;
+    }
+
+  memset (&inode, 0, sizeof (Ext2Inode));
+  ret = ext2_new_inode (dir->vi_sb, dir->vi_ino, NULL, &ino);
+  if (ret != 0)
+    goto end;
+
+  inode.i_mode = SYMLINK_MODE;
+  inode.i_uid = proc->p_euid;
+  inode.i_gid = proc->p_egid;
+  inode.i_links_count = 1;
+  ext2_inode_set_size (dir->vi_sb, &inode, target_len);
+
+  inline_link = !fast_link
+    && (fs->f_super.s_feature_incompat & EXT4_FT_INCOMPAT_INLINE_DATA);
+  if (fast_link)
+    strcpy ((char *) &inode.i_block, old);
+  else if (inline_link)
+    return -ENOTSUP;
+  else
+    {
+      ext2_iblk_set (dir->vi_sb, &inode, 1);
+      if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_EXTENTS)
+	inode.i_flags |= EXT4_EXTENTS_FL;
+    }
+
+  /* Write new inode */
+  if (inline_link)
+    ret = ext2_update_inode (dir->vi_sb, ino, &inode, sizeof (Ext2Inode));
+  else
+    ret = ext2_write_new_inode (dir->vi_sb, ino, &inode);
+  if (ret != 0)
+    goto end;
+
+  if (!fast_link && !inline_link)
+    {
+      ret = ext2_bmap (dir->vi_sb, ino, &inode, NULL, BMAP_SET, 0, NULL,
+		       &block);
+      if (ret != 0)
+	goto end;
+      ret = ext2_write_blocks (blockbuf, dir->vi_sb, block, 1);
+      if (ret != 0)
+	goto end;
+      ext2_block_alloc_stats (dir->vi_sb, block, 1);
+    }
+  ext2_inode_alloc_stats (dir->vi_sb, ino, 1, 0);
+  drop_ref = 1;
+
+ end:
+  kfree (blockbuf);
+  if (drop_ref)
+    {
+      if (!fast_link && !inline_link)
+	ext2_block_alloc_stats (dir->vi_sb, block, -1);
+      ext2_inode_alloc_stats (dir->vi_sb, ino, -1, 0);
+    }
+  return ret;
 }
 
 int

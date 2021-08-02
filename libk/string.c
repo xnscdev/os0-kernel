@@ -202,6 +202,15 @@ strlen (const char *s)
   return i;
 }
 
+size_t
+strnlen (const char *s, size_t len)
+{
+  size_t i = 0;
+  while (s[i] != '\0' && i < len)
+    i++;
+  return i;
+}
+
 char *
 strdup (const char *s)
 {

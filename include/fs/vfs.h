@@ -35,6 +35,8 @@
 
 #define VI_FLAG_NONBLOCK 0x01000000
 
+#define SYMLINK_MODE (S_IFLNK | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)
+
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
