@@ -927,7 +927,6 @@ __BEGIN_DECLS
 
 extern const VFSSuperblockOps ext2_sops;
 extern const VFSInodeOps ext2_iops;
-extern const VFSDirEntryOps ext2_dops;
 extern const VFSFilesystem ext2_vfs;
 extern Ext2BitmapOps ext2_bitarray_ops;
 
@@ -1208,19 +1207,10 @@ int ext2_dir_type (mode_t mode);
 int ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
 		       int namelen, char *buffer, ino64_t *inode);
 int ext2_expand_dir (VFSInode *dir);
-int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
-		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,
 		      size_t nblocks);
 int ext2_write_blocks (const void *buffer, VFSSuperblock *sb, uint32_t block,
 		       size_t nblocks);
-int ext2_data_blocks (Ext2Inode *inode, VFSSuperblock *sb, block_t block,
-		      blkcnt64_t nblocks, block_t *result);
-int ext2_unalloc_data_blocks (VFSInode *inode, block_t start,
-			      blkcnt64_t nblocks);
-int ext2_unref_inode (VFSSuperblock *sb, VFSInode *inode);
-block_t ext2_old_alloc_block (VFSSuperblock *sb, int prefbg);
-ino64_t ext2_create_inode (VFSSuperblock *sb, int prefbg);
 int ext2_get_rec_len (VFSSuperblock *sb, Ext2DirEntry *dirent,
 		      unsigned int *rec_len);
 int ext2_set_rec_len (VFSSuperblock *sb, unsigned int len,
@@ -1292,8 +1282,6 @@ int ext2_mount (VFSMount *mp, int flags, void *data);
 int ext2_unmount (VFSMount *mp, int flags);
 VFSInode *ext2_alloc_inode (VFSSuperblock *sb);
 void ext2_destroy_inode (VFSInode *inode);
-VFSDirectory *ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
-void ext2_destroy_dir (VFSDirectory *dir);
 int ext2_fill_inode (VFSInode *inode);
 int ext2_write_inode (VFSInode *inode);
 void ext2_free (VFSSuperblock *sb);
@@ -1326,8 +1314,6 @@ int ext2_getxattr (VFSInode *inode, const char *name, void *buffer,
 		   size_t len);
 int ext2_listxattr (VFSInode *inode, char *buffer, size_t len);
 int ext2_removexattr (VFSInode *inode, const char *name);
-int ext2_compare (VFSDirEntry *entry, const char *a, const char *b);
-void ext2_iput (VFSDirEntry *entry, VFSInode *inode);
 
 __END_DECLS
 

@@ -148,9 +148,9 @@ pipe_getattr (VFSInode *inode, struct stat64 *st)
   st->st_uid = proc->p_euid;
   st->st_gid = proc->p_egid;
   st->st_size = PIPE_LENGTH;
-  st->st_atime = inode->vi_atime.tv_sec;
-  st->st_mtime = inode->vi_mtime.tv_sec;
-  st->st_ctime = inode->vi_ctime.tv_sec;
+  st->st_atim = inode->vi_atime;
+  st->st_mtim = inode->vi_mtime;
+  st->st_ctim = inode->vi_ctime;
   st->st_blksize = PIPE_BLKSIZE;
   st->st_blocks = 4;
   return 0;

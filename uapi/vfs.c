@@ -130,18 +130,6 @@ sys_open (const char *path, int flags, mode_t mode)
   switch (flags & O_ACCMODE)
     {
     case O_RDONLY:
-      if (S_ISDIR (proc->p_files[i]->pf_inode->vi_mode))
-	{
-	  proc->p_files[i]->pf_dir =
-	    vfs_alloc_dir (proc->p_files[i]->pf_inode,
-			   proc->p_files[i]->pf_inode->vi_sb);
-	  if (unlikely (proc->p_files[i]->pf_dir == NULL))
-	    {
-	      vfs_unref_inode (proc->p_files[i]->pf_inode);
-	      process_free_fd (proc, i);
-	      return -EIO;
-	    }
-	}
       proc->p_files[i]->pf_mode = O_RDONLY;
       break;
     case O_WRONLY:
@@ -710,6 +698,9 @@ sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
 int
 sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 {
+  return -ENOSYS;
+
+  /* TODO Cleanup
   Process *proc = &process_table[task_getpid ()];
   VFSDirectory *dir;
   VFSDirEntry *entry;
@@ -740,7 +731,7 @@ sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 	  return ret;
 	}
     }
-  return sizeof (struct dirent) * count;
+  return sizeof (struct dirent) * count; */
 }
 
 ssize_t

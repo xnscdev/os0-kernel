@@ -233,23 +233,6 @@ vfs_unref_inode (VFSInode *inode)
     inode->vi_sb->sb_ops->sb_destroy_inode (inode);
 }
 
-VFSDirectory *
-vfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
-{
-  if (dir->vi_sb->sb_ops->sb_alloc_dir == NULL)
-    return NULL;
-  return dir->vi_sb->sb_ops->sb_alloc_dir (dir, sb);
-}
-
-void
-vfs_destroy_dir (VFSDirectory *dir)
-{
-  if (dir == NULL)
-    return;
-  if (dir->vd_inode->vi_sb->sb_ops->sb_destroy_dir != NULL)
-    dir->vd_inode->vi_sb->sb_ops->sb_destroy_dir (dir);
-}
-
 int
 vfs_fill_inode (VFSInode *inode)
 {
@@ -604,19 +587,4 @@ vfs_removexattr (VFSInode *inode, const char *name)
   if (inode->vi_ops->vfs_removexattr != NULL)
     return inode->vi_ops->vfs_removexattr (inode, name);
   return -ENOSYS;
-}
-
-int
-vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b)
-{
-  if (entry->d_ops->d_compare != NULL)
-    return entry->d_ops->d_compare (entry, a, b);
-  return -ENOSYS;
-}
-
-void
-vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode)
-{
-  if (entry->d_ops->d_iput != NULL)
-    entry->d_ops->d_iput (entry, inode);
 }

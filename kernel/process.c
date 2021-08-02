@@ -620,8 +620,6 @@ process_free_fd (Process *proc, int fd)
     {
       vfs_unref_inode (file->pf_inode);
       file->pf_inode = NULL;
-      vfs_destroy_dir (file->pf_dir);
-      file->pf_dir = NULL;
       kfree (file->pf_path);
       file->pf_path = NULL;
       file->pf_mode = 0;

@@ -47,8 +47,6 @@ typedef struct
 {
   VFSInode *(*sb_alloc_inode) (VFSSuperblock *);
   void (*sb_destroy_inode) (VFSInode *);
-  VFSDirectory *(*sb_alloc_dir) (VFSInode *, VFSSuperblock *);
-  void (*sb_destroy_dir) (VFSDirectory *);
   int (*sb_fill_inode) (VFSInode *);
   int (*sb_write_inode) (VFSInode *);
   void (*sb_free) (VFSSuperblock *);
@@ -85,19 +83,12 @@ typedef struct
 
 typedef struct
 {
-  int (*d_compare) (VFSDirEntry *, const char *, const char *);
-  void (*d_iput) (VFSDirEntry *, VFSInode *);
-} VFSDirEntryOps;
-
-typedef struct
-{
   char vfs_name[16];
   int vfs_flags;
   int (*vfs_mount) (VFSMount *, int, void *);
   int (*vfs_unmount) (VFSMount *, int);
   const VFSSuperblockOps *vfs_sops;
   const VFSInodeOps *vfs_iops;
-  const VFSDirEntryOps *vfs_dops;
 } VFSFilesystem;
 
 struct _VFSSuperblock
@@ -143,7 +134,6 @@ struct _VFSDirEntry
   int d_mounted;
   char *d_name;
   void *d_private;
-  const VFSDirEntryOps *d_ops;
 };
 
 struct _VFSDirectory
@@ -181,8 +171,6 @@ int vfs_mount (const char *type, const char *dir, int flags, void *data);
 VFSInode *vfs_alloc_inode (VFSSuperblock *sb);
 void vfs_ref_inode (VFSInode *inode);
 void vfs_unref_inode (VFSInode *inode);
-VFSDirectory *vfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
-void vfs_destroy_dir (VFSDirectory *dir);
 int vfs_fill_inode (VFSInode *inode);
 int vfs_write_inode (VFSInode *inode);
 void vfs_free_sb (VFSSuperblock *sb);
@@ -220,9 +208,6 @@ int vfs_getxattr (VFSInode *inode, const char *name, void *buffer,
 		  size_t len);
 int vfs_listxattr (VFSInode *inode, char *buffer, size_t len);
 int vfs_removexattr (VFSInode *inode, const char *name);
-
-int vfs_compare_dir_entry (VFSDirEntry *entry, const char *a, const char *b);
-void vfs_iput_dir_entry (VFSDirEntry *entry, VFSInode *inode);
 
 int vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks);
 char *vfs_path_resolve (const char *path);

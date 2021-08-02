@@ -34,7 +34,6 @@ __BEGIN_DECLS
 
 extern const VFSSuperblockOps devfs_sops;
 extern const VFSInodeOps devfs_iops;
-extern const VFSDirEntryOps devfs_dops;
 extern const VFSFilesystem devfs_vfs;
 
 void devfs_init (void);
@@ -42,7 +41,6 @@ void devfs_init (void);
 int devfs_mount (VFSMount *mp, int flags, void *data);
 int devfs_unmount (VFSMount *mp, int flags);
 VFSInode *devfs_alloc_inode (VFSSuperblock *sb);
-VFSDirectory *devfs_alloc_dir (VFSInode *dir, VFSSuperblock *sb);
 void devfs_free (VFSSuperblock *sb);
 
 int devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
@@ -52,7 +50,6 @@ int devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 int devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
 int devfs_readlink (VFSInode *inode, char *buffer, size_t len);
 int devfs_getattr (VFSInode *inode, struct stat64 *st);
-int devfs_compare (VFSDirEntry *entry, const char *a, const char *b);
 
 __END_DECLS
 

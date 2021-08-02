@@ -29,8 +29,6 @@
 const VFSSuperblockOps ext2_sops = {
   .sb_alloc_inode = ext2_alloc_inode,
   .sb_destroy_inode = ext2_destroy_inode,
-  .sb_alloc_dir = ext2_alloc_dir,
-  .sb_destroy_dir = ext2_destroy_dir,
   .sb_fill_inode = ext2_fill_inode,
   .sb_write_inode = ext2_write_inode,
   .sb_free = ext2_free,
@@ -63,19 +61,13 @@ const VFSInodeOps ext2_iops = {
   .vfs_removexattr = ext2_removexattr
 };
 
-const VFSDirEntryOps ext2_dops = {
-  .d_compare = ext2_compare,
-  .d_iput = ext2_iput
-};
-
 const VFSFilesystem ext2_vfs = {
   .vfs_name = EXT2_FS_NAME,
   .vfs_flags = 0,
   .vfs_mount = ext2_mount,
   .vfs_unmount = ext2_unmount,
   .vfs_sops = &ext2_sops,
-  .vfs_iops = &ext2_iops,
-  .vfs_dops = &ext2_dops
+  .vfs_iops = &ext2_iops
 };
 
 static int
@@ -327,39 +319,6 @@ ext2_destroy_inode (VFSInode *inode)
   kfree (inode);
 }
 
-VFSDirectory *
-ext2_alloc_dir (VFSInode *dir, VFSSuperblock *sb)
-{
-  VFSDirectory *d = kzalloc (sizeof (VFSDirectory));
-  block_t realblock;
-
-  if (unlikely (d == NULL))
-    return NULL;
-  d->vd_inode = dir;
-  d->vd_buffer = kmalloc (sb->sb_blksize);
-  if (unlikely (d->vd_buffer == NULL))
-    goto err;
-
-  if (ext2_data_blocks (dir->vi_private, sb, 0, 1, &realblock) < 0)
-    goto err;
-  if (ext2_read_blocks (d->vd_buffer, sb, realblock, 1) < 0)
-    goto err;
-  return d;
-
- err:
-  ext2_destroy_dir (d);
-  return NULL;
-}
-
-void
-ext2_destroy_dir (VFSDirectory *dir)
-{
-  if (dir == NULL)
-    return;
-  kfree (dir->vd_buffer);
-  kfree (dir);
-}
-
 int
 ext2_fill_inode (VFSInode *inode)
 {
@@ -437,17 +396,6 @@ int
 ext2_remount (VFSSuperblock *sb, int *flags, void *data)
 {
   return -ENOSYS;
-}
-
-int
-ext2_compare (VFSDirEntry *entry, const char *a, const char *b)
-{
-  return strcmp (a, b);
-}
-
-void
-ext2_iput (VFSDirEntry *entry, VFSInode *inode)
-{
 }
 
 void

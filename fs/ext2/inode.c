@@ -302,50 +302,7 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 int
 ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  Ext2Inode *ei = dir->vd_inode->vi_private;
-  while (1)
-    {
-      Ext2DirEntry *guess = (Ext2DirEntry *) (dir->vd_buffer + dir->vd_offset);
-      VFSDirEntry *result;
-      uint16_t namelen;
-      block_t realblock;
-      int ret;
-
-      if (guess->d_inode == 0 || guess->d_rec_len == 0)
-	{
-	  dir->vd_offset += 4;
-	  if (dir->vd_offset >= sb->sb_blksize)
-	    {
-	      if (++dir->vd_block >=
-		  (dir->vd_inode->vi_size + sb->sb_blksize - 1) /
-		  sb->sb_blksize)
-		return 1; /* Finished reading all directory entries */
-	      ret = ext2_data_blocks (ei, sb, dir->vd_block, 1, &realblock);
-	      if (ret < 0)
-		return ret;
-	      ret = ext2_read_blocks (dir->vd_buffer, sb, realblock, 1);
-	      if (ret < 0)
-		return ret;
-	      dir->vd_offset = 0;
-	    }
-	  continue;
-	}
-
-      namelen = guess->d_name_len & 0xff;
-      result = kmalloc (sizeof (VFSDirEntry));
-      result->d_flags = 0;
-      result->d_inode = vfs_alloc_inode (sb);
-      result->d_inode->vi_ino = guess->d_inode;
-      ext2_fill_inode (result->d_inode);
-      result->d_mounted = 0;
-      result->d_name = kmalloc (namelen + 1);
-      strncpy (result->d_name, dir->vd_buffer + dir->vd_offset + 8, namelen);
-      result->d_name[namelen] = '\0';
-      result->d_ops = &ext2_dops;
-      dir->vd_offset += guess->d_rec_len;
-      *entry = result;
-      return 0;
-    }
+  return -ENOSYS;
 }
 
 int
@@ -535,43 +492,7 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 int
 ext2_truncate (VFSInode *inode)
 {
-  Ext2Superblock *esb = &((Ext2Filesystem *) inode->vi_sb->sb_private)->f_super;
-  Ext2Inode *ei = inode->vi_private;
-  uint64_t origsize = ei->i_size;
-  uint64_t newsize = inode->vi_size & 0xffffffff;
-  blksize_t blksize = inode->vi_sb->sb_blksize;
-
-  if (S_ISDIR (inode->vi_mode))
-    return -EISDIR;
-
-  if (esb->s_rev_level > 0 && S_ISREG (inode->vi_mode)
-      && esb->s_feature_ro_compat & EXT2_FT_RO_COMPAT_LARGE_FILE)
-    {
-      origsize |= (uint64_t) ei->i_size_high << 32;
-      ei->i_size_high = inode->vi_size >> 32;
-      newsize |= inode->vi_size >> 32 << 32;
-    }
-  inode->vi_size = newsize;
-  inode->vi_sectors = (newsize + blksize - 1) / blksize * ATA_SECTSIZE;
-  ext2_write_inode (inode);
-
-  if (origsize == newsize)
-    return 0;
-  else if (origsize > newsize)
-    {
-      off_t start = (newsize + blksize - 1) / blksize;
-      blkcnt64_t nblocks = (origsize + blksize - 1) / blksize - start;
-      if (nblocks != 0)
-	return ext2_unalloc_data_blocks (inode, start, nblocks);
-      else
-	return 0;
-    }
-  else
-    {
-      blkcnt64_t origblocks = (origsize + blksize - 1) / blksize;
-      blkcnt64_t newblocks = (newsize + blksize - 1) / newsize;
-      return ext2_extend_inode (inode, origblocks, newblocks);
-    }
+  return ext2_file_set_size (inode->vi_private, inode->vi_size);
 }
 
 int

@@ -162,7 +162,6 @@ sys_pipe (int fd[2])
 
   /* Fill file descriptors */
   proc->p_files[read_fd]->pf_inode = read_inode;
-  proc->p_files[read_fd]->pf_dir = NULL;
   proc->p_files[read_fd]->pf_path = NULL;
   proc->p_files[read_fd]->pf_mode = O_RDONLY;
   proc->p_files[read_fd]->pf_flags = 0;
@@ -170,7 +169,6 @@ sys_pipe (int fd[2])
   fd[0] = read_fd;
 
   proc->p_files[write_fd]->pf_inode = write_inode;
-  proc->p_files[write_fd]->pf_dir = NULL;
   proc->p_files[write_fd]->pf_path = NULL;
   proc->p_files[write_fd]->pf_mode = O_WRONLY;
   proc->p_files[write_fd]->pf_flags = 0;
