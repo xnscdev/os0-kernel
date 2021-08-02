@@ -1171,8 +1171,13 @@ int ext3_extent_set_bmap (Ext3ExtentHandle *handle, block_t logical,
 void ext3_extent_free (Ext3ExtentHandle *handle);
 int ext2_iblk_add_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_iblk_sub_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
+int ext2_iblk_set (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks);
 int ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num,
 		      block_t *result, int *count);
+int ext2_new_dir_block (VFSSuperblock *sb, ino64_t ino, ino64_t parent,
+			char **block);
+int ext2_write_dir_block (VFSSuperblock *sb, block_t block, char *buffer,
+			  int flags, VFSInode *inode);
 int ext2_new_block (VFSSuperblock *sb, block_t goal, Ext2Bitmap *map,
 		    block_t *result, Ext2BlockAllocContext *ctx);
 int ext2_new_inode (VFSSuperblock *sb, ino64_t dir, Ext2Bitmap *map,
@@ -1255,6 +1260,7 @@ int ext2_dir_block_checksum_valid (VFSSuperblock *sb, VFSInode *dir,
 				   Ext2DirEntry *dirent);
 int ext2_dir_block_checksum_update (VFSSuperblock *sb, VFSInode *dir,
 				    Ext2DirEntry *dirent);
+void ext2_init_dirent_tail (VFSSuperblock *sb, Ext2DirEntryTail *t);
 uint32_t ext2_dirent_checksum (VFSSuperblock *sb, VFSInode *dir,
 			       Ext2DirEntry *dirent, size_t size);
 int ext2_dirent_checksum_valid (VFSSuperblock *sb, VFSInode *dir,

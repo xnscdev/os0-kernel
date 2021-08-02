@@ -769,16 +769,6 @@ ext2_read_dir_block (VFSSuperblock *sb, block_t block, void *buffer, int flags,
 }
 
 static int
-ext2_write_dir_block (VFSSuperblock *sb, block_t block, void *buffer, int flags,
-		      VFSInode *inode)
-{
-  int ret = ext2_dir_block_checksum_update (sb, inode, (Ext2DirEntry *) buffer);
-  if (ret != 0)
-    return ret;
-  return ext2_write_blocks (buffer, sb, block, 1);
-}
-
-static int
 ext2_dirent_valid (VFSSuperblock *sb, char *buffer, unsigned int offset,
 		   unsigned int final_offset)
 {
@@ -2061,6 +2051,22 @@ ext2_iblk_sub_blocks (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks)
 }
 
 int
+ext2_iblk_set (VFSSuperblock *sb, Ext2Inode *inode, block_t nblocks)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  if (!(fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_HUGE_FILE)
+      || !(inode->i_flags & EXT4_HUGE_FILE_FL))
+    nblocks *= sb->sb_blksize / 512;
+  nblocks *= EXT2_CLUSTER_RATIO (fs);
+  inode->i_blocks = nblocks & 0xffffffff;
+  if (fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_HUGE_FILE)
+    inode->osd2.linux2.l_i_blocks_hi = nblocks >> 32;
+  else if (nblocks >> 32)
+    return -EOVERFLOW;
+  return 0;
+}
+
+int
 ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num, block_t *result,
 		  int *count)
 {
@@ -2125,6 +2131,79 @@ ext2_zero_blocks (VFSSuperblock *sb, block_t block, int num, block_t *result,
       block += c;
     }
   return 0;
+}
+
+int
+ext2_new_dir_block (VFSSuperblock *sb, ino64_t ino, ino64_t parent,
+		    char **block)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2DirEntry *dir = NULL;
+  char *buffer;
+  int rec_len;
+  int filetype = 0;
+  int csum_size = 0;
+  Ext2DirEntryTail *t;
+  int ret;
+
+  buffer = kzalloc (sb->sb_blksize);
+  if (unlikely (buffer == NULL))
+    return -ENOMEM;
+  dir = (Ext2DirEntry *) buffer;
+
+  if (fs->f_super.s_feature_ro_compat & EXT4_FT_RO_COMPAT_METADATA_CSUM)
+    csum_size = sizeof (Ext2DirEntryTail);
+
+  ret = ext2_set_rec_len (sb, sb->sb_blksize - csum_size, dir);
+  if (ret != 0)
+    {
+      kfree (buffer);
+      return ret;
+    }
+
+  if (ino != 0)
+    {
+      if (fs->f_super.s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
+	filetype = EXT2_DIRTYPE_DIR;
+
+      /* Setup `.' */
+      dir->d_inode = ino;
+      dir->d_name_len = (filetype << 8) | 1;
+      dir->d_name[0] = '.';
+      rec_len = sb->sb_blksize - csum_size - ext2_dir_rec_len (1, 0);
+      dir->d_rec_len = ext2_dir_rec_len (1, 0);
+
+      /* Setup `..' */
+      dir = (Ext2DirEntry *) (buffer + dir->d_rec_len);
+      ret = ext2_set_rec_len (sb, rec_len, dir);
+      if (ret != 0)
+	{
+	  kfree (buffer);
+	  return ret;
+	}
+      dir->d_inode = parent;
+      dir->d_name_len = (filetype << 8) | 2;
+      dir->d_name[0] = '.';
+      dir->d_name[1] = '.';
+    }
+
+  if (csum_size > 0)
+    {
+      t = EXT2_DIRENT_TAIL (buffer, sb->sb_blksize);
+      ext2_init_dirent_tail (sb, t);
+    }
+  *block = buffer;
+  return 0;
+}
+
+int
+ext2_write_dir_block (VFSSuperblock *sb, block_t block, char *buffer, int flags,
+		      VFSInode *inode)
+{
+  int ret = ext2_dir_block_checksum_update (sb, inode, (Ext2DirEntry *) buffer);
+  if (ret != 0)
+    return ret;
+  return ext2_write_blocks (buffer, sb, block, 1);
 }
 
 int
@@ -3552,6 +3631,14 @@ ext2_inode_bitmap_checksum_update (VFSSuperblock *sb, unsigned int group,
   gdp->bg_inode_bitmap_csum_lo = crc & 0xffff;
   if (EXT2_DESC_SIZE (fs->f_super) >= EXT4_BG_INODE_BITMAP_CSUM_HI_END)
     gdp->bg_inode_bitmap_csum_hi = crc >> 16;
+}
+
+void
+ext2_init_dirent_tail (VFSSuperblock *sb, Ext2DirEntryTail *t)
+{
+  memset (t, 0, sizeof (Ext2DirEntryTail));
+  ext2_set_rec_len (sb, sizeof (Ext2DirEntryTail), (Ext2DirEntry *) t);
+  t->det_reserved_name_len = EXT2_DIR_NAME_LEN_CHECKSUM;
 }
 
 uint32_t

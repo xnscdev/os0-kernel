@@ -413,10 +413,13 @@ sys_rename (const char *old, const char *new)
 int
 sys_mkdir (const char *path, mode_t mode)
 {
+  Process *proc = &process_table[task_getpid ()];
   VFSInode *dir;
   VFSInode *temp;
   char *name;
-  int ret = sys_path_sep (path, &dir, &name);
+  int ret;
+  mode &= ~proc->p_umask;
+  ret = sys_path_sep (path, &dir, &name);
   if (ret != 0)
     return ret;
 

@@ -277,21 +277,110 @@ ext2_chown (VFSInode *inode, uid_t uid, gid_t gid)
 int
 ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 {
-  VFSInode *inode;
-  int ret = ext2_new_file (dir, name, (mode & ~S_IFMT) | S_IFDIR, &inode);
+  Ext2Filesystem *fs = dir->vi_sb->sb_private;
+  Process *proc = &process_table[task_getpid ()];
+  Ext3ExtentHandle *handle;
+  Ext2Inode inode;
+  VFSInode *temp;
+  block_t b;
+  ino64_t ino;
+  char *block = NULL;
+  int drop_ref = 0;
+  int ret = ret = ext2_read_bitmaps (dir->vi_sb);
   if (ret != 0)
-    return ret;
+    goto end;
 
-  /* Build `.' and `..' entries */
-  ext2_add_link (inode->vi_sb, inode, ".", inode->vi_ino, EXT2_DIRTYPE_DIR);
-  ext2_add_link (inode->vi_sb, inode, "..", dir->vi_ino, EXT2_DIRTYPE_DIR);
+  ret = ext2_new_inode (dir->vi_sb, dir->vi_ino, NULL, &ino);
+  if (ret != 0)
+    goto end;
 
-  /* Increase refcount of parent directory */
-  dir->vi_nlink++;
-  ext2_write_inode (dir);
+  memset (&inode, 0, sizeof (Ext2Inode));
+  ret = ext2_new_block (dir->vi_sb,
+			ext2_find_inode_goal (dir->vi_sb, ino, &inode, 0),
+			NULL, &b, NULL);
+  if (ret != 0)
+    goto end;
 
-  vfs_unref_inode (inode);
-  return 0;
+  ret = ext2_new_dir_block (dir->vi_sb, ino, dir->vi_ino, &block);
+  if (ret != 0)
+    goto end;
+
+  inode.i_mode = S_IFDIR | mode;
+  inode.i_uid = proc->p_euid;
+  inode.i_gid = proc->p_egid;
+  if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_EXTENTS)
+    inode.i_flags |= EXT4_EXTENTS_FL;
+  else
+    inode.i_block[0] = b;
+  inode.i_size = dir->vi_sb->sb_blksize;
+  ext2_iblk_set (dir->vi_sb, &inode, 1);
+  inode.i_links_count = 2;
+
+  ret = ext2_write_new_inode (dir->vi_sb, ino, &inode);
+  if (ret != 0)
+    goto end;
+
+  temp = vfs_alloc_inode (dir->vi_sb);
+  if (unlikely (temp == NULL))
+    {
+      ret = -ENOMEM;
+      goto end;
+    }
+  temp->vi_private = kzalloc (sizeof (Ext2File));
+  if (unlikely (temp == NULL))
+    {
+      ret = -ENOMEM;
+      vfs_unref_inode (temp);
+      goto end;
+    }
+  temp->vi_ino = ino;
+  ret = ext2_open_file (dir->vi_sb, ino, temp->vi_private);
+  if (ret != 0)
+    {
+      vfs_unref_inode (temp);
+      goto end;
+    }
+  ret = ext2_write_dir_block (dir->vi_sb, b, block, 0, temp);
+  vfs_unref_inode (temp);
+  if (ret != 0)
+    goto end;
+
+  if (fs->f_super.s_feature_incompat & EXT3_FT_INCOMPAT_EXTENTS)
+    {
+      ret = ext3_extent_open (dir->vi_sb, ino, &inode, &handle);
+      if (ret != 0)
+	goto end;
+      ret = ext3_extent_set_bmap (handle, 0, b, 0);
+      if (ret != 0)
+	goto end;
+    }
+
+  ext2_block_alloc_stats (dir->vi_sb, b, 1);
+  ext2_inode_alloc_stats (dir->vi_sb, ino, 1, 1);
+  drop_ref = 1;
+
+  ret = ext2_add_link (dir->vi_sb, dir, name, ino, EXT2_DIRTYPE_DIR);
+  if (ret != 0)
+    goto end;
+
+  if (dir->vi_ino != ino)
+    {
+      dir->vi_nlink++;
+      ret = ext2_write_inode (dir);
+      if (ret != 0)
+	goto end;
+    }
+  drop_ref = 0;
+
+ end:
+  if (block != NULL)
+    kfree (block);
+  if (drop_ref)
+    {
+      ext2_block_alloc_stats (dir->vi_sb, b, -1);
+      ext2_inode_alloc_stats (dir->vi_sb, ino, -1, 1);
+    }
+  return ret;
 }
 
 int
