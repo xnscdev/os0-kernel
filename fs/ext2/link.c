@@ -183,6 +183,19 @@ ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name, ino64_t ino,
     return ret;
   if (l.l_err != 0)
     return l.l_err;
+  if (l.l_done)
+    return 0;
+
+  /* Couldn't add the entry, expand the directory and try again */
+  ret = ext2_expand_dir (dir);
+  if (ret != 0)
+    return -ENOSPC;
+  ret =
+    ext2_dir_iterate (sb, dir, DIRENT_FLAG_EMPTY, NULL, ext2_process_link, &l);
+  if (ret != 0)
+    return ret;
+  if (l.l_err != 0)
+    return l.l_err;
   return l.l_done ? 0 : -ENOSPC;
 }
 

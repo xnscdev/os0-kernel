@@ -429,52 +429,14 @@ ext2_readlink (VFSInode *inode, char *buffer, size_t len)
 	buffer[i] = ((char *) &ei->i_block[EXT2_DIND_BLOCK])[i - 52];
       for (; i < len && i < size && i < 60; i++)
 	buffer[i] = ((char *) &ei->i_block[EXT2_TIND_BLOCK])[i - 56];
+      return 0;
     }
   else
     {
-      uint32_t block = 0;
-      VFSSuperblock *sb = inode->vi_sb;
-      block_t realblock;
-      void *currblock;
-      int ret = ext2_data_blocks (ei, sb, block, 1, &realblock);
-      if (ret < 0)
-	return ret;
-
-      currblock = kmalloc (sb->sb_blksize);
-      if (unlikely (currblock == NULL))
-	return -ENOMEM;
-
-      while (1)
-	{
-	  if (ext2_read_blocks (currblock, sb, realblock, 1) != 0)
-	    {
-	      kfree (currblock);
-	      return -EIO;
-	    }
-	  if (i + sb->sb_blksize > inode->vi_size)
-	    {
-	      memcpy (buffer + i, currblock, inode->vi_size - i);
-	      kfree (currblock);
-	      return i;
-	    }
-	  if (i + sb->sb_blksize > len)
-	    {
-	      memcpy (buffer + i, currblock, len - i);
-	      kfree (currblock);
-	      return i;
-	    }
-
-	  memcpy (buffer + i, currblock, sb->sb_blksize);
-	  i += sb->sb_blksize;
-	  ret = ext2_data_blocks (ei, sb, ++block, 1, &realblock);
-	  if (ret < 0)
-	    {
-	      kfree (currblock);
-	      return ret;
-	    }
-	}
+      if (size < len)
+	len = size;
+      return ext2_read (inode, buffer, len, 0);
     }
-  return 0;
 }
 
 int

@@ -914,6 +914,15 @@ typedef struct
   Ext2DirEntry *l_prev;
 } Ext2Link;
 
+typedef struct
+{
+  int de_done;
+  int de_newblocks;
+  block_t de_goal;
+  int de_err;
+  VFSInode *de_dir;
+} Ext2DirExpand;
+
 __BEGIN_DECLS
 
 extern const VFSSuperblockOps ext2_sops;
@@ -1198,6 +1207,7 @@ int ext2_unlink_dirent (VFSSuperblock *sb, VFSInode *dir, const char *name,
 int ext2_dir_type (mode_t mode);
 int ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
 		       int namelen, char *buffer, ino64_t *inode);
+int ext2_expand_dir (VFSInode *dir);
 int ext2_extend_inode (VFSInode *inode, blkcnt64_t origblocks,
 		       blkcnt64_t newblocks);
 int ext2_read_blocks (void *buffer, VFSSuperblock *sb, uint32_t block,

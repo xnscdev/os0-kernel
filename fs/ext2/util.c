@@ -915,6 +915,62 @@ ext2_process_lookup (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
 }
 
 static int
+ext2_process_dir_expand (VFSSuperblock *sb, block_t *blockno, blkcnt64_t blkcnt,
+			 block_t ref_block, int ref_offset, void *private)
+{
+  Ext2Filesystem *fs = sb->sb_private;
+  Ext2DirExpand *e = private;
+  block_t newblock;
+  char *block;
+  int ret;
+  if (*blockno != 0)
+    {
+      if (blkcnt >= 0)
+	e->de_goal = *blockno;
+      return 0;
+    }
+
+  if (blkcnt != 0 && EXT2_B2C (fs, e->de_goal) == EXT2_B2C (fs, e->de_goal + 1))
+    newblock = e->de_goal + 1;
+  else
+    {
+      e->de_goal &= ~EXT2_CLUSTER_MASK (fs);
+      ret = ext2_new_block (sb, e->de_goal, NULL, &newblock, NULL);
+      if (ret != 0)
+	{
+	  e->de_err = ret;
+	  return BLOCK_ABORT;
+	}
+      e->de_newblocks++;
+      ext2_block_alloc_stats (sb, newblock, 1);
+    }
+
+  if (blkcnt > 0)
+    {
+      ret = ext2_new_dir_block (sb, 0, 0, &block);
+      if (ret != 0)
+	{
+	  e->de_err = ret;
+	  return BLOCK_ABORT;
+	}
+      e->de_done = 1;
+      ret = ext2_write_dir_block (sb, newblock, block, 0, e->de_dir);
+      kfree (block);
+    }
+  else
+    ret = ext2_zero_blocks (sb, newblock, 1, NULL, NULL);
+  if (blkcnt >= 0)
+    e->de_goal = newblock;
+  if (ret != 0)
+    {
+      e->de_err = ret;
+      return BLOCK_ABORT;
+    }
+  *blockno = newblock;
+  return e->de_done ? BLOCK_CHANGED | BLOCK_ABORT : BLOCK_CHANGED;
+}
+
+static int
 ext2_get_dirent_tail (VFSSuperblock *sb, Ext2DirEntry *dirent,
 		      Ext2DirEntryTail **tail)
 {
@@ -2464,6 +2520,38 @@ ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
   if (ret != 0)
     return ret;
   return l.found ? 0 : -ENOENT;
+}
+
+int
+ext2_expand_dir (VFSInode *dir)
+{
+  Ext2File *file = dir->vi_private;
+  Ext2DirExpand e;
+  int ret;
+  if (dir->vi_sb->sb_mntflags & MS_RDONLY)
+    return -EROFS;
+  if (!S_ISDIR (dir->vi_mode))
+    return -ENOTDIR;
+  e.de_done = 0;
+  e.de_err = 0;
+  e.de_goal = ext2_find_inode_goal (dir->vi_sb, dir->vi_ino, &file->f_inode, 0);
+  e.de_newblocks = 0;
+  e.de_dir = dir;
+  ret = ext2_block_iterate (dir->vi_sb, dir, BLOCK_FLAG_APPEND, NULL,
+			    ext2_process_dir_expand, &e);
+  if (ret == -ENOTSUP)
+    return -ENOTSUP;
+  if (e.de_err != 0)
+    return e.de_err;
+  if (!e.de_done)
+    return -EIO;
+  ret =
+    ext2_inode_set_size (dir->vi_sb, &file->f_inode,
+			 EXT2_I_SIZE (file->f_inode) +dir->vi_sb->sb_blksize);
+  if (ret != 0)
+    return ret;
+  ext2_iblk_add_blocks (dir->vi_sb, &file->f_inode, e.de_newblocks);
+  return ext2_write_inode (dir);
 }
 
 int
