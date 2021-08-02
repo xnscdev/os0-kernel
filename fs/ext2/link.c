@@ -81,7 +81,31 @@ ext2_process_link (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
   strncpy (dirent->d_name, l->l_name, l->l_namelen);
   if (fs->f_super.s_feature_incompat & EXT2_FT_INCOMPAT_FILETYPE)
     dirent->d_name_len = (dirent->d_name_len & 0xff) | ((l->l_flags & 7) << 8);
-  l->l_done++;
+  l->l_done = 1;
+  return DIRENT_ABORT | DIRENT_CHANGED;
+}
+
+static int
+ext2_process_unlink (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
+		     int blocksize, char *buffer, void *priv)
+{
+  Ext2Link *l = priv;
+  Ext2DirEntry *prev = l->l_prev;
+  l->l_prev = dirent;
+  if (l->l_name != NULL)
+    {
+      if ((dirent->d_name_len & 0xff) != l->l_namelen)
+	return 0;
+      if (strncmp (l->l_name, dirent->d_name, dirent->d_name_len & 0xff) != 0)
+	return 0;
+    }
+  if (dirent->d_inode == 0)
+    return 0;
+  if (offset != 0)
+    prev->d_rec_len += dirent->d_rec_len;
+  else
+    dirent->d_inode = 0;
+  l->l_done = 1;
   return DIRENT_ABORT | DIRENT_CHANGED;
 }
 
@@ -117,6 +141,28 @@ ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name, ino64_t ino,
     return ret;
   if (l.l_err != 0)
     return l.l_err;
+  return l.l_done ? 0 : -ENOSPC;
+}
+
+int
+ext2_unlink_dirent (VFSSuperblock *sb, VFSInode *dir, const char *name,
+		    int flags)
+{
+  Ext2Link l;
+  int ret;
+  if (sb->sb_mntflags & MS_RDONLY)
+    return -EROFS;
+  l.l_sb = sb;
+  l.l_name = name;
+  l.l_namelen = name == NULL ? 0 : strlen (name);
+  l.l_flags = flags;
+  l.l_done = 0;
+  l.l_prev = NULL;
+  ret = ext2_dir_iterate (sb, dir, DIRENT_FLAG_EMPTY, NULL, ext2_process_unlink,
+			  &l);
+  if (ret != 0)
+    return ret;
+  /* TODO Remove from link count of inode, unallocate if no more links */
   return l.l_done ? 0 : -ENOSPC;
 }
 

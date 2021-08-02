@@ -911,6 +911,7 @@ typedef struct
   int l_flags;
   int l_done;
   int l_err;
+  Ext2DirEntry *l_prev;
 } Ext2Link;
 
 __BEGIN_DECLS
@@ -1187,6 +1188,8 @@ int ext2_add_index_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
 			 ino64_t ino, int flags);
 int ext2_add_link (VFSSuperblock *sb, VFSInode *dir, const char *name,
 		   ino64_t ino, int flags);
+int ext2_unlink_dirent (VFSSuperblock *sb, VFSInode *dir, const char *name,
+			int flags);
 int ext2_dir_type (mode_t mode);
 int ext2_lookup_inode (VFSSuperblock *sb, VFSInode *dir, const char *name,
 		       int namelen, char *buffer, ino64_t *inode);
