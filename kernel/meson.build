@@ -16,6 +16,7 @@ kernel_src = [
 kernel = executable('kernel', kernel_src, link_args: [
 		      '-T',
 		      meson.current_source_dir() / 'linker.ld',
+		      '-Wl,--build-id=sha1',
 		      '-nostdlib',
 		      '-lgcc',
 		    ], link_with: [arch, drivers, fs, libk, uapi],
