@@ -1,5 +1,11 @@
+if host_machine.cpu_family() == 'x86'
+  boot_obj = 'boot-i386.S'
+else
+  error('No suitable boot object for architecture')
+endif
+
 kernel_src = [
-  'boot.S', # First so multiboot is in first 8K of file */
+  boot_obj, # Needs to be first so it is in first 8K of image
   'fcntl.c',
   'heap.c',
   'ioctl.c',
