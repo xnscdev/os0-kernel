@@ -120,7 +120,9 @@ ext2_symlink (VFSInode *dir, const char *old, const char *new)
   int fast_link;
   int inline_link;
   int drop_ref = 0;
-  int ret;
+  int ret = ext2_read_bitmaps (dir->vi_sb);
+  if (ret != 0)
+    return ret;
 
   target_len = strnlen (old, blksize + 1);
   if (target_len >= blksize)
@@ -186,6 +188,11 @@ ext2_symlink (VFSInode *dir, const char *old, const char *new)
     }
   ext2_inode_alloc_stats (dir->vi_sb, ino, 1, 0);
   drop_ref = 1;
+
+  ret = ext2_add_link (dir->vi_sb, dir, new, ino, EXT2_DIRTYPE_LINK);
+  if (ret != 0)
+    goto end;
+  drop_ref = 0;
 
  end:
   kfree (blockbuf);
