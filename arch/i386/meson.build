@@ -1,3 +1,5 @@
+kernel_conf.set10('INVLPG_SUPPORT', hostcpu.version_compare('>= i486'))
+
 arch_src = [
   'gdt-load.S',
   'features.c',

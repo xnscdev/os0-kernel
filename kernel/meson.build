@@ -1,11 +1,8 @@
-if host_machine.cpu_family() == 'x86'
-  boot_obj = 'boot-i386.S'
-else
-  error('No suitable boot object for architecture')
-endif
-
+# The boot source file needs to be the first object linked into the kernel image
+# so the multiboot header will be in the first 8 KiB of the file and GRUB will
+# be able to find it
 kernel_src = [
-  boot_obj, # Needs to be first so it is in first 8K of image
+  'boot-' + machine_arch + '.S',
   'fcntl.c',
   'heap.c',
   'ioctl.c',

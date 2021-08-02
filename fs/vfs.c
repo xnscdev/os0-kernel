@@ -76,22 +76,6 @@ vfs_default_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 static int
 vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
 {
-  if (dir->vd_inode->vi_ino == 0)
-    {
-      VFSDirEntry *dirent;
-      int ret;
-      if (dir->vd_count > 0)
-	return 1;
-      dirent = kzalloc (sizeof (VFSDirEntry));
-      if (dirent == NULL)
-	return -ENOMEM;
-      ret = vfs_default_lookup (&dirent->d_inode, dir->vd_inode, sb, "dev", -1);
-      if (ret != 0)
-	return ret;
-      dirent->d_name = strdup ("dev");
-      *entry = dirent;
-      return 0;
-    }
   return -ENOENT;
 }
 
@@ -134,7 +118,6 @@ vfs_destroy_dir_entry (VFSDirEntry *entry)
   if (entry == NULL)
     return;
   vfs_unref_inode (entry->d_inode);
-  kfree (entry->d_name);
   kfree (entry);
 }
 

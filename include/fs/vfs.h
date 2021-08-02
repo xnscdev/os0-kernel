@@ -132,8 +132,7 @@ struct _VFSDirEntry
   int d_flags;
   VFSInode *d_inode;
   int d_mounted;
-  char *d_name;
-  void *d_private;
+  char d_name[];
 };
 
 struct _VFSDirectory

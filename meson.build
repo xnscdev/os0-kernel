@@ -22,14 +22,15 @@ includedir = include_directories('.', 'include')
 kernel_conf = configuration_data()
 kernel_conf.set_quoted('VERSION', meson.project_version())
 
-if host_machine.cpu_family() == 'x86'
-  subdir('arch/i386')
-  kernel_conf.set10('ARCH_I386', true)
-  kernel_conf.set10('INVLPG_SUPPORT',
-		    host_machine.cpu().version_compare('>= i486'))
+hostcpu = host_machine.cpu_family()
+if hostcpu == 'x86'
+  machine_arch = 'i386'
 else
-  error('host CPU type not supported or invalid')
+  error('Unsupported CPU type: ' + hostcpu)
 endif
+
+subdir('arch' / machine_arch)
+kernel_conf.set10('ARCH_' + machine_arch.to_upper(), true)
 
 kernel_conf.set('PROCESS_LIMIT', get_option('process_limit'))
 kernel_conf.set('PROCESS_FILE_LIMIT', get_option('fd_limit'))
