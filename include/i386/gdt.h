@@ -32,7 +32,7 @@ typedef struct
   unsigned char ge_access;
   unsigned char ge_gran;
   unsigned char ge_baseh;
-} __attribute__ ((packed)) GDTEntry;
+} GDTEntry;
 
 typedef struct
 {

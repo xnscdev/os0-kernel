@@ -1,5 +1,5 @@
 /*************************************************************************
- * dt-load.S -- This file is part of OS/0.                               *
+ * gdt-load.S -- This file is part of OS/0.                              *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -36,12 +36,3 @@ gdt_load:
 	ret
 
 	.size gdt_load, . - gdt_load
-
-	.global idt_load
-	.type idt_load, @function
-idt_load:
-	mov	4(%esp), %eax
-	lidt	(%eax)
-	ret
-
-	.size idt_load, . - idt_load

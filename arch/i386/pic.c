@@ -16,7 +16,6 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/gdt.h>
 #include <i386/pic.h>
 #include <sys/io.h>
 
@@ -70,5 +69,5 @@ idt_init (void)
   idt_set_gate (0x80, (uint32_t) syscall, 0x08, 3, IDT_GATE_TRAP);
   idt_set_gate (0x81, (uint32_t) task_set_fini_funcs, 0x08, 3, IDT_GATE_TRAP);
 
-  idt_load ((uint32_t) &idt);
+  idt_load (&idt);
 }

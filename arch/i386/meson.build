@@ -1,5 +1,5 @@
 arch_src = [
-  'dt-load.S',
+  'gdt-load.S',
   'features.c',
   'features.S',
   'gdt.c',

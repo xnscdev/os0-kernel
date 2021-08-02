@@ -20,8 +20,7 @@
 #define _I386_PIC_H
 
 #ifndef _ASM
-#include <sys/cdefs.h>
-#include <stdint.h>
+#include <i386/gdt.h>
 #endif
 
 #define PIC_MASTER_COMMAND 0x20
@@ -50,7 +49,11 @@ typedef struct
 
 __BEGIN_DECLS
 
-void idt_load (uint32_t addr);
+static inline void
+idt_load (DTPtr *addr)
+{
+  __asm__ volatile ("lidt (%0)" :: "r" (addr));
+}
 
 __END_DECLS
 
