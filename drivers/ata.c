@@ -352,9 +352,10 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   unsigned char head;
   unsigned char sect;
   int err;
-  unsigned char dma = 1;
   char cmd;
   uint16_t i;
+#ifdef ATA_DMA
+  unsigned char dma = 1;
 
  retry:
   if (dma)
@@ -403,6 +404,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
       ata_write (channel, ATA_REG_BM_PRDT3, (paddr >> 24) & 0xff);
     }
   else
+#endif
     {
       /* Turn off interrupts */
       ata_irq = 0;
@@ -453,11 +455,13 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   while (ata_read (channel, ATA_REG_STATUS) & ATA_SR_BSY)
     ;
 
+#ifdef ATA_DMA
   /* Clear bus master error and interrupt for DMA access */
   if (dma)
     ata_write (channel, ATA_REG_BM_STATUS,
 	       ata_read (channel, ATA_REG_BM_STATUS) &
 	       ~(ATA_BM_SR_ERR | ATA_BM_SR_INT));
+#endif
 
   /* Select drive */
   if (lba_mode == IDE_CHS)
@@ -481,6 +485,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   /* Set the command */
   if (lba_mode == IDE_LBA48)
     {
+#ifdef ATA_DMA
       if (dma)
 	{
 	  if (op == ATA_WRITE)
@@ -489,6 +494,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 	    cmd = ATA_CMD_READ_DMA_EXT;
 	}
       else
+#endif
 	{
 	  if (op == ATA_WRITE)
 	    cmd = ATA_CMD_WRITE_PIO_EXT;
@@ -498,6 +504,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
     }
   else
     {
+#ifdef ATA_DMA
       if (dma)
 	{
 	  if (op == ATA_WRITE)
@@ -506,6 +513,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 	    cmd = ATA_CMD_READ_DMA;
 	}
       else
+#endif
 	{
 	  if (op == ATA_WRITE)
 	    cmd = ATA_CMD_WRITE_PIO;
@@ -516,6 +524,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   ata_write (channel, ATA_REG_COMMAND, cmd);
 
   /* Run the command */
+#ifdef ATA_DMA
   if (dma)
     {
       int flags = ATA_BM_CMD_START;
@@ -528,6 +537,7 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
       ata_write (channel, ATA_REG_BM_COMMAND, 0);
     }
   else
+#endif
     {
       if (op == ATA_WRITE)
 	{

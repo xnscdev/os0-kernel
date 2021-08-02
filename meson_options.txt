@@ -2,3 +2,5 @@ option('process_limit', type: 'integer', min: 32, value: 256)
 option('fd_limit', type: 'integer', min: 32, value: 64)
 option('sys_fd_limit', type: 'integer', min: 4096, value: 8192)
 option('mmap_limit', type: 'integer', min: 16, value: 64)
+
+option('ata_dma', type: 'boolean', value: 'true')

@@ -55,7 +55,7 @@ irq8:
 
 	/* Save task ESP and EIP */
 	mov	%esp, 4(%edi)
-	call	read_ip
+	call	.get_ip
 .entry:
 	test	%eax, %eax
 	jz	.next_start /* If EAX is zero we have just switched tasks */
@@ -125,6 +125,10 @@ irq8:
 .done:
 	popa
 	iret
+
+.get_ip:
+	mov	(%esp), %eax
+	ret
 
 	.size irq8, . - irq8
 
