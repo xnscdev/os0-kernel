@@ -38,14 +38,7 @@ sys_path_sep (const char *path, VFSInode **dir, char **name)
 	*name = strdup (sep + 1);
     }
 
-  if (buffer == sep)
-    {
-      /* Direct child of root directory */
-      *dir = vfs_root_inode;
-      vfs_ref_inode (*dir);
-      *name = strdup (sep + 1);
-    }
-  else if (sep == NULL)
+  if (sep == NULL)
     {
       /* File in current directory */
       *dir = process_table[task_getpid ()].p_cwd;

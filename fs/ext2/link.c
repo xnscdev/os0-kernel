@@ -22,6 +22,18 @@
 #include <vm/heap.h>
 
 static int
+ext2_check_empty (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
+		  int blocksize, char *buffer, void *priv)
+{
+  if (strcmp (dirent->d_name, ".") != 0 && strcmp (dirent->d_name, "..") != 0)
+    {
+      *((int *) priv) = 0;
+      return DIRENT_ABORT;
+    }
+  return 0;
+}
+
+static int
 ext2_process_link (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
 		   int blocksize, char *buffer, void *priv)
 {
@@ -91,6 +103,8 @@ ext2_process_unlink (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
 {
   Ext2Link *l = priv;
   Ext2DirEntry *prev = l->l_prev;
+  Ext2Inode inode;
+  int ret;
   l->l_prev = dirent;
   if (l->l_name != NULL)
     {
@@ -101,6 +115,34 @@ ext2_process_unlink (VFSInode *dir, int entry, Ext2DirEntry *dirent, int offset,
     }
   if (dirent->d_inode == 0)
     return 0;
+
+  /* Remove a link from the inode link count and unallocate it if there are
+     no more remaining links */
+  ret = ext2_read_inode (l->l_sb, dirent->d_inode, &inode);
+  if (ret != 0)
+    goto end;
+  if (S_ISDIR (inode.i_mode))
+    {
+      /* Make sure the directory is empty */
+      int empty = 1;
+      ext2_dir_iterate (l->l_sb, dir, DIRENT_FLAG_EMPTY, NULL, ext2_check_empty,
+			&empty);
+      if (!empty)
+	{
+	  l->l_err = -ENOTEMPTY;
+	  return DIRENT_ABORT;
+	}
+    }
+  if (--inode.i_links_count == 0)
+    {
+      inode.i_dtime = time (NULL);
+      ext2_inode_alloc_stats (l->l_sb, dirent->d_inode, -1,
+			      S_ISDIR (inode.i_mode));
+      ext2_dealloc_blocks (l->l_sb, dirent->d_inode, &inode, NULL, 0, ~0ULL);
+    }
+  ext2_update_inode (l->l_sb, dirent->d_inode, &inode, sizeof (Ext2Inode));
+
+ end:
   if (offset != 0)
     prev->d_rec_len += dirent->d_rec_len;
   else
@@ -157,12 +199,14 @@ ext2_unlink_dirent (VFSSuperblock *sb, VFSInode *dir, const char *name,
   l.l_namelen = name == NULL ? 0 : strlen (name);
   l.l_flags = flags;
   l.l_done = 0;
+  l.l_err = 0;
   l.l_prev = NULL;
   ret = ext2_dir_iterate (sb, dir, DIRENT_FLAG_EMPTY, NULL, ext2_process_unlink,
 			  &l);
   if (ret != 0)
     return ret;
-  /* TODO Remove from link count of inode, unallocate if no more links */
+  if (l.l_err != 0)
+    return l.l_err;
   return l.l_done ? 0 : -ENOSPC;
 }
 

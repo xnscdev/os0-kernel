@@ -390,7 +390,7 @@ ext2_dealloc_indirect (VFSSuperblock *sb, Ext2Inode *inode, char *blockbuf,
 
   if (blockbuf == NULL)
     {
-      buffer = kmalloc (sb->sb_blksize);
+      buffer = kmalloc (sb->sb_blksize * 3);
       if (unlikely (buffer == NULL))
 	return -ENOMEM;
       blockbuf = buffer;

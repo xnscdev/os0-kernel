@@ -297,124 +297,22 @@ ext2_mkdir (VFSInode *dir, const char *name, mode_t mode)
 int
 ext2_rmdir (VFSInode *dir, const char *name)
 {
-  VFSSuperblock *sb = dir->vi_sb;
-  Ext2Inode *ei = dir->vi_private;
-  int blocks = (dir->vi_size + sb->sb_blksize - 1) / sb->sb_blksize;
-  void *buffer;
-  char *guessname;
-  block_t *realblocks;
-  VFSInode *temp;
-  VFSDirectory *d;
-  int ret;
-  int i = 0;
-
-  ret = vfs_lookup (&temp, dir, dir->vi_sb, name, 0);
-  if (ret != 0)
-    return ret;
-  if (!S_ISDIR (temp->vi_mode))
-    {
-      vfs_unref_inode (temp);
-      return -ENOTDIR;
-    }
-
-  /* Make sure the directory is empty */
-  d = ext2_alloc_dir (dir, sb);
-  if (d == NULL)
-    return -ENOMEM;
-  while (1)
-    {
-      VFSDirEntry *entry;
-      int bad;
-      ret = ext2_readdir (&entry, d, sb);
-      if (ret == 1)
-	break;
-      else if (ret < 0)
-	{
-	  ext2_destroy_dir (d);
-	  return ret;
-	}
-      bad = strcmp (entry->d_name, ".") != 0
-	&& strcmp (entry->d_name, "..") != 0;
-      vfs_destroy_dir_entry (entry);
-      if (bad)
-	{
-	  ext2_destroy_dir (d);
-	  return -ENOTEMPTY;
-	}
-    }
-  ext2_destroy_dir (d);
-
-  buffer = kmalloc (sb->sb_blksize);
-  realblocks = kmalloc (sizeof (block_t) * blocks);
-  if (unlikely (buffer == NULL || realblocks == NULL))
-    {
-      kfree (buffer);
-      vfs_unref_inode (temp);
-      return -ENOMEM;
-    }
-  if (ext2_data_blocks (ei, sb, 0, blocks, realblocks) < 0)
-    {
-      kfree (buffer);
-      kfree (realblocks);
-      vfs_unref_inode (temp);
-      return -ENOMEM;
-    }
-
-  for (i = 0; i < blocks; i++)
-    {
-      int bytes = 0;
-      Ext2DirEntry *last = NULL;
-      if (ext2_read_blocks (buffer, sb, realblocks[i], 1) != 0)
-	{
-	  kfree (buffer);
-	  kfree (realblocks);
-	  vfs_unref_inode (temp);
-	  return -EIO;
-	}
-      while (bytes < sb->sb_blksize)
-	{
-	  Ext2DirEntry *guess = (Ext2DirEntry *) (buffer + bytes);
-	  uint16_t namelen;
-	  if (guess->d_inode == 0 || guess->d_rec_len == 0)
-	    {
-	      bytes += 4;
-	      continue;
-	    }
-
-	  namelen = guess->d_name_len;
-	  guessname = (char *) guess + sizeof (Ext2DirEntry);
-	  if (strlen (name) == namelen
-	      && strncmp (guessname, name, namelen) == 0)
-	    {
-	      if (last != NULL)
-	        last->d_rec_len += guess->d_rec_len;
-	      memset (guess, 0, sizeof (Ext2DirEntry));
-	      ret = ext2_write_blocks (buffer, sb, realblocks[i], 1);
-	      kfree (buffer);
-	      kfree (realblocks);
-	      if (ret != 0)
-		{
-		  vfs_unref_inode (temp);
-		  return ret;
-		}
-	      ret = ext2_unref_inode (sb, temp);
-	      vfs_unref_inode (temp);
-	      return ret;
-	    }
-
-	  bytes += guess->d_rec_len;
-	  last = guess;
-	}
-    }
-
-  kfree (buffer);
-  return -ENOENT;
+  return ext2_unlink_dirent (dir->vi_sb, dir, name, 0);
 }
 
 int
 ext2_mknod (VFSInode *dir, const char *name, mode_t mode, dev_t rdev)
 {
-  return -ENOSYS;
+  if (!(mode & S_IFMT))
+    mode |= S_IFREG;
+  if (S_ISCHR (mode) || S_ISBLK (mode))
+    {
+      if (process_table[task_getpid ()].p_euid != 0)
+	return -EPERM;
+    }
+  else if (!S_ISREG (mode) && !S_ISFIFO (mode) && !S_ISSOCK (mode))
+    return -EINVAL;
+  return ext2_new_file (dir, name, mode, NULL);
 }
 
 int
