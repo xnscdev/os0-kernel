@@ -19,8 +19,9 @@
 #include <libk/libk.h>
 #include <sys/ata.h>
 #include <sys/io.h>
+#include <sys/pci.h>
 #include <sys/timer.h>
-#include <errno.h>
+#include <vm/paging.h>
 
 static unsigned char ata_buffer[2048];
 
@@ -47,20 +48,42 @@ static const char ata_flush_cmds[] = {
 
 IDEChannelRegisters ata_channels[2];
 IDEDevice ata_devices[4];
+int ata_irq;
+uint32_t ata_pci_device;
 
 void
-ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
-	  uint32_t bar4)
+ata_init (void)
 {
   int i;
   int j;
   int k;
   int count = 0;
+  uint32_t bar4;
+  uint16_t pci_cmd;
 
-  ata_channels[ATA_PRIMARY].icr_base = (bar0 & 0xfffffffc) + 0x1f0 * !bar0;
-  ata_channels[ATA_PRIMARY].icr_ctrl = (bar1 & 0xfffffffc) + 0x3f6 * !bar1;
-  ata_channels[ATA_SECONDARY].icr_base = (bar2 & 0xfffffffc) + 0x170 * !bar2;
-  ata_channels[ATA_SECONDARY].icr_ctrl = (bar3 & 0xfffffffc) + 0x376 * !bar3;
+  /* Search for ATA PCI device */
+  ata_pci_device = pci_find_device (ATA_VENDOR_ID, ATA_DEVICE_ID);
+  if (unlikely (ata_pci_device == 0))
+    {
+      printk ("ata: failed to locate PCI device\n");
+      return;
+    }
+  bar4 = pci_inl (ata_pci_device, PCI_BAR4);
+  if (!(bar4 & 1))
+    {
+      printk ("ata: memory mapped PCI BAR not supported\n");
+      return;
+    }
+
+  /* Enable PCI bus mastering if necessary */
+  pci_cmd = pci_inw (ata_pci_device, PCI_COMMAND);
+  if (!(pci_cmd & 4))
+    pci_outw (ata_pci_device, PCI_COMMAND, pci_cmd | 4);
+
+  ata_channels[ATA_PRIMARY].icr_base = PATA_BAR0;
+  ata_channels[ATA_PRIMARY].icr_ctrl = PATA_BAR1;
+  ata_channels[ATA_SECONDARY].icr_base = PATA_BAR2;
+  ata_channels[ATA_SECONDARY].icr_ctrl = PATA_BAR3;
   ata_channels[ATA_PRIMARY].icr_bmide = bar4 & 0xfffffffc;
   ata_channels[ATA_SECONDARY].icr_bmide = (bar4 & 0xfffffffc) + 8;
 
@@ -75,6 +98,8 @@ ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
 	  unsigned char err = 0;
 	  unsigned char type = IDE_ATA;
 	  unsigned char status;
+	  uint32_t prdt_paddr;
+	  uint32_t prdt_vaddr;
 	  ata_devices[count].id_reserved = 0;
 
 	  ata_write (i, ATA_REG_HDDEVSEL, 0xa0 | j << 4);
@@ -139,6 +164,14 @@ ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
 		ata_buffer[ATA_IDENT_MODEL + k];
 	    }
 	  ata_devices[count].id_model[40] = '\0';
+
+	  prdt_paddr = alloc_page ();
+	  assert (prdt_paddr != 0);
+	  prdt_vaddr = ATA_PRDT_VADDR + count * PAGE_SIZE;
+	  map_page (curr_page_dir, prdt_paddr, prdt_vaddr, PAGE_FLAG_WRITE);
+	  vm_page_inval_386 (prdt_vaddr);
+	  memset ((void *) prdt_vaddr, 0, PAGE_SIZE);
+	  ata_devices[count].id_prdt = (ATAPRDT *) prdt_vaddr;
 
 	  count++;
 	}
@@ -227,7 +260,7 @@ ata_poll (unsigned char channel, unsigned char chkerr)
 	return 1;
       if (state & ATA_SR_DF)
 	return 2;
-      if ((state & ATA_SR_DRQ) == 0)
+      if (!(state & ATA_SR_DRQ))
 	return 3;
     }
   return 0;
@@ -319,14 +352,63 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   unsigned char head;
   unsigned char sect;
   int err;
-  unsigned char dma = 0; /* TODO DMA support */
+  unsigned char dma = 1;
   char cmd;
   uint16_t i;
 
-  /* Turn off IRQs */
-  ide_irq = 0;
-  ata_channels[channel].icr_noint = 0x02;
-  ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
+ retry:
+  if (dma)
+    {
+      /* Setup PRDT */
+      ATAPRDT *prdt = ata_devices[drive].id_prdt;
+      char *ptr = buffer;
+      char *end = buffer + nsects * ATA_SECTSIZE;
+      uint32_t paddr = get_paddr (curr_page_dir, prdt);
+      uint32_t prev = 0;
+      if ((uintptr_t) buffer & 0x1ff)
+	{
+	  prdt->pr_addr = get_paddr (curr_page_dir, buffer);
+	  prdt->pr_len = ATA_SECTSIZE - ((uintptr_t) buffer & 0x1ff);
+	  prdt->pr_end = 0;
+	  prev = prdt->pr_addr + prdt->pr_len;
+	  prdt++;
+	  ptr = (char *) ((uintptr_t) buffer & 0xfffffe00) + ATA_SECTSIZE;
+	}
+      for (; ptr < end; ptr += ATA_SECTSIZE)
+	{
+	  size_t len = ptr + ATA_SECTSIZE > end ?
+	    (uint16_t) ((uintptr_t) buffer & 0x1ff) : ATA_SECTSIZE;
+	  uint32_t addr = get_paddr (curr_page_dir, ptr);
+	  if (prev == addr)
+	    prdt[-1].pr_len += len;
+	  else
+	    {
+	      if (prdt - ata_devices[drive].id_prdt >= ATA_PRDT_MAX)
+		{
+		  /* Too many entries in PRDT, we have to use PIO */
+		  dma = 0;
+		  goto retry;
+		}
+	      prdt->pr_addr = addr;
+	      prdt->pr_len = len;
+	      prdt->pr_end = 0;
+	      prdt++;
+	    }
+	  prev = prdt[-1].pr_addr + prdt[-1].pr_len;
+	}
+      prdt[-1].pr_end = ATA_PRDT_END;
+      ata_write (channel, ATA_REG_BM_PRDT0, paddr & 0xff);
+      ata_write (channel, ATA_REG_BM_PRDT1, (paddr >> 8) & 0xff);
+      ata_write (channel, ATA_REG_BM_PRDT2, (paddr >> 16) & 0xff);
+      ata_write (channel, ATA_REG_BM_PRDT3, (paddr >> 24) & 0xff);
+    }
+  else
+    {
+      /* Turn off interrupts */
+      ata_irq = 0;
+      ata_channels[channel].icr_noint = 0x02;
+      ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
+    }
 
   /* Set parameters depending on addressing mode */
   if (lba >= 0x10000000)
@@ -371,11 +453,19 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
   while (ata_read (channel, ATA_REG_STATUS) & ATA_SR_BSY)
     ;
 
+  /* Clear bus master error and interrupt for DMA access */
+  if (dma)
+    ata_write (channel, ATA_REG_BM_STATUS,
+	       ata_read (channel, ATA_REG_BM_STATUS) &
+	       ~(ATA_BM_SR_ERR | ATA_BM_SR_INT));
+
+  /* Select drive */
   if (lba_mode == IDE_CHS)
     ata_write (channel, ATA_REG_HDDEVSEL, 0xa0 | slavebit << 4 | head);
   else
     ata_write (channel, ATA_REG_HDDEVSEL, 0xe0 | slavebit << 4 | head);
 
+  /* Write LBA and sector count */
   if (lba_mode == IDE_LBA48)
     {
       ata_write (channel, ATA_REG_SECCNT1, 0);
@@ -427,7 +517,16 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 
   /* Run the command */
   if (dma)
-    return -ENOSYS; /* TODO DMA support */
+    {
+      int flags = ATA_BM_CMD_START;
+      if (op == ATA_READ)
+	flags |= ATA_BM_CMD_READ;
+      while (!(ata_read (channel, ATA_REG_STATUS) & ATA_SR_DRQ))
+	;
+      ata_write (channel, ATA_REG_BM_COMMAND, flags);
+      ata_await ();
+      ata_write (channel, ATA_REG_BM_COMMAND, 0);
+    }
   else
     {
       if (op == ATA_WRITE)
@@ -460,7 +559,17 @@ ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 void
 ata_await (void)
 {
-  while (ide_irq == 0)
+  while (ata_irq == 0)
     ;
-  ide_irq = 0;
+  ata_irq = 0;
+}
+
+void
+ata_interrupt (int channel)
+{
+  if (ata_read (channel, ATA_REG_BM_STATUS) & ATA_BM_SR_INT)
+    {
+      ata_irq = 1;
+      inb (ATA_REG_BM_STATUS);
+    }
 }

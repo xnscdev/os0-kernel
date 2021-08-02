@@ -22,6 +22,8 @@
 #include <errno.h>
 #include <string.h>
 
+static char ata_temp_buffer[ATA_SECTSIZE];
+
 int
 ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		  void *buffer)
@@ -69,7 +71,6 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   off_t end_lba;
   off_t part_offset;
   size_t sectors;
-  void *temp = NULL;
   int ret;
 
   if (buffer == NULL)
@@ -92,18 +93,11 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   if (mid_lba > end_lba)
     {
       /* Completely contained in a single sector */
-      temp = kmalloc (ATA_SECTSIZE);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer, temp + ATA_SECTSIZE - start_diff, len);
-      kfree (temp);
+	return ret;
+      memcpy (buffer, ata_temp_buffer + ATA_SECTSIZE - start_diff, len);
       return 0;
     }
 
@@ -118,39 +112,23 @@ ata_device_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
   /* Read unaligned starting bytes */
   if (start_diff != 0)
     {
-      temp = kmalloc (ATA_SECTSIZE);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer, temp + ATA_SECTSIZE - start_diff, start_diff);
+	return ret;
+      memcpy (buffer, ata_temp_buffer + ATA_SECTSIZE - start_diff, start_diff);
     }
 
   /* Read unaligned ending bytes */
   if (end_diff != 0)
     {
-      if (temp == NULL)
-	{
-	  temp = kmalloc (ATA_SECTSIZE);
-	  if (unlikely (temp == NULL))
-	    return -ENOMEM;
-	}
       ret = ata_read_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (buffer + start_diff + sectors * ATA_SECTSIZE, temp, end_diff);
+	return ret;
+      memcpy (buffer + start_diff + sectors * ATA_SECTSIZE, ata_temp_buffer,
+	      end_diff);
     }
-
-  kfree (temp);
   return 0;
 }
 
@@ -164,7 +142,6 @@ ata_device_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
   off_t end_lba;
   off_t part_offset;
   size_t sectors;
-  void *temp = NULL;
   int ret;
 
   if (buffer == NULL)
@@ -187,20 +164,13 @@ ata_device_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
   if (mid_lba > end_lba)
     {
       /* Completely contained in a single sector */
-      temp = kmalloc (ATA_SECTSIZE);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp + ATA_SECTSIZE - start_diff, buffer, len);
+	return ret;
+      memcpy (ata_temp_buffer + ATA_SECTSIZE - start_diff, buffer, len);
       ret = ata_write_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			       temp);
-      kfree (temp);
+			       ata_temp_buffer);
       return ret;
     }
 
@@ -215,52 +185,30 @@ ata_device_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
   /* Write unaligned starting bytes */
   if (start_diff != 0)
     {
-      temp = kmalloc (ATA_SECTSIZE);
-      if (unlikely (temp == NULL))
-	return -ENOMEM;
       ret = ata_read_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp + ATA_SECTSIZE - start_diff, buffer, start_diff);
+	return ret;
+      memcpy (ata_temp_buffer + ATA_SECTSIZE - start_diff, buffer, start_diff);
       ret = ata_write_sectors (dev->sd_major - 1, 1, start_lba + part_offset,
-			       temp);
+			       ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
+	return ret;
     }
 
   /* Write unaligned ending bytes */
   if (end_diff != 0)
     {
-      if (temp == NULL)
-	{
-	  temp = kmalloc (ATA_SECTSIZE);
-	  if (unlikely (temp == NULL))
-	    return -ENOMEM;
-	}
       ret = ata_read_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
-			      temp);
+			      ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
-      memcpy (temp, buffer + start_diff + sectors * ATA_SECTSIZE, end_diff);
+	return ret;
+      memcpy (ata_temp_buffer, buffer + start_diff + sectors * ATA_SECTSIZE,
+	      end_diff);
       ret = ata_write_sectors (dev->sd_major - 1, 1, end_lba + part_offset,
-			       temp);
+			       ata_temp_buffer);
       if (ret != 0)
-	{
-	  kfree (temp);
-	  return ret;
-	}
+	return ret;
     }
-
-  kfree (temp);
   return 0;
 }

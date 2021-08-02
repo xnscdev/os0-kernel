@@ -23,6 +23,9 @@
 #include <sys/device.h>
 #include <stdint.h>
 
+#define ATA_VENDOR_ID 0x8086
+#define ATA_DEVICE_ID 0x7010
+
 #define ATA_SR_BSY  0x80
 #define ATA_SR_DRDY 0x40
 #define ATA_SR_DF   0x20
@@ -58,6 +61,12 @@
 #define ATAPI_CMD_READ  0xa8
 #define ATAPI_CMD_EJECT 0x1b
 
+#define ATA_BM_SR_ERR 0x02
+#define ATA_BM_SR_INT 0x04
+
+#define ATA_BM_CMD_START 0x01
+#define ATA_BM_CMD_READ  0x08
+
 #define ATA_IDENT_DEVICETYPE   0
 #define ATA_IDENT_CYLINDERS    2
 #define ATA_IDENT_HEADS        6
@@ -76,23 +85,29 @@
 #define ATA_MASTER 0
 #define ATA_SLAVE  1
 
-#define ATA_REG_DATA     0x00
-#define ATA_REG_ERROR    0x01
-#define ATA_REG_FEATURES 0x01
-#define ATA_REG_SECCNT0  0x02
-#define ATA_REG_LBA0     0x03
-#define ATA_REG_LBA1     0x04
-#define ATA_REG_LBA2     0x05
-#define ATA_REG_HDDEVSEL 0x06
-#define ATA_REG_COMMAND  0x07
-#define ATA_REG_STATUS   0x07
-#define ATA_REG_SECCNT1  0x08
-#define ATA_REG_LBA3     0x09
-#define ATA_REG_LBA4     0x0a
-#define ATA_REG_LBA5     0x0b
-#define ATA_REG_CONTROL  0x0c
-#define ATA_REG_ALTSTAT  0x0c
-#define ATA_REG_DEVADDR  0x0d
+#define ATA_REG_DATA       0x00
+#define ATA_REG_ERROR      0x01
+#define ATA_REG_FEATURES   0x01
+#define ATA_REG_SECCNT0    0x02
+#define ATA_REG_LBA0       0x03
+#define ATA_REG_LBA1       0x04
+#define ATA_REG_LBA2       0x05
+#define ATA_REG_HDDEVSEL   0x06
+#define ATA_REG_COMMAND    0x07
+#define ATA_REG_STATUS     0x07
+#define ATA_REG_SECCNT1    0x08
+#define ATA_REG_LBA3       0x09
+#define ATA_REG_LBA4       0x0a
+#define ATA_REG_LBA5       0x0b
+#define ATA_REG_CONTROL    0x0c
+#define ATA_REG_ALTSTAT    0x0c
+#define ATA_REG_DEVADDR    0x0d
+#define ATA_REG_BM_COMMAND 0x0e
+#define ATA_REG_BM_STATUS  0x10
+#define ATA_REG_BM_PRDT0   0x12
+#define ATA_REG_BM_PRDT1   0x13
+#define ATA_REG_BM_PRDT2   0x14
+#define ATA_REG_BM_PRDT3   0x15
 
 #define ATA_PRIMARY   0
 #define ATA_SECONDARY 1
@@ -108,10 +123,19 @@
 #define PATA_BAR1 0x3f6
 #define PATA_BAR2 0x170
 #define PATA_BAR3 0x376
-#define PATA_BAR4 0x000
+
+#define ATA_PRDT_MAX 512    /* Maximum PRDT entries that can fit in a page */
+#define ATA_PRDT_END 0x8000 /* Marks the end of the PRDT */
 
 #define ATA_SECTSIZE   512
 #define ATAPI_SECTSIZE 2048
+
+typedef struct
+{
+  uint32_t pr_addr;
+  uint16_t pr_len;
+  uint16_t pr_end;
+} ATAPRDT;
 
 typedef struct
 {
@@ -132,17 +156,17 @@ typedef struct
   uint32_t id_cmdset;
   uint32_t id_size;
   char id_model[41];
+  ATAPRDT *id_prdt;
 } IDEDevice;
 
 __BEGIN_DECLS
 
 extern IDEChannelRegisters ata_channels[2];
 extern IDEDevice ata_devices[4];
-extern int ide_irq;
+extern int ata_irq;
+extern uint32_t ata_pci_device;
 
-void ata_init (uint32_t bar0, uint32_t bar1, uint32_t bar2, uint32_t bar3,
-	       uint32_t bar4);
-
+void ata_init (void);
 unsigned char ata_read (unsigned char channel, unsigned char reg);
 void ata_write (unsigned char channel, unsigned char reg, unsigned char data);
 void ata_readbuf (unsigned char channel, unsigned char reg, void *buffer,
@@ -152,6 +176,7 @@ int ata_perror (unsigned char drive, int err);
 int ata_access (unsigned char op, unsigned char drive, uint32_t lba,
 		unsigned char nsects, void *buffer);
 void ata_await (void);
+void ata_interrupt (int channel);
 
 int atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
 		void *buffer);

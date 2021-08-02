@@ -23,8 +23,6 @@
 
 static unsigned char atapi_packet[12] = {0xa8};
 
-int ide_irq;
-
 int
 atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
 	    void *buffer)
@@ -37,8 +35,8 @@ atapi_read (unsigned char drive, uint32_t lba, unsigned char nsects,
   int i;
 
   /* Enable IRQs */
-  ide_irq = 0;
-  ata_channels[channel].icr_noint = ide_irq;
+  ata_irq = 0;
+  ata_channels[channel].icr_noint = ata_irq;
   ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
 
   /* Fill SCSI packet */
@@ -102,8 +100,8 @@ atapi_eject (unsigned char drive)
     return 20;
 
   /* Enable IRQs */
-  ide_irq = 0;
-  ata_channels[channel].icr_noint = ide_irq;
+  ata_irq = 0;
+  ata_channels[channel].icr_noint = ata_irq;
   ata_write (channel, ATA_REG_CONTROL, ata_channels[channel].icr_noint);
 
   /* Fill SCSI packet */

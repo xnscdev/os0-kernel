@@ -22,7 +22,8 @@ static int
 vfs_guess_ext2 (SpecDevice *dev)
 {
   uint16_t magic[1];
-  if (dev->sd_read (dev, magic, 2, 0x438) != 0)
+  if (dev->sd_read (dev, magic, 2,
+		    0x400 + offsetof (Ext2Superblock, s_magic)) != 0)
     return 0;
   return *magic == EXT2_MAGIC;
 }
