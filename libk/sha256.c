@@ -16,30 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <kconfig.h>
-
-#include <libk/hash.h>
-#include <string.h>
-
-/* The rotate right function: rotates the bits of a 32-bit unsigned integer.
-   Use the architecture-specific version if there is one, otherwise use
-   a generic fallback inlined function. */
-
-#ifdef ARCH_I386
-
-#include <x86intrin.h>
-
-#define ROR(x, n) __rord ((x), (n))
-
-#else
-
-static inline uint32_t
-ROR (uint32_t x, int n)
-{
-  return (x >> n) | (x << (32 - n));
-}
-
-#endif
+#include <libk/libk.h>
 
 static const uint32_t sha256_k[] = {
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
@@ -82,17 +59,17 @@ sha256_consume_chunk (uint32_t *h, const unsigned char *ptr)
 	    }
 	  else
 	    {
-	      s0 = ROR (w[(j + 1) & 0xf], 7) ^
-		ROR (w[(j + 1) & 0xf], 18) ^ (w[(j + 1) & 0xf] >> 3);
-	      s1 = ROR (w[(j + 14) & 0xf], 17) ^
-		ROR (w[(j + 14) & 0xf], 19) ^ (w[(j + 14) & 0xf] >> 10);
+	      s0 = ror (w[(j + 1) & 0xf], 7) ^
+		ror (w[(j + 1) & 0xf], 18) ^ (w[(j + 1) & 0xf] >> 3);
+	      s1 = ror (w[(j + 14) & 0xf], 17) ^
+		ror (w[(j + 14) & 0xf], 19) ^ (w[(j + 14) & 0xf] >> 10);
 	      w[j] += s0 + w[(j + 9) & 0xf] + s1;
 	    }
-	  s1 = ROR (ah[4], 6) ^ ROR (ah[4], 11) ^ ROR (ah[4], 25);
+	  s1 = ror (ah[4], 6) ^ ror (ah[4], 11) ^ ror (ah[4], 25);
 	  ch = (ah[4] & ah[5]) ^ (~ah[4] & ah[6]);
 
 	  t1 = ah[7] + s1 + ch + sha256_k[(i << 4) | j] + w[j];
-	  s0 = ROR (ah[0], 2) ^ ROR (ah[0], 13) ^ ROR (ah[0], 22);
+	  s0 = ror (ah[0], 2) ^ ror (ah[0], 13) ^ ror (ah[0], 22);
 	  maj = (ah[0] & ah[1]) ^ (ah[0] & ah[2]) ^ (ah[1] & ah[2]);
 	  t2 = s0 + maj;
 

@@ -64,6 +64,12 @@ fast_test_bit (const void *ptr, uint64_t bit)
   return (1 << (bit & 7)) & addr[bit >> 3];
 }
 
+static inline uint32_t
+ror (uint32_t x, int n)
+{
+  return (x >> n) | (x << (32 - n));
+}
+
 __END_DECLS
 
 #endif
