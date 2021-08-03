@@ -220,7 +220,7 @@ ext2_unlink_dirent (VFSSuperblock *sb, VFSInode *dir, const char *name,
     return ret;
   if (l.l_err != 0)
     return l.l_err;
-  return l.l_done ? 0 : -ENOSPC;
+  return l.l_done ? 0 : -ENOENT;
 }
 
 int

@@ -473,7 +473,8 @@ vfs_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
     return -ENOTDIR;
   if (!S_ISDIR (newdir->vi_mode))
     return -ENOTDIR;
-  /* TODO Support cross-filesystem renaming */
+  if (olddir->vi_sb != newdir->vi_sb)
+    return -EXDEV;
   if (newdir->vi_ops->vfs_rename != NULL)
     return newdir->vi_ops->vfs_rename (olddir, oldname, newdir, newname);
   return -ENOSYS;

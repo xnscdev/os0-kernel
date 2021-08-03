@@ -490,7 +490,28 @@ int
 ext2_rename (VFSInode *olddir, const char *oldname, VFSInode *newdir,
 	     const char *newname)
 {
-  return -ENOSYS;
+  ino64_t ino;
+  Ext2Inode inode;
+  int ret = ext2_lookup_inode (olddir->vi_sb, olddir, oldname, strlen (oldname),
+			       NULL, &ino);
+  if (ret != 0)
+    return ret;
+
+  /* Remove existing link, if any */
+  ret = ext2_unlink_dirent (newdir->vi_sb, newdir, newname, 0);
+  if (ret != 0 && ret != -ENOENT)
+    return ret;
+
+  /* Determine mode and replace link */
+  ret = ext2_read_inode (newdir->vi_sb, ino, &inode);
+  if (ret != 0)
+    return ret;
+  ret = ext2_add_link (newdir->vi_sb, newdir, newname, ino, inode.i_mode);
+  if (ret != 0)
+    return ret;
+
+  /* Remove old entry */
+  return ext2_unlink_dirent (olddir->vi_sb, olddir, oldname, 0);
 }
 
 int
