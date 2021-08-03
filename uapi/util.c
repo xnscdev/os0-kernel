@@ -69,3 +69,20 @@ inode_from_fd (int fd)
   file = process_table[task_getpid ()].p_files[fd];
   return file == NULL ? NULL : file->pf_inode;
 }
+
+int
+sys_read_dir_entry (const char *name, size_t namelen, ino64_t ino,
+		    unsigned char type, off64_t offset, void *private)
+{
+  DirIterContext *ctx = private;
+  struct dirent *d;
+  ctx->d_curr_offset = offset;
+  if (ctx->d_curr_offset < ctx->d_min_offset)
+    return 0;
+  d = &ctx->d_dirp[ctx->d_curr_count];
+  d->d_ino = ino;
+  d->d_namlen = namelen;
+  memcpy (d->d_name, name, namelen);
+  memset (&d->d_name[namelen], 0, 256 - namelen);
+  return ++ctx->d_curr_count == ctx->d_max_count;
+}

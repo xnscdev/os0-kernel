@@ -32,6 +32,15 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
+typedef struct
+{
+  unsigned int d_curr_count;
+  unsigned int d_max_count;
+  off64_t d_curr_offset;
+  off64_t d_min_offset;
+  struct dirent *d_dirp;
+} DirIterContext;
+
 __BEGIN_DECLS
 
 void sys_exit (int code);
@@ -187,7 +196,8 @@ ssize_t sys_getrandom (void *buffer, size_t len, unsigned int flags);
 
 int sys_path_sep (const char *path, VFSInode **dir, char **name);
 VFSInode *inode_from_fd (int fd);
-void sys_setup_sighandler (pid_t pid);
+int sys_read_dir_entry (const char *name, size_t namelen, ino64_t ino,
+			unsigned char type, off64_t offset, void *private);
 
 __END_DECLS
 
