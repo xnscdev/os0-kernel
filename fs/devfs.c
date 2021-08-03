@@ -117,7 +117,7 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  *inode = vfs_alloc_inode (sb);
 	  if (unlikely (*inode == NULL))
 	    return -ENOMEM;
-	  (*inode)->vi_ino = DEVFS_FD_INODE;
+	  (*inode)->vi_ino = DEVFS_FDS_INODE;
 	  (*inode)->vi_mode = S_IFDIR | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	  (*inode)->vi_nlink = 2;
 	  (*inode)->vi_private = NULL;
@@ -137,36 +137,32 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	      (*inode)->vi_mode |= S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	      (*inode)->vi_nlink = 1;
 	      (*inode)->vi_rdev =
-		makedev (device_table[i].sd_major, device_table[i].sd_minor);
-	      (*inode)->vi_ino = DEVFS_DEVICE_INODE ((*inode)->vi_rdev);
+	        makedev (device_table[i].sd_major, device_table[i].sd_minor);
+	      (*inode)->vi_ino = DEVFS_DEVICE_INODE (device_table[i].sd_major,
+						     device_table[i].sd_minor);
 	      (*inode)->vi_private = &device_table[i];
 	      return 0;
 	    }
 	}
       return -ENOENT;
     }
-  else if (dir->vi_ino == DEVFS_FD_INODE)
+  else if (dir->vi_ino == DEVFS_FDS_INODE)
     {
-      if (symcount != -1)
+      int fd = 0;
+      /* Convert string to file descriptor */
+      while (isdigit (*name))
 	{
-	  int fd = 0;
-	  /* Convert string to file descriptor */
-	  while (isdigit (*name))
-	    {
-	      fd *= 10;
-	      fd += *name - '0';
-	      name++;
-	    }
-	  if (*name != '\0')
-	    return -ENOENT;
-	  *inode = inode_from_fd (fd);
-	  if (unlikely (*inode == NULL))
-	    return -ENOENT;
-	  vfs_ref_inode (*inode);
-	  return 0;
+	  fd *= 10;
+	  fd += *name - '0';
+	  name++;
 	}
-      else
-	return -EPERM;
+      if (*name != '\0')
+	return -ENOENT;
+      *inode = inode_from_fd (fd);
+      if (unlikely (*inode == NULL))
+	return -ENOENT;
+      vfs_ref_inode (*inode);
+      return 0;
     }
   return -ENOENT;
 }
@@ -186,9 +182,46 @@ devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 }
 
 int
-devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
+devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 {
-  return -ENOSYS;
+  Process *proc = &process_table[task_getpid ()];
+  int ret;
+  int i;
+  switch (inode->vi_ino)
+    {
+    case DEVFS_ROOT_INODE:
+      for (i = 0; i < DEVICE_TABLE_SIZE; i++)
+	{
+	  SpecDevice *dev = &device_table[i];
+	  if (*dev->sd_name != '\0')
+	    {
+	      ret = func (dev->sd_name, strlen (dev->sd_name),
+			  DEVFS_DEVICE_INODE (dev->sd_major, dev->sd_minor),
+			  dev->sd_type == DEVICE_TYPE_BLOCK ? DT_BLK : DT_CHR,
+			  i, private);
+	      if (ret != 0)
+		return ret;
+	    }						
+	}
+      return func ("fd", 2, 1, DT_DIR, DEVICE_TABLE_SIZE, private);
+    case DEVFS_FDS_INODE:
+      for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+	{
+	  if (proc->p_files[i] != NULL)
+	    {
+	      char buffer[4];
+	      itoa (i, buffer, 10);
+	      ret = func (buffer, strlen (buffer), DEVFS_FD_INODE (i), DT_BLK,
+			  i, private);
+	      if (ret != 0)
+		return ret;
+	    }
+	}
+      break;
+    default:
+      return -ENOENT;
+    }
+  return 0;
 }
 
 int

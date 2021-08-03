@@ -86,6 +86,7 @@ vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks)
 
   CHECK_ROOT_MOUNT;
   vfs_ref_inode (dir);
+  dont_unref = 1;
 
  search:
   while (*ptr != '\0')

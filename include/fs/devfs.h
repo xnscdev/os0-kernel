@@ -23,10 +23,11 @@
 #include <sys/sysmacros.h>
 
 #define DEVFS_FS_NAME    "devfs"
-#define DEVFS_ROOT_INODE 0
-#define DEVFS_FD_INODE   1
+#define DEVFS_ROOT_INODE 0xffffffff
+#define DEVFS_FDS_INODE   0xfffffffe
 
-#define DEVFS_DEVICE_INODE(rdev) (rdev + 2)
+#define DEVFS_DEVICE_INODE(maj, min) makedev (maj, min)
+#define DEVFS_FD_INODE(fd)           (0xff000000 | (fd))
 
 #define DEVFS_BLKSIZE 1024 /* Arbitrary value */
 
@@ -47,7 +48,7 @@ int devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 		  const char *name, int symcount);
 int devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
-int devfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
+int devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private);
 int devfs_readlink (VFSInode *inode, char *buffer, size_t len);
 int devfs_getattr (VFSInode *inode, struct stat64 *st);
 

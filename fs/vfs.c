@@ -33,8 +33,8 @@ VFSInode *vfs_root_inode;
 static int vfs_default_lookup (VFSInode **inode, VFSInode *dir,
 			       VFSSuperblock *sb, const char *name,
 			       int symcount);
-static int vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir,
-				VFSSuperblock *sb);
+static int vfs_default_readdir (VFSInode *inode, VFSDirEntryFillFunc func,
+				void *private);
 
 static VFSInodeOps vfs_default_iops = {
   .vfs_lookup = vfs_default_lookup,
@@ -74,9 +74,9 @@ vfs_default_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 }
 
 static int
-vfs_default_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
+vfs_default_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 {
-  return -ENOENT;
+  return func ("dev", 3, 1, DT_DIR, 0, private);
 }
 
 void
@@ -110,15 +110,6 @@ vfs_register (const VFSFilesystem *fs)
       return 0;
     }
   return -ENOSPC;
-}
-
-void
-vfs_destroy_dir_entry (VFSDirEntry *entry)
-{
-  if (entry == NULL)
-    return;
-  vfs_unref_inode (entry->d_inode);
-  kfree (entry);
 }
 
 int
@@ -376,15 +367,15 @@ vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 }
 
 int
-vfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
+vfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 {
-  int ret = vfs_perm_check_read (dir->vd_inode, 0);
+  int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
-  if (!S_ISDIR (dir->vd_inode->vi_mode))
+  if (!S_ISDIR (inode->vi_mode))
     return -ENOTDIR;
-  if (dir->vd_inode->vi_ops->vfs_readdir != NULL)
-    return dir->vd_inode->vi_ops->vfs_readdir (entry, dir, sb);
+  if (inode->vi_ops->vfs_readdir != NULL)
+    return inode->vi_ops->vfs_readdir (inode, func, private);
   return -ENOSYS;
 }
 

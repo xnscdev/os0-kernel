@@ -167,7 +167,8 @@ heap_realloc (MemHeap *heap, void *ptr, uint32_t size)
       if (sorted_array_lookup (&heap->mh_index, i) == header)
         goto found;
     }
-  panic ("Attempted to reallocate memory not in heap index");
+  printk ("heap: aborting realloc not in heap index\n");
+  return NULL;
 
  found:
   footer = (MemFooter *) ((uint32_t) header + sizeof (MemHeader) +
@@ -263,7 +264,8 @@ heap_free (MemHeap *heap, void *ptr)
       if (sorted_array_lookup (&heap->mh_index, i) == header)
         goto found;
     }
-  panic ("Attempted to free memory header not in heap index");
+  printk ("heap: aborting free not in heap index\n");
+  return;
 
  found:
   header->mh_alloc = 0;

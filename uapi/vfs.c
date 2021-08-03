@@ -648,8 +648,11 @@ sys_fchdir (int fd)
   VFSInode *inode = inode_from_fd (fd);
   if (inode == NULL)
     return -EBADF;
+  if (proc->p_cwd == inode)
+    return 0;
   if (!S_ISDIR (inode->vi_mode))
     return -ENOTDIR;
+  kfree (proc->p_cwdpath);
   proc->p_cwdpath = strdup (proc->p_files[fd]->pf_path);
   if (proc->p_cwdpath == NULL)
     return -ENOMEM;
@@ -695,43 +698,55 @@ sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
   return 0;
 }
 
+typedef struct
+{
+  unsigned int d_curr_count;
+  unsigned int d_max_count;
+  off64_t d_curr_offset;
+  off64_t d_min_offset;
+  struct dirent *d_dirp;
+} DirIterContext;
+
+static int
+sys_read_dir_entry (const char *name, size_t namelen, ino64_t ino,
+		    unsigned char type, off64_t offset, void *private)
+{
+  DirIterContext *ctx = private;
+  struct dirent *d;
+  ctx->d_curr_offset = offset;
+  if (ctx->d_curr_offset < ctx->d_min_offset)
+    return 0;
+  d = &ctx->d_dirp[ctx->d_curr_count];
+  d->d_ino = ino;
+  d->d_namlen = namelen;
+  memcpy (d->d_name, name, namelen);
+  memset (&d->d_name[namelen], 0, 256 - namelen);
+  return ++ctx->d_curr_count == ctx->d_max_count;
+}
+
 int
 sys_getdents (int fd, struct dirent *dirp, unsigned int count)
 {
-  return -ENOSYS;
-
-  /* TODO Cleanup
   Process *proc = &process_table[task_getpid ()];
-  VFSDirectory *dir;
-  VFSDirEntry *entry;
-  unsigned int i;
+  VFSInode *dir = inode_from_fd (fd);
+  DirIterContext ctx;
   int ret;
-  if (fd < 0 || fd >= PROCESS_FILE_LIMIT || proc->p_files[fd] == NULL)
-    return -EBADF;
-  dir = proc->p_files[fd]->pf_dir;
   if (dir == NULL)
+    return -EBADF;
+  if (!S_ISDIR (dir->vi_mode))
     return -ENOTDIR;
-  for (i = 0; i < count; i++)
-    {
-      ret = vfs_readdir (&entry, dir, dir->vd_inode->vi_sb);
-      switch (ret)
-	{
-	case 1:
-	  if (i == count - 1)
-	    break;
-	  return 0;
-	case 0:
-	  dirp[i].d_ino = entry->d_inode->vi_ino;
-	  dirp[i].d_reclen = sizeof (struct dirent);
-	  dirp[i].d_type = DT_UNKNOWN;
-	  strncpy (dirp[i].d_name, entry->d_name, 256);
-	  vfs_destroy_dir_entry (entry);
-	  break;
-	default:
-	  return ret;
-	}
-    }
-  return sizeof (struct dirent) * count; */
+
+  ctx.d_curr_count = 0;
+  ctx.d_max_count = count;
+  ctx.d_curr_offset = 0;
+  ctx.d_min_offset = proc->p_files[fd]->pf_offset;
+  ctx.d_dirp = dirp;
+
+  ret = vfs_readdir (dir, sys_read_dir_entry, &ctx);
+  if (ret != 0)
+    return ret;
+  proc->p_files[fd]->pf_offset = ctx.d_curr_offset + 1;
+  return ctx.d_curr_count;
 }
 
 ssize_t

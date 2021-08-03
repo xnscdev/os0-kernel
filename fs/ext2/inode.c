@@ -25,6 +25,27 @@
 #include <sys/sysmacros.h>
 #include <vm/heap.h>
 
+static int
+ext2_process_readdir (VFSInode *dir, int entry, Ext2DirEntry *dirent,
+		      int offset, int blocksize, char *buffer, void *priv)
+{
+  Ext2Readdir *r = priv;
+  if (offset < r->r_offset)
+    r->r_block++;
+  r->r_offset = offset;
+  r->r_err = r->r_func (dirent->d_name, dirent->d_name_len & 0xff,
+			dirent->d_inode, (dirent->d_name_len >> 8) & 0xff,
+			r->r_block * dir->vi_sb->sb_blksize + r->r_offset,
+			r->r_private);
+  if (r->r_err != 0)
+    {
+      if (r->r_err > 0)
+	r->r_err = 0;
+      return DIRENT_ABORT;
+    }
+  return 0;
+}
+
 int
 ext2_create (VFSInode *dir, const char *name, mode_t mode)
 {
@@ -300,9 +321,20 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 }
 
 int
-ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb)
+ext2_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 {
-  return -ENOSYS;
+  Ext2Readdir r;
+  int ret;
+  r.r_func = func;
+  r.r_private = private;
+  r.r_block = 0;
+  r.r_offset = 0;
+  r.r_err = 0;
+  ret = ext2_dir_iterate (inode->vi_sb, inode, DIRENT_FLAG_EMPTY, NULL,
+			  ext2_process_readdir, &r);
+  if (ret != 0)
+    return ret;
+  return r.r_err;
 }
 
 int

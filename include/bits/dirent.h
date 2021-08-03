@@ -37,7 +37,6 @@
 struct dirent
 {
   ino_t d_ino;
-  unsigned short d_reclen;
   unsigned char d_namlen;
   unsigned char d_type;
   char d_name[256];

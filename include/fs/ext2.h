@@ -923,6 +923,15 @@ typedef struct
   VFSInode *de_dir;
 } Ext2DirExpand;
 
+typedef struct
+{
+  VFSDirEntryFillFunc r_func;
+  void *r_private;
+  block_t r_block;
+  uint32_t r_offset;
+  int r_err;
+} Ext2Readdir;
+
 __BEGIN_DECLS
 
 extern const VFSSuperblockOps ext2_sops;
@@ -1297,7 +1306,7 @@ int ext2_unlink (VFSInode *dir, const char *name);
 int ext2_symlink (VFSInode *dir, const char *old, const char *new);
 int ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
-int ext2_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
+int ext2_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private);
 int ext2_chmod (VFSInode *inode, mode_t mode);
 int ext2_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int ext2_mkdir (VFSInode *dir, const char *name, mode_t mode);

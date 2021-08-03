@@ -40,8 +40,9 @@
 typedef struct _VFSMount VFSMount;
 typedef struct _VFSSuperblock VFSSuperblock;
 typedef struct _VFSInode VFSInode;
-typedef struct _VFSDirEntry VFSDirEntry;
-typedef struct _VFSDirectory VFSDirectory;
+
+typedef int (*VFSDirEntryFillFunc) (const char *, size_t, ino64_t,
+				    unsigned char, off64_t, void *);
 
 typedef struct
 {
@@ -65,7 +66,7 @@ typedef struct
   int (*vfs_symlink) (VFSInode *, const char *, const char *);
   int (*vfs_read) (VFSInode *, void *, size_t, off_t);
   int (*vfs_write) (VFSInode *, const void *, size_t, off_t);
-  int (*vfs_readdir) (VFSDirEntry **entry, VFSDirectory *, VFSSuperblock *);
+  int (*vfs_readdir) (VFSInode *, VFSDirEntryFillFunc, void *);
   int (*vfs_chmod) (VFSInode *, mode_t);
   int (*vfs_chown) (VFSInode *, uid_t, gid_t);
   int (*vfs_mkdir) (VFSInode *, const char *, mode_t);
@@ -127,23 +128,6 @@ struct _VFSInode
   void *vi_private;
 };
 
-struct _VFSDirEntry
-{
-  int d_flags;
-  VFSInode *d_inode;
-  int d_mounted;
-  char *d_name;
-};
-
-struct _VFSDirectory
-{
-  VFSInode *vd_inode;
-  uint32_t vd_offset;
-  uint32_t vd_block;
-  char *vd_buffer;
-  size_t vd_count;
-};
-
 struct _VFSMount
 {
   const VFSFilesystem *vfs_fstype;
@@ -163,7 +147,6 @@ extern VFSInode *vfs_root_inode;
 void vfs_init (void);
 
 int vfs_register (const VFSFilesystem *fs);
-void vfs_destroy_dir_entry (VFSDirEntry *entry);
 int vfs_guess_type (SpecDevice *dev);
 int vfs_mount (const char *type, const char *dir, int flags, void *data);
 
@@ -190,7 +173,7 @@ int vfs_unlink (VFSInode *dir, const char *name);
 int vfs_symlink (VFSInode *dir, const char *old, const char *new);
 int vfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
-int vfs_readdir (VFSDirEntry **entry, VFSDirectory *dir, VFSSuperblock *sb);
+int vfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private);
 int vfs_chmod (VFSInode *inode, mode_t mode);
 int vfs_chown (VFSInode *inode, uid_t uid, gid_t gid);
 int vfs_mkdir (VFSInode *dir, const char *name, mode_t mode);
