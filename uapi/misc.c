@@ -80,6 +80,11 @@ sys_execve (const char *path, char *const *argv, char *const *envp)
       vfs_unref_inode (inode);
       return -EACCES;
     }
+  if (S_ISDIR (inode->vi_mode))
+    {
+      vfs_unref_inode (inode);
+      return -EISDIR;
+    }
   memset (&dlinfo, 0, sizeof (DynamicLinkInfo));
   DISABLE_TASK_SWITCH;
   ret = process_exec (inode, &eip, argv, envp, &dlinfo);
