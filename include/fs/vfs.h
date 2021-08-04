@@ -193,6 +193,7 @@ int vfs_removexattr (VFSInode *inode, const char *name);
 
 int vfs_open_file (VFSInode **inode, const char *path, int follow_symlinks);
 char *vfs_path_resolve (const char *path);
+void vfs_unmount_all (void);
 
 __END_DECLS
 

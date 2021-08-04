@@ -563,3 +563,14 @@ vfs_removexattr (VFSInode *inode, const char *name)
     return inode->vi_ops->vfs_removexattr (inode, name);
   return -ENOSYS;
 }
+
+void
+vfs_unmount_all (void)
+{
+  int i;
+  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+    {
+      if (mount_table[i].vfs_fstype != NULL)
+	vfs_unmount (&mount_table[i].vfs_sb, 0);
+    }
+}

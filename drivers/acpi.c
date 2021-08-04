@@ -16,6 +16,7 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <fs/vfs.h>
 #include <libk/libk.h>
 #include <sys/acpi.h>
 #include <sys/io.h>
@@ -223,6 +224,7 @@ acpi_enable (void)
 int
 acpi_shutdown (void)
 {
+  vfs_unmount_all ();
   if (LOW_ACCESS (acpi_sci_en) == 0)
     return -ENOTSUP;
   outw (LOW_ACCESS (acpi_slp_typa) | LOW_ACCESS (acpi_slp_en),
@@ -236,6 +238,7 @@ acpi_shutdown (void)
 void
 acpi_reset (void)
 {
+  vfs_unmount_all ();
   if (LOW_ACCESS (acpi_reset_avail))
     {
       /* ACPI reset */

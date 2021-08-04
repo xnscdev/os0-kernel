@@ -275,6 +275,7 @@ kbd_get_input (void *buffer, size_t len, int block)
 {
   KbdBuffer *kbdbuf = &CURRENT_TERMINAL->vt_kbdbuf;
   int await = 0;
+  size_t temp = len;
 
   if (kbd_eof)
     return 0;
@@ -303,6 +304,8 @@ kbd_get_input (void *buffer, size_t len, int block)
 		;
 	    }
 	  len = kbdbuf->kbd_bufpos - kbdbuf->kbd_currpos;
+	  if (len > temp)
+	    len = temp;
 	}
       else
 	return -EAGAIN;

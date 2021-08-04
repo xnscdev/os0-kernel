@@ -299,7 +299,7 @@ ext2_mount (VFSMount *mp, int flags, void *data)
 int
 ext2_unmount (VFSMount *mp, int flags)
 {
-  return ext2_flush (&mp->vfs_sb, 0);
+  return ext2_flush (&mp->vfs_sb, FLUSH_VALID);
 }
 
 VFSInode *

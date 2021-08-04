@@ -1327,6 +1327,8 @@ ext2_flush (VFSSuperblock *sb, int flags)
  write_super:
   fs->f_super.s_block_group_nr = 0;
   fs->f_super.s_state = state;
+  if (flags & FLUSH_VALID)
+    fs->f_super.s_state |= EXT2_STATE_VALID;
   ext2_superblock_checksum_update (fs, super_shadow);
   ret = ext2_write_primary_superblock (sb, super_shadow);
   if (ret != 0)

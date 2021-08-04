@@ -268,6 +268,8 @@
 #define DIRENT_DELETED_FILE 4
 #define DIRENT_CHECKSUM     5
 
+#define FLUSH_VALID 0x01
+
 #define EXT2_INIT_MAX_LEN   (1 << 15)
 #define EXT2_UNINIT_MAX_LEN (EXT2_INIT_MAX_LEN - 1)
 #define EXT2_MAX_EXTENT_LBLK (((block_t) 1 << 32) - 1)
