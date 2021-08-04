@@ -42,7 +42,7 @@ static char *init_argv[] = {
 
 static char *init_envp[] = {
   "PWD=/",
-  "TERM=xterm",
+  "TERM=vt100",
   NULL
 };
 
