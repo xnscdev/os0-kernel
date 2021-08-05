@@ -26,6 +26,8 @@ fcntl_dupfd (Process *proc, int fd, int arg, int cloexec)
   int nfd;
   if (arg < 0 || arg >= PROCESS_FILE_LIMIT)
     return -EINVAL;
+  if (fd == arg)
+    return fd;
   for (nfd = arg; nfd < PROCESS_FILE_LIMIT; nfd++)
     {
       if (proc->p_files[nfd] == NULL)
@@ -34,7 +36,8 @@ fcntl_dupfd (Process *proc, int fd, int arg, int cloexec)
   if (unlikely (nfd == PROCESS_FILE_LIMIT))
     return -EMFILE;
   proc->p_files[nfd] = proc->p_files[fd];
-  vfs_ref_inode (proc->p_files[nfd]->pf_inode);
+  proc->p_fdflags[nfd] = cloexec ? FD_CLOEXEC : 0;
+  proc->p_files[nfd]->pf_refcnt++;
   return nfd;
 }
 
@@ -51,9 +54,9 @@ fcntl (int fd, int cmd, int arg)
     case F_DUPFD_CLOEXEC:
       return fcntl_dupfd (proc, fd, arg, 1);
     case F_GETFD:
-      return proc->p_files[fd]->pf_flags;
+      return proc->p_fdflags[fd];
     case F_SETFD:
-      proc->p_files[fd]->pf_flags = arg;
+      proc->p_fdflags[fd] = arg;
       return 0;
     case F_GETFL:
       return proc->p_files[fd]->pf_mode;

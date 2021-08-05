@@ -235,7 +235,7 @@ ext2_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
   unsigned int c;
   uint64_t left;
   char *ptr = buffer;
-  int ret;
+  int ret = 0;
   file->f_pos = offset;
 
   if (file->f_inode.i_flags & EXT4_INLINE_DATA_FL)
@@ -274,7 +274,8 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
   unsigned int count = 0;
   unsigned int start;
   unsigned int c;
-  int ret;
+  int ret = 0;
+  file->f_pos = offset;
 
   if (file->f_inode.i_flags & EXT4_INLINE_DATA_FL)
     return -ENOTSUP;
@@ -298,8 +299,8 @@ ext2_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 	{
 	  ret = ext2_bmap (inode->vi_sb, file->f_ino, &file->f_inode,
 			   file->f_buffer + blksize,
-			   file->f_ino == 0 ? 0 : BMAP_ALLOC, file->f_block, 0,
-			   &file->f_physblock);
+			   file->f_ino == 0 ? 0 : BMAP_ALLOC, file->f_block,
+			   0, &file->f_physblock);
 	  if (ret != 0)
 	    goto end;
 	}

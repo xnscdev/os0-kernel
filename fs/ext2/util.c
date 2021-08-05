@@ -2228,6 +2228,7 @@ ext2_new_file (VFSInode *dir, const char *name, mode_t mode, VFSInode **result)
     }
 
   ei = &file->f_inode;
+  memset (ei, 0, sizeof (Ext2Inode));
   ei->i_mode = mode;
   ei->i_uid = proc->p_euid;
   ei->i_gid = proc->p_egid;
@@ -2262,10 +2263,10 @@ ext2_alloc_block (VFSSuperblock *sb, block_t goal, char *blockbuf,
 	ext2_read_bitmap (sb, EXT2_BITMAP_BLOCK, 0, fs->f_group_desc_count - 1);
       if (ret != 0)
 	return ret;
-      ret = ext2_new_block (sb, goal, NULL, &block, ctx);
-      if (ret != 0)
-	return ret;
     }
+  ret = ext2_new_block (sb, goal, NULL, &block, ctx);
+  if (ret != 0)
+    return ret;
   if (blockbuf != NULL)
     {
       memset (blockbuf, 0, sb->sb_blksize);

@@ -164,9 +164,10 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
   Elf32_Ehdr *ehdr;
   SortedArray *mregions;
   Process *proc;
-  int ret;
   char hashbang[2];
   pid_t pid = task_getpid ();
+  int ret;
+  int i;
 
   /* Check for a hashbang */
   if (vfs_read (inode, hashbang, 2, 0) < 0)
@@ -180,6 +181,14 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
 
   /* Clear existing process data */
   process_clear (pid, 1);
+
+  /* Close all close-on-exec file descriptors */
+  proc = &process_table[pid];
+  for (i = 0; i < PROCESS_FILE_LIMIT; i++)
+    {
+      if (proc->p_fdflags[i] & FD_CLOEXEC)
+	process_free_fd (proc, i);
+    }
 
   mregions = sorted_array_new (PROCESS_MMAP_LIMIT, process_mregion_cmp);
   if (unlikely (mregions == NULL))
@@ -224,7 +233,6 @@ process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
   *entry = ehdr->e_entry;
 
   /* Setup program break */
-  proc = &process_table[pid];
   proc->p_break = ret;
   if (proc->p_break & (PAGE_SIZE - 1))
     {
@@ -431,6 +439,7 @@ process_free (pid_t pid)
   /* Clear all open file descriptors */
   for (i = 0; i < PROCESS_FILE_LIMIT; i++)
     process_free_fd (proc, i);
+  memset (proc->p_fdflags, 0, sizeof (int) * PROCESS_FILE_LIMIT);
 }
 
 void
@@ -469,7 +478,6 @@ process_setup_std_streams (pid_t pid)
   if (proc->p_files[STDIN_FILENO]->pf_path == NULL)
     return -ENOMEM;
   proc->p_files[STDIN_FILENO]->pf_mode = O_RDONLY;
-  proc->p_files[STDIN_FILENO]->pf_flags = 0;
   proc->p_files[STDIN_FILENO]->pf_offset = 0;
 
   /* Create stdout */
@@ -481,7 +489,6 @@ process_setup_std_streams (pid_t pid)
   if (proc->p_files[STDOUT_FILENO]->pf_path == NULL)
     return -ENOMEM;
   proc->p_files[STDOUT_FILENO]->pf_mode = O_WRONLY | O_APPEND;
-  proc->p_files[STDOUT_FILENO]->pf_flags = 0;
   proc->p_files[STDOUT_FILENO]->pf_offset = 0;
 
   /* Create stderr */
@@ -493,7 +500,6 @@ process_setup_std_streams (pid_t pid)
   if (proc->p_files[STDERR_FILENO]->pf_path == NULL)
     return -ENOMEM;
   proc->p_files[STDERR_FILENO]->pf_mode = O_WRONLY | O_APPEND;
-  proc->p_files[STDERR_FILENO]->pf_flags = 0;
   proc->p_files[STDERR_FILENO]->pf_offset = 0;
   return 0;
 }

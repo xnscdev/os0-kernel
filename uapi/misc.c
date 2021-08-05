@@ -170,14 +170,12 @@ sys_pipe (int fd[2])
   proc->p_files[read_fd]->pf_inode = read_inode;
   proc->p_files[read_fd]->pf_path = NULL;
   proc->p_files[read_fd]->pf_mode = O_RDONLY;
-  proc->p_files[read_fd]->pf_flags = 0;
   proc->p_files[read_fd]->pf_offset = 0;
   fd[0] = read_fd;
 
   proc->p_files[write_fd]->pf_inode = write_inode;
   proc->p_files[write_fd]->pf_path = NULL;
   proc->p_files[write_fd]->pf_mode = O_WRONLY;
-  proc->p_files[write_fd]->pf_flags = 0;
   proc->p_files[write_fd]->pf_offset = 0;
   fd[1] = write_fd;
   return 0;

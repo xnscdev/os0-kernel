@@ -315,6 +315,7 @@ ext2_alloc_inode (VFSSuperblock *sb)
 void
 ext2_destroy_inode (VFSInode *inode)
 {
+  ext2_file_flush (inode->vi_private);
   kfree (inode->vi_private);
   kfree (inode);
 }
@@ -369,6 +370,13 @@ ext2_free (VFSSuperblock *sb)
 void
 ext2_update (VFSSuperblock *sb)
 {
+  int i;
+  for (i = 0; i < PROCESS_SYS_FILE_LIMIT; i++)
+    {
+      if (process_fd_table[i].pf_inode != NULL
+	  && process_fd_table[i].pf_inode->vi_sb == sb)
+        ext2_file_flush (process_fd_table[i].pf_inode->vi_private);
+    }
   ext2_flush (sb, 0);
 }
 

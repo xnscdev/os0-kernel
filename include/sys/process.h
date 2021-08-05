@@ -37,7 +37,6 @@ typedef struct
   VFSInode *pf_inode;     /* File descriptor inode */
   char *pf_path;          /* Path used to open fd */
   int pf_mode;            /* Access mode */
-  int pf_flags;           /* Other flags */
   off64_t pf_offset;      /* Current offset position */
   int pf_refcnt;          /* Reference count */
 } ProcessFile;
@@ -55,6 +54,7 @@ typedef struct
 typedef struct
 {
   ProcessFile *p_files[PROCESS_FILE_LIMIT];  /* File descriptors */
+  int p_fdflags[PROCESS_FILE_LIMIT];         /* File descriptor flags */
   struct sigaction p_sigactions[NSIG];       /* Signal handler table */
   sigset_t p_sigblocked;                     /* Signal block mask */
   sigset_t p_sigpending;                     /* Signal pending mask */
