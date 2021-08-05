@@ -34,7 +34,8 @@ vga_tty_alloc_inode (VFSSuperblock *sb)
   VFSInode *inode = kzalloc (sizeof (VFSInode));
   if (inode == NULL)
     return NULL;
-  inode->vi_mode = S_IFCHR | S_IRUSR | S_IWUSR | S_IWOTH;
+  inode->vi_mode = S_IFCHR | S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH
+    | S_IWOTH;
   inode->vi_ops = &vga_tty_iops;
   inode->vi_sb = &vga_tty_sb;
   return inode;

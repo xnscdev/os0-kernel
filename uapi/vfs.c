@@ -47,7 +47,7 @@ sys_read (int fd, void *buffer, size_t len)
   ret = vfs_read (file->pf_inode, buffer, len, file->pf_offset);
   if (ret < 0)
     return ret;
-  file->pf_offset += len;
+  file->pf_offset += ret;
   return ret;
 }
 
@@ -64,7 +64,7 @@ sys_write (int fd, const void *buffer, size_t len)
   ret = vfs_write (file->pf_inode, buffer, len, file->pf_offset);
   if (ret < 0)
     return ret;
-  file->pf_offset += len;
+  file->pf_offset += ret;
   return ret;
 }
 
