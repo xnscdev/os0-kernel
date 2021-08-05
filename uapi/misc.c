@@ -102,10 +102,10 @@ sys_nice (int inc)
   Process *proc = &process_table[task_getpid ()];
   int prio = proc->p_task->t_priority + inc;
   if (proc->p_euid != 0 && inc < 0)
-    return -EPERM - 20;
-  if (prio < PRIO_MIN)
+    return -EPERM + PRIO_MAX;
+  if (prio > PRIO_MIN)
     prio = PRIO_MIN;
-  if (prio > PRIO_MAX)
+  if (prio < PRIO_MAX)
     prio = PRIO_MAX;
   proc->p_task->t_priority = prio;
   return prio;
@@ -217,6 +217,128 @@ sys_dup2 (int fd1, int fd2)
 }
 
 int
+sys_setrlimit (int resource, const struct rlimit *rlim)
+{
+  Process *proc = &process_table[task_getpid ()];
+  if (rlim->rlim_cur > rlim->rlim_max)
+    return -EINVAL;
+  switch (resource)
+    {
+    case RLIMIT_AS:
+      if (rlim->rlim_max > proc->p_addrspace.rlim_max)
+	return -EPERM;
+      proc->p_addrspace.rlim_cur = rlim->rlim_cur;
+      proc->p_addrspace.rlim_max = rlim->rlim_max;
+      break;
+    case RLIMIT_CORE:
+      if (rlim->rlim_max > proc->p_coresize.rlim_max)
+	return -EPERM;
+      proc->p_coresize.rlim_cur = rlim->rlim_cur;
+      proc->p_coresize.rlim_max = rlim->rlim_max;
+      break;
+    case RLIMIT_CPU:
+      if (rlim->rlim_max > proc->p_cputime.rlim_max)
+	return -EPERM;
+      proc->p_cputime.rlim_cur = rlim->rlim_cur;
+      proc->p_cputime.rlim_max = rlim->rlim_max;
+      break;
+    case RLIMIT_DATA:
+      if (rlim->rlim_max > PROCESS_BREAK_LIMIT)
+	return -EPERM;
+      proc->p_maxbreak = rlim->rlim_cur;
+      break;
+    case RLIMIT_FSIZE:
+      if (rlim->rlim_max > proc->p_filesize.rlim_max)
+	return -EPERM;
+      proc->p_filesize.rlim_cur = rlim->rlim_cur;
+      proc->p_filesize.rlim_max = rlim->rlim_max;
+      break;
+    case RLIMIT_MEMLOCK:
+      if (rlim->rlim_max > proc->p_memlock.rlim_max)
+	return -EPERM;
+      proc->p_filesize.rlim_cur = rlim->rlim_cur;
+      proc->p_filesize.rlim_max = rlim->rlim_max;
+      break;
+    case RLIMIT_NICE:
+      return sys_setpriority (PRIO_PROCESS, 0, PRIO_MIN + 1 - rlim->rlim_cur);
+    case RLIMIT_NOFILE:
+      if (rlim->rlim_max > PROCESS_FILE_LIMIT)
+	return -EPERM;
+      proc->p_maxfds = rlim->rlim_cur;
+      break;
+    case RLIMIT_NPROC:
+      if (rlim->rlim_max > PROCESS_LIMIT)
+	return -EPERM;
+      break;
+    case RLIMIT_RSS:
+      break;
+    case RLIMIT_STACK:
+      if (rlim->rlim_max > TASK_STACK_SIZE - SYSCALL_STACK_SIZE)
+	return -EPERM;
+      break;
+    default:
+      return -EINVAL;
+    }
+  return 0;
+}
+
+int
+sys_getrlimit (int resource, struct rlimit *rlim)
+{
+  Process *proc = &process_table[task_getpid ()];
+  switch (resource)
+    {
+    case RLIMIT_AS:
+      rlim->rlim_cur = proc->p_addrspace.rlim_cur;
+      rlim->rlim_max = proc->p_addrspace.rlim_max;
+      break;
+    case RLIMIT_CORE:
+      rlim->rlim_cur = proc->p_coresize.rlim_cur;
+      rlim->rlim_max = proc->p_coresize.rlim_max;
+      break;
+    case RLIMIT_CPU:
+      rlim->rlim_cur = proc->p_cputime.rlim_cur;
+      rlim->rlim_max = proc->p_cputime.rlim_max;
+      break;
+    case RLIMIT_DATA:
+      rlim->rlim_cur = proc->p_maxbreak;
+      rlim->rlim_max = PROCESS_BREAK_LIMIT;
+      break;
+    case RLIMIT_FSIZE:
+      rlim->rlim_cur = proc->p_filesize.rlim_cur;
+      rlim->rlim_max = proc->p_filesize.rlim_max;
+      break;
+    case RLIMIT_MEMLOCK:
+      rlim->rlim_cur = proc->p_memlock.rlim_cur;
+      rlim->rlim_max = proc->p_memlock.rlim_max;
+      break;
+    case RLIMIT_NICE:
+      rlim->rlim_cur = PRIO_MIN + 1 - proc->p_task->t_priority;
+      rlim->rlim_max = PRIO_MIN + 1 - PRIO_MAX;
+      break;
+    case RLIMIT_NOFILE:
+      rlim->rlim_cur = proc->p_maxfds;
+      rlim->rlim_max = PROCESS_FILE_LIMIT;
+      break;
+    case RLIMIT_NPROC:
+      rlim->rlim_cur = RLIM_INFINITY;
+      rlim->rlim_max = PROCESS_LIMIT;
+      break;
+    case RLIMIT_RSS:
+      rlim->rlim_cur = RLIM_INFINITY;
+      rlim->rlim_max = LONG_MAX;
+      break;
+    case RLIMIT_STACK:
+      rlim->rlim_cur = TASK_STACK_SIZE - SYSCALL_STACK_SIZE;
+      rlim->rlim_max = TASK_STACK_SIZE - SYSCALL_STACK_SIZE;
+      break;
+    default:
+      return -EINVAL;
+    }
+  return 0;
+}
+
+int
 sys_getrusage (int who, struct rusage *usage)
 {
   Process *proc = &process_table[task_getpid ()];
@@ -265,17 +387,17 @@ sys_getpriority (int which, id_t who)
 {
   pid_t pid = who != 0 ? who : task_getpid ();
   uid_t uid = who != 0 ? who : process_table[task_getpid ()].p_uid;
-  int lowest = 20;
+  int lowest = PRIO_MIN + 1;
   int i;
   switch (which)
     {
     case PRIO_PROCESS:
       if (!process_valid (pid))
-	return -ESRCH - 20;
+	return -ESRCH + PRIO_MAX;
       return process_table[pid].p_task->t_priority;
     case PRIO_PGRP:
       if (!process_valid (pid))
-	return -ESRCH - 20;
+	return -ESRCH + PRIO_MAX;
       for (i = 0; i < PROCESS_LIMIT; i++)
 	{
 	  if (process_table[i].p_task != NULL && process_table[i].p_pgid == pid)
@@ -296,9 +418,9 @@ sys_getpriority (int which, id_t who)
 		lowest = p;
 	    }
 	}
-      return lowest > 19 ? -ESRCH - 20 : lowest;
+      return lowest > PRIO_MIN ? -ESRCH + PRIO_MAX : lowest;
     default:
-      return -EINVAL - 20;
+      return -EINVAL + PRIO_MAX;
     }
 }
 
@@ -310,9 +432,9 @@ sys_setpriority (int which, id_t who, int prio)
   uid_t uid = who != 0 ? who : proc->p_uid;
   int super = proc->p_euid == 0;
   int i;
-  if (prio < PRIO_MIN)
+  if (prio > PRIO_MIN)
     prio = PRIO_MIN;
-  if (prio > PRIO_MAX)
+  if (prio < PRIO_MAX)
     prio = PRIO_MAX;
   switch (which)
     {

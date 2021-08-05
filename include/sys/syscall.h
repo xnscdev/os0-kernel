@@ -99,6 +99,8 @@ int sys_setreuid (uid_t ruid, uid_t euid);
 int sys_setregid (gid_t rgid, gid_t egid);
 int sys_sigsuspend (const sigset_t *mask);
 int sys_sigpending (sigset_t *set);
+int sys_setrlimit (int resource, const struct rlimit *rlim);
+int sys_getrlimit (int resource, struct rlimit *rlim);
 int sys_getrusage (int who, struct rusage *usage);
 int sys_gettimeofday (struct timeval *__restrict tv,
 		      struct timezone *__restrict tz);

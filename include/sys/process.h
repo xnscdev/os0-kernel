@@ -64,6 +64,13 @@ typedef struct
   char *p_cwdpath;                           /* Path to working directory */
   uint32_t p_break;                          /* Location of program break */
   uint32_t p_initbreak;                      /* Starting address of break */
+  uint32_t p_maxbreak;                       /* Maximum address of break */
+  uint32_t p_maxfds;                         /* Maximum file descriptors */
+  struct rlimit p_addrspace;                 /* Limits of address space */
+  struct rlimit p_coresize;                  /* Limits on core dump size */
+  struct rlimit p_cputime;                   /* Limits on CPU time */
+  struct rlimit p_filesize;                  /* Limits on file sizes */
+  struct rlimit p_memlock;                   /* Limits on locked memory */
   struct rusage p_rusage;                    /* Resource usage */
   struct rusage p_cusage;                    /* Resourge usage of child
 						processes */

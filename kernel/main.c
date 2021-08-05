@@ -145,7 +145,7 @@ mount_rootfs (void)
     panic ("Failed to load kernel task working directory");
   process_table[0].p_cwd = process_table[0].p_files[fd]->pf_inode;
   vfs_ref_inode (process_table[0].p_cwd);
-  process_table[0].p_cwdpath = strdup (process_table[0].p_files[fd]->pf_path);
+  process_table[0].p_cwdpath = strdup ("/");
   assert (process_table[0].p_cwdpath != NULL);
   process_free_fd (process_table, fd);
 }

@@ -48,8 +48,7 @@ scheduler_init (void)
   task_current->t_pgdir = curr_page_dir;
   task_current->t_fini = NULL;
   task_current->t_pgcopied = 0;
-  task_current->t_priority = 19; /* The kernel will be just waiting for init,
-				    so give it the least priority */
+  task_current->t_priority = PRIO_MIN;
   task_current->t_prev = task_current;
   task_current->t_next = NULL;
 
@@ -58,6 +57,18 @@ scheduler_init (void)
   for (i = 0; i < NSIG; i++)
     process_table[0].p_sigactions[i].sa_handler = SIG_DFL;
   process_table[0].p_umask = S_IWGRP | S_IWOTH;
+  process_table[0].p_maxbreak = PROCESS_BREAK_LIMIT;
+  process_table[0].p_maxfds = PROCESS_FILE_LIMIT;
+  process_table[0].p_addrspace.rlim_cur = RLIM_INFINITY;
+  process_table[0].p_addrspace.rlim_max = LONG_MAX;
+  process_table[0].p_coresize.rlim_cur = 0;
+  process_table[0].p_coresize.rlim_max = 0;
+  process_table[0].p_cputime.rlim_cur = RLIM_INFINITY;
+  process_table[0].p_cputime.rlim_max = LONG_MAX;
+  process_table[0].p_filesize.rlim_cur = RLIM_INFINITY;
+  process_table[0].p_filesize.rlim_max = LONG_MAX;
+  process_table[0].p_memlock.rlim_cur = RLIM_INFINITY;
+  process_table[0].p_memlock.rlim_max = LONG_MAX;
 
   task_switch_enabled = 1;
   __asm__ volatile ("sti");
@@ -324,7 +335,7 @@ _task_fork (int copy_pgdir)
   process_table[0].p_children++;
 
   /* Inherit parent working directory, real/effective/saved UID/GID,
-     process group ID, session ID, and blocked signal mask */
+     process group ID, session ID, resource limits, and blocked signal mask */
   proc->p_cwd = parent->p_cwd;
   proc->p_cwdpath = cwdpath;
   vfs_ref_inode (proc->p_cwd);
@@ -336,6 +347,13 @@ _task_fork (int copy_pgdir)
   proc->p_sgid = parent->p_sgid;
   proc->p_pgid = parent->p_pgid;
   proc->p_sid = parent->p_sid;
+  proc->p_maxbreak = parent->p_maxbreak;
+  proc->p_maxfds = parent->p_maxfds;
+  memcpy (&proc->p_addrspace, &parent->p_addrspace, sizeof (struct rlimit));
+  memcpy (&proc->p_coresize, &parent->p_coresize, sizeof (struct rlimit));
+  memcpy (&proc->p_cputime, &parent->p_cputime, sizeof (struct rlimit));
+  memcpy (&proc->p_filesize, &parent->p_filesize, sizeof (struct rlimit));
+  memcpy (&proc->p_memlock, &parent->p_memlock, sizeof (struct rlimit));
   memcpy (&proc->p_sigblocked, &parent->p_sigblocked, sizeof (sigset_t));
   memcpy (&proc->p_sigpending, &parent->p_sigpending, sizeof (sigset_t));
 

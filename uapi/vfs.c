@@ -246,6 +246,12 @@ sys_chdir (const char *path)
       vfs_unref_inode (inode);
       return -ENOTDIR;
     }
+  if (inode->vi_sb == proc->p_cwd->vi_sb
+      && inode->vi_ino == proc->p_cwd->vi_ino)
+    {
+      vfs_unref_inode (inode);
+      return 0;
+    }
   cwd = vfs_path_resolve (path);
   if (cwd == NULL)
     {

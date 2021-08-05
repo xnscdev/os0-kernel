@@ -30,12 +30,26 @@
 #define RUSAGE_BOTH     (-2)
 #define RUSAGE_THREAD   1
 
+#define RLIMIT_AS      0
+#define RLIMIT_CORE    1
+#define RLIMIT_CPU     2
+#define RLIMIT_DATA    3
+#define RLIMIT_FSIZE   4
+#define RLIMIT_MEMLOCK 5
+#define RLIMIT_NICE    6
+#define RLIMIT_NOFILE  7
+#define RLIMIT_NPROC   8
+#define RLIMIT_RSS     9
+#define RLIMIT_STACK   10
+
+#define RLIM_INFINITY (-1)
+
 #define PRIO_PROCESS 1
 #define PRIO_PGRP    2
 #define PRIO_USER    3
 
-#define PRIO_MIN -20
-#define PRIO_MAX 19
+#define PRIO_MAX (-20)
+#define PRIO_MIN 19
 
 struct rusage
 {
@@ -57,10 +71,12 @@ struct rusage
   long ru_nivcsw;
 };
 
+typedef long rlim_t;
+
 struct rlimit
 {
-  unsigned long rlim_cur;
-  unsigned long rlim_max;
+  rlim_t rlim_cur;
+  rlim_t rlim_max;
 };
 
 #endif

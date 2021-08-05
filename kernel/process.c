@@ -370,6 +370,8 @@ process_clear (pid_t pid, int partial)
   /* Reset process data */
   proc->p_initbreak = 0;
   proc->p_break = 0;
+  proc->p_maxbreak = 0;
+  proc->p_maxfds = 0;
   proc->p_pause = 0;
   proc->p_sig = 0;
   proc->p_term = 0;
@@ -383,6 +385,11 @@ process_clear (pid_t pid, int partial)
   proc->p_sgid = 0;
   proc->p_pgid = 0;
   proc->p_sid = 0;
+  memset (&proc->p_addrspace, 0, sizeof (struct rlimit));
+  memset (&proc->p_coresize, 0, sizeof (struct rlimit));
+  memset (&proc->p_cputime, 0, sizeof (struct rlimit));
+  memset (&proc->p_filesize, 0, sizeof (struct rlimit));
+  memset (&proc->p_memlock, 0, sizeof (struct rlimit));
   memset (&proc->p_rusage, 0, sizeof (struct rusage));
   memset (&proc->p_cusage, 0, sizeof (struct rusage));
 
