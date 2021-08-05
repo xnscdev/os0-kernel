@@ -24,7 +24,8 @@
 
 static const VFSInodeOps vga_tty_iops = {
   .vfs_read = vga_tty_read,
-  .vfs_write = vga_tty_write
+  .vfs_write = vga_tty_write,
+  .vfs_getattr = vga_tty_getattr
 };
 
 static VFSInode *
@@ -49,13 +50,14 @@ VFSSuperblock vga_tty_sb = {
 };
 
 int
-vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset)
+vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  return kbd_get_input (buffer, len, 1);
+  return kbd_get_input (buffer, len,
+			inode->vi_flags & VI_FLAG_NONBLOCK ? 0 : 1);
 }
 
 int
-vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
+vga_tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
   if (CURRENT_TERMINAL->vt_termios.c_lflag & TOSTOP)
     {
@@ -68,14 +70,9 @@ vga_dev_write (SpecDevice *dev, const void *buffer, size_t len, off_t offset)
 }
 
 int
-vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
+vga_tty_getattr (VFSInode *inode, struct stat64 *st)
 {
-  return kbd_get_input (buffer, len,
-			inode->vi_flags & VI_FLAG_NONBLOCK ? 0 : 1);
-}
-
-int
-vga_tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
-{
-  return vga_dev_write (inode->vi_private, buffer, len, offset);
+  st->st_dev = 0;
+  st->st_blksize = 512;
+  return 0;
 }

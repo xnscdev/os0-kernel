@@ -49,6 +49,18 @@ const VFSFilesystem devfs_vfs = {
   .vfs_iops = &devfs_iops
 };
 
+const struct
+{
+  const char *name;
+  char *link;
+  int fd;
+} devfs_links[] = {
+  {"stdin", "fd/0", STDIN_FILENO},
+  {"stdout", "fd/1", STDOUT_FILENO},
+  {"stderr", "fd/2", STDERR_FILENO},
+  {NULL, 0}
+};
+
 int
 devfs_mount (VFSMount *mp, int flags, void *data)
 {
@@ -123,6 +135,20 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 	  (*inode)->vi_private = NULL;
 	  return 0;
 	}
+      for (i = 0; devfs_links[i].name != NULL; i++)
+	{
+	  if (strcmp (name, devfs_links[i].name) == 0)
+	    {
+	      *inode = vfs_alloc_inode (sb);
+	      if (unlikely (*inode == NULL))
+		return -ENOMEM;
+	      (*inode)->vi_ino = DEVFS_LINK_INODE (i);
+	      (*inode)->vi_mode = SYMLINK_MODE;
+	      (*inode)->vi_nlink = 1;
+	      (*inode)->vi_private = devfs_links[i].link;
+	      return 0;
+	    }
+	}
       for (i = 0; i < DEVICE_TABLE_SIZE; i++)
 	{
 	  if (strcmp (device_table[i].sd_name, name) == 0)
@@ -170,14 +196,20 @@ devfs_lookup (VFSInode **inode, VFSInode *dir, VFSSuperblock *sb,
 int
 devfs_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
-  SpecDevice *dev = inode->vi_private;
+  SpecDevice *dev;
+  if (!S_ISCHR (inode->vi_mode) && !S_ISBLK (inode->vi_mode))
+    return -ENOTSUP;
+  dev = inode->vi_private;
   return dev->sd_read (dev, buffer, len, offset);
 }
 
 int
 devfs_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 {
-  SpecDevice *dev = inode->vi_private;
+  SpecDevice *dev;
+  if (!S_ISCHR (inode->vi_mode) && !S_ISBLK (inode->vi_mode))
+    return -ENOTSUP;
+  dev = inode->vi_private;
   return dev->sd_write (dev, buffer, len, offset);
 }
 
@@ -203,6 +235,14 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 		return ret;
 	    }						
 	}
+      for (i = 0; devfs_links[i].name != NULL; i++)
+	{
+	  ret = func (devfs_links[i].name, strlen (devfs_links[i].name),
+		      DEVFS_LINK_INODE (i), DT_LNK, i + DEVICE_TABLE_SIZE,
+		      private);
+	  if (ret != 0)
+	    return ret;
+	}
       return func ("fd", 2, 1, DT_DIR, DEVICE_TABLE_SIZE, private);
     case DEVFS_FDS_INODE:
       for (i = 0; i < PROCESS_FILE_LIMIT; i++)
@@ -227,7 +267,8 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 int
 devfs_readlink (VFSInode *inode, char *buffer, size_t len)
 {
-  return -ENOSYS;
+  strncpy (buffer, inode->vi_private, len);
+  return 0;
 }
 
 int
@@ -235,18 +276,7 @@ devfs_getattr (VFSInode *inode, struct stat64 *st)
 {
   st->st_dev = ((uint32_t) inode->vi_sb->sb_fstype -
 		(uint32_t) fs_table) / sizeof (VFSFilesystem);
-  st->st_ino = inode->vi_ino;
-  st->st_mode = inode->vi_mode;
-  st->st_nlink = inode->vi_nlink;
-  st->st_uid = inode->vi_uid;
-  st->st_gid = inode->vi_gid;
-  st->st_rdev = inode->vi_rdev;
-  st->st_size = inode->vi_size;
-  st->st_atim = inode->vi_atime;
-  st->st_mtim = inode->vi_mtime;
-  st->st_ctim = inode->vi_ctime;
   st->st_blksize = DEVFS_BLKSIZE;
-  st->st_blocks = inode->vi_blocks;
   return 0;
 }
 

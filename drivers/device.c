@@ -118,14 +118,6 @@ devices_init (void)
       device_disk_init (i, dev);
     }
 
-  /* Initialize standard streams */
-  device_register (1, STDIN_FILENO, DEVICE_TYPE_CHAR, "stdin", vga_dev_read,
-		   NULL);
-  device_register (1, STDOUT_FILENO, DEVICE_TYPE_CHAR, "stdout", NULL,
-		   vga_dev_write);
-  device_register (1, STDERR_FILENO, DEVICE_TYPE_CHAR, "stderr", NULL,
-		   vga_dev_write);
-
   /* Initialize miscellaneous devices */
   device_register (1, 3, DEVICE_TYPE_CHAR, "null", device_null_read,
 		   device_discard_write);

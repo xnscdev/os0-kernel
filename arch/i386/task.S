@@ -115,7 +115,10 @@ irq8:
 	call	process_handle_signal
 	mov	process_signal, %ecx
 	test	%ecx, %ecx
-	jz	.done
+	jz	.done /* No signal was sent */
+	mov	process_signal_handler, %ecx
+	test	%ecx, %ecx
+	jz	.done /* Signal should be ignored by default */
 
 	/* Signal should be handled, execute signal handler */
 	mov	32(%esp), %eax

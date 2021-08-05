@@ -59,17 +59,10 @@ pipe_alloc_inode (VFSSuperblock *sb)
 
   /* Set reasonable defaults */
   t = time (NULL);
-  inode->vi_uid = 0;
-  inode->vi_gid = 0;
-  inode->vi_size = 0;
-  inode->vi_sectors = 0;
   inode->vi_atime.tv_sec = t;
-  inode->vi_atime.tv_nsec = 0;
   inode->vi_mtime.tv_sec = t;
-  inode->vi_mtime.tv_nsec = 0;
   inode->vi_ctime.tv_sec = t;
-  inode->vi_ctime.tv_nsec = 0;
-  inode->vi_blocks = 0;
+  inode->vi_blocks = PIPE_BLOCKS;
   return inode;
 }
 
@@ -140,18 +133,7 @@ pipe_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
 int
 pipe_getattr (VFSInode *inode, struct stat64 *st)
 {
-  Process *proc = &process_table[task_getpid ()];
   st->st_dev = 0;
-  st->st_ino = 0;
-  st->st_mode = S_IFIFO | S_IRUSR | S_IWUSR;
-  st->st_nlink = 1;
-  st->st_uid = proc->p_euid;
-  st->st_gid = proc->p_egid;
-  st->st_size = PIPE_LENGTH;
-  st->st_atim = inode->vi_atime;
-  st->st_mtim = inode->vi_mtime;
-  st->st_ctim = inode->vi_ctime;
   st->st_blksize = PIPE_BLKSIZE;
-  st->st_blocks = 4;
   return 0;
 }

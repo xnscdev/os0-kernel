@@ -123,12 +123,10 @@ void vga_display_putchar (Terminal *term, char c);
 void vga_clear (Terminal *term);
 void vga_setcurs (size_t x, size_t y);
 
-int vga_dev_read (SpecDevice *dev, void *buffer, size_t len, off_t offset);
-int vga_dev_write (SpecDevice *dev, const void *buffer, size_t len,
-		   off_t offset);
 int vga_tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int vga_tty_write (VFSInode *inode, const void *buffer, size_t len,
 		   off_t offset);
+int vga_tty_getattr (VFSInode *inode, struct stat64 *st);
 
 void vga_terminal_cancel_escseq (Terminal *term);
 void vga_terminal_parse_escseq (Terminal *term, char c);

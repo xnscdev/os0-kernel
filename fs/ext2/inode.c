@@ -553,18 +553,7 @@ ext2_getattr (VFSInode *inode, struct stat64 *st)
 {
   st->st_dev = makedev (inode->vi_sb->sb_dev->sd_major,
 			inode->vi_sb->sb_dev->sd_minor);
-  st->st_ino = inode->vi_ino;
-  st->st_mode = inode->vi_mode;
-  st->st_nlink = inode->vi_nlink;
-  st->st_uid = inode->vi_uid;
-  st->st_gid = inode->vi_gid;
-  st->st_rdev = inode->vi_rdev;
-  st->st_size = inode->vi_size;
-  st->st_atim = inode->vi_atime;
-  st->st_mtim = inode->vi_mtime;
-  st->st_ctim = inode->vi_ctime;
   st->st_blksize = inode->vi_sb->sb_blksize;
-  st->st_blocks = inode->vi_blocks;
   return 0;
 }
 

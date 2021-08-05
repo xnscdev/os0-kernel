@@ -47,6 +47,7 @@ sys_exit (int code)
   exit_task = pid;
   if (ppid != 0)
     process_send_signal (ppid, SIGCHLD);
+  task_yield ();
 }
 
 int

@@ -313,6 +313,7 @@ kbd_get_input (void *buffer, size_t len, int block)
   memcpy (buffer, kbdbuf->kbd_buffer + kbdbuf->kbd_currpos, len);
   kbdbuf->kbd_currpos += len;
   kbd_flush_input = 0;
+  kbd_eof = 0;
   return len;
 }
 

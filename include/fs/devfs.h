@@ -28,6 +28,7 @@
 
 #define DEVFS_DEVICE_INODE(maj, min) makedev (maj, min)
 #define DEVFS_FD_INODE(fd)           (0xff000000 | (fd))
+#define DEVFS_LINK_INODE(x)          (0x80000000 | (x))
 
 #define DEVFS_BLKSIZE 1024 /* Arbitrary value */
 

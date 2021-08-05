@@ -641,18 +641,23 @@ process_send_signal (pid_t pid, int sig)
 {
   int exit = sig == SIGKILL;
   struct sigaction *sigaction = &process_table[pid].p_sigactions[sig];
-
+  task_switch_enabled = 0;
   if (!exit)
     {
       if (sigismember (&process_table[pid].p_sigblocked, sig))
 	{
 	  /* Set signal as pending */
 	  sigaddset (&process_table[pid].p_sigpending, sig);
+	  task_switch_enabled = 1;
 	  return 0;
 	}
       else if (!(sigaction->sa_flags & SA_SIGINFO)
 	       && sigaction->sa_handler == SIG_IGN)
-	return 0; /* Ignore signal */
+	{
+	  /* Ignore signal */
+	  task_switch_enabled = 1;
+	  return 0;
+	}
     }
 
   switch (sig)
@@ -698,6 +703,7 @@ process_send_signal (pid_t pid, int sig)
     }
 
   process_table[pid].p_sig = sig;
+  task_switch_enabled = 1;
   if (pid == task_getpid ())
     task_yield ();
   return 0;

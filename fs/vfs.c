@@ -486,6 +486,8 @@ vfs_readlink (VFSInode *inode, char *buffer, size_t len)
   int ret = vfs_perm_check_read (inode, 0);
   if (ret != 0)
     return ret;
+  if (!S_ISLNK (inode->vi_mode))
+    return -EINVAL;
   if (inode->vi_ops->vfs_readlink != NULL)
     return inode->vi_ops->vfs_readlink (inode, buffer, len);
   return -ENOSYS;
@@ -509,7 +511,20 @@ int
 vfs_getattr (VFSInode *inode, struct stat64 *st)
 {
   if (inode->vi_ops->vfs_getattr != NULL)
-    return inode->vi_ops->vfs_getattr (inode, st);
+    {
+      st->st_ino = inode->vi_ino;
+      st->st_mode = inode->vi_mode;
+      st->st_nlink = inode->vi_nlink;
+      st->st_uid = inode->vi_uid;
+      st->st_gid = inode->vi_gid;
+      st->st_rdev = inode->vi_rdev;
+      st->st_size = inode->vi_size;
+      st->st_atim = inode->vi_atime;
+      st->st_mtim = inode->vi_mtime;
+      st->st_ctim = inode->vi_ctime;
+      st->st_blocks = inode->vi_blocks;
+      return inode->vi_ops->vfs_getattr (inode, st);
+    }
   return -ENOSYS;
 }
 
