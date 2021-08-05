@@ -104,6 +104,7 @@ void *syscall_table[NR_syscalls] = {
   [SYS_sigprocmask] = sys_sigprocmask,
   [SYS_getpgid] = sys_getpgid,
   [SYS_fchdir] = sys_fchdir,
+  [SYS__llseek] = sys__llseek,
   [SYS_getdents] = sys_getdents,
   [SYS_getsid] = sys_getsid,
   [SYS_nanosleep] = sys_nanosleep,

@@ -18,6 +18,8 @@
 
 #define _ASM
 
+#include <bits/signal.h>
+#include <sys/errno.h>
 #include <sys/memory.h>
 #include <sys/task.h>
 
@@ -35,10 +37,23 @@ syscall:
 
 	mov	%eax, %ebx
 	mov	syscall_table(,%ebx,4), %ecx
+	test	%ecx, %ecx
+	jnz	1f
+
+	/* No corresponding system call function */
+	call	task_getpid
+	pushl	$SIGSYS
+	push	%eax
+	call	process_send_signal
+	add	$8, %esp
+	mov	$-ENOSYS, %eax
+	jmp	2f
+
+1:
 	call	*%ecx
 
 	cmp	$1, %ebx
-	jne	1f
+	jne	2f
 
 	/* exit(2) was called, first call the finalizer functions of all
 	   loaded shared objects, if there were any. Finally, change the
@@ -47,12 +62,12 @@ syscall:
 	mov	task_current, %ecx
 	mov	16(%ecx), %edx
 	test	%edx, %edx
-	jz	1f
+	jz	2f
 	call	*%edx
 
 	movl	$TASK_EXIT_PAGE, 24(%esp)
 
-1:
+2:
 	pop	%ebx
 	pop	%ecx
 	pop	%edx
@@ -72,7 +87,6 @@ sys_exit_halt:
 	pushf
 	orl	$0x200, (%esp)
 	popf
-
 1:
 	jmp	1b /* Loop until next task switch */
 

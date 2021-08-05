@@ -116,13 +116,17 @@ sys_open (const char *path, int flags, mode_t mode)
 	}
     }
   if (ret != 0)
-    return ret;
+    {
+      process_free_fd (proc, i);
+      return ret;
+    }
 
   /* Don't allow opening device files if the filesystem is mounted with nodev */
   if ((inode->vi_sb->sb_mntflags & MS_NODEV)
       && (S_ISBLK (inode->vi_mode) || S_ISCHR (inode->vi_mode)))
     {
       vfs_unref_inode (inode);
+      process_free_fd (proc, i);
       return -ENXIO;
     }
 
