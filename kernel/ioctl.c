@@ -28,33 +28,34 @@ static struct winsize vga_display_winsize = {
 };
 
 static int
-ioctl_isatty (Process *proc)
+ioctl_isatty (Process *proc, int fd)
 {
-  return terminals[proc->p_sid] != NULL;
+  return terminals[proc->p_sid] != NULL
+    && proc->p_files[fd]->pf_inode->vi_sb == &vga_tty_sb;
 }
 
 static int
-ioctl_tcgets (Process *proc, struct termios *data)
+ioctl_tcgets (Process *proc, int fd, struct termios *data)
 {
-  if (!ioctl_isatty (proc))
+  if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
   memcpy (data, &terminals[proc->p_sid]->vt_termios, sizeof (struct termios));
   return 0;
 }
 
 static int
-ioctl_tcsets (Process *proc, struct termios *data)
+ioctl_tcsets (Process *proc, int fd, struct termios *data)
 {
-  if (!ioctl_isatty (proc))
+  if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
   memcpy (&terminals[proc->p_sid]->vt_termios, data, sizeof (struct termios));
   return 0;
 }
 
 static int
-ioctl_tcsetsf (Process *proc, struct termios *data)
+ioctl_tcsetsf (Process *proc, int fd, struct termios *data)
 {
-  if (!ioctl_isatty (proc))
+  if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
   terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos = 0;
   terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos = 0;
@@ -65,7 +66,7 @@ ioctl_tcsetsf (Process *proc, struct termios *data)
 static int
 ioctl_tcflush (Process *proc, int fd, int arg)
 {
-  if (!ioctl_isatty (proc))
+  if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
   switch (arg)
     {
@@ -91,37 +92,37 @@ ioctl (int fd, unsigned long req, void *data)
     {
     case TCGETS:
     case TCGETA:
-      return ioctl_tcgets (proc, data);
+      return ioctl_tcgets (proc, fd, data);
     case TCSETS:
     case TCSETSW:
     case TCSETA:
     case TCSETAW:
-      return ioctl_tcsets (proc, data);
+      return ioctl_tcsets (proc, fd, data);
     case TCSETSF:
     case TCSETAF:
-      return ioctl_tcsetsf (proc, data);
+      return ioctl_tcsetsf (proc, fd, data);
     case TIOCGWINSZ:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       memcpy (data, &vga_display_winsize, sizeof (struct winsize));
       break;
     case TIOCSWINSZ:
-      return ioctl_isatty (proc) ? -ENOTSUP : -ENOTTY;
+      return ioctl_isatty (proc, fd) ? -ENOTSUP : -ENOTTY;
     case TCSBRK:
     case TCSBRKP:
     case TIOCSBRK:
     case TIOCCBRK:
     case TCXONC:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       break;
     case TIOCINQ:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       *((int *) data) = terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos -
 	terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos;
     case TIOCOUTQ:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       *((int *) data) = 0;
       break;
@@ -130,17 +131,17 @@ ioctl (int fd, unsigned long req, void *data)
     case TIOCSTI:
       return -ENOTSUP; /* TODO Implement */
     case TIOCGPGRP:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       *((pid_t *) data) = terminals[proc->p_sid]->vt_fgpgid;
       break;
     case TIOCSPGRP:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       terminals[proc->p_sid]->vt_fgpgid = *((pid_t *) data);
       break;
     case TIOCGSID:
-      if (!ioctl_isatty (proc))
+      if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
       *((pid_t *) data) = proc->p_sid;
       break;

@@ -700,8 +700,8 @@ sys__llseek (int fd, unsigned long offset_high, unsigned long offset_low,
     return -EINVAL;
   file->pf_offset = real_offset;
 
-  /* TODO Update directory structure on seek */
-  *result = real_offset;
+  if (result != NULL)
+    *result = real_offset;
   return 0;
 }
 
