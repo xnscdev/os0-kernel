@@ -131,7 +131,7 @@ sys_pipe (int fd[2])
   /* Allocate pipe inodes and structure */
   read_inode = vfs_alloc_inode (&pipe_sb);
   write_inode = vfs_alloc_inode (&pipe_sb);
-  pipe = kmalloc (sizeof (Pipe));
+  pipe = kzalloc (sizeof (Pipe));
   if (unlikely (read_inode == NULL || write_inode == NULL || pipe == NULL))
     {
       ret = -ENOMEM;

@@ -141,13 +141,36 @@ vfs_mount (const char *type, const char *dir, int flags, void *data)
       /* Filesystem-specific mount */
       ret = fs_table[i].vfs_mount (&mount_table[j], flags, data);
       if (ret != 0)
-	{
-	  memset (&mount_table[j], 0, sizeof (VFSMount));
-	  return ret;
-	}
+	goto err;
 
       /* Get mount point as a path and set parent mount */
-      return vfs_open_file (&mount_table[j].vfs_mntpoint, dir, 1);
+      ret = vfs_open_file (&mount_table[j].vfs_mntpoint, dir, 1);
+      if (ret != 0)
+	goto err;
+      mount_table[j].vfs_mntpath = vfs_path_resolve (dir);
+      if (unlikely (mount_table[j].vfs_mntpath == NULL))
+	goto err;
+
+      /* Previously mounted filesystems will have a mount point pointing to
+	 an inode on the parent filesystem of the new mount, we need to update
+	 them to point to the corresponding directories on the new filesystem */
+      for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+	{
+	  if (i == j || mount_table[i].vfs_fstype == NULL
+	      || mount_table[i].vfs_mntpoint->vi_sb !=
+	      mount_table[j].vfs_mntpoint->vi_sb)
+	    continue;
+	  ret = vfs_open_file (&mount_table[i].vfs_mntpoint,
+			       mount_table[i].vfs_mntpath, 1);
+	  if (ret != 0)
+	    goto err;
+	}
+      return 0;
+
+    err:
+      kfree (mount_table[j].vfs_mntpath);
+      memset (&mount_table[j], 0, sizeof (VFSMount));
+      return ret;
     }
   return -EINVAL; /* No such filesystem type */
 }
@@ -156,6 +179,7 @@ int
 vfs_unmount (VFSSuperblock *sb, int flags)
 {
   int ret;
+  int slot;
   int i;
 
   /* Check if any file descriptors using the filesystem are still active */
@@ -166,13 +190,26 @@ vfs_unmount (VFSSuperblock *sb, int flags)
 	return -EBUSY;
     }
 
-  /* Run file-specific unmount function and clear mount table entry */
+  /* Run file-specific unmount function */
   ret = sb->sb_fstype->vfs_unmount (&mount_table[sb->sb_mntslot], flags);
   if (ret != 0)
     return ret;
   if (sb->sb_ops->sb_free != NULL)
     sb->sb_ops->sb_free (sb);
+
+  /* Fix mount points of mounted filesystems under the one being unmounted */
+  slot = sb->sb_mntslot;
   memset (&mount_table[sb->sb_mntslot], 0, sizeof (VFSMount));
+  for (i = 0; i < VFS_MOUNT_TABLE_SIZE; i++)
+    {
+      if (i == slot || mount_table[i].vfs_fstype == NULL
+	  || mount_table[i].vfs_mntpoint->vi_sb != sb)
+	continue;
+      ret = vfs_open_file (&mount_table[i].vfs_mntpoint,
+			   mount_table[i].vfs_mntpath, 1);
+      if (ret != 0)
+	return ret;
+    }
   return 0;
 }
 

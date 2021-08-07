@@ -87,8 +87,6 @@ int
 pipe_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
   Pipe *pipe = inode->vi_private;
-  if (pipe->p_flags & PIPE_WRITE_CLOSED)
-    return 0; /* EOF */
   while (pipe->p_readptr + len > pipe->p_writeptr)
     {
       /* Wait for enough data to be available, and check if the pipe

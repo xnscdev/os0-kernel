@@ -120,6 +120,17 @@ sys_open (const char *path, int flags, mode_t mode)
       process_free_fd (proc, i);
       return ret;
     }
+  if (flags & O_TRUNC)
+    {
+      inode->vi_size = 0;
+      ret = vfs_truncate (inode);
+      if (ret != 0)
+	{
+	  vfs_unref_inode (inode);
+	  process_free_fd (proc, i);
+	  return ret;
+	}
+    }
 
   /* Don't allow opening device files if the filesystem is mounted with nodev */
   if ((inode->vi_sb->sb_mntflags & MS_NODEV)

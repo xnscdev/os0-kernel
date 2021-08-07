@@ -133,6 +133,7 @@ struct _VFSMount
   const VFSFilesystem *vfs_fstype;
   VFSSuperblock vfs_sb;
   VFSInode *vfs_mntpoint;
+  char *vfs_mntpath;
   void *vfs_private;
 };
 
