@@ -37,6 +37,7 @@
 
 #define PIPE_READ_CLOSED  0x01
 #define PIPE_WRITE_CLOSED 0x02
+#define PIPE_DATA_END     0x04
 
 typedef struct
 {

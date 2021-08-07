@@ -59,6 +59,7 @@ pipe_alloc_inode (VFSSuperblock *sb)
 
   /* Set reasonable defaults */
   t = time (NULL);
+  inode->vi_mode = S_IFIFO | S_IRWXU | S_IRWXG | S_IRWXO;
   inode->vi_atime.tv_sec = t;
   inode->vi_mtime.tv_sec = t;
   inode->vi_ctime.tv_sec = t;
@@ -78,7 +79,7 @@ pipe_destroy_inode (VFSInode *inode)
   /* Free the pipe if both ends are closed */
   if ((pipe->p_flags & PIPE_READ_CLOSED) && (pipe->p_flags & PIPE_WRITE_CLOSED))
     {
-      sys_munmap (pipe->p_data, PIPE_LENGTH);
+      kfree (pipe->p_data);
       kfree (pipe);
     }
 }
@@ -87,12 +88,18 @@ int
 pipe_read (VFSInode *inode, void *buffer, size_t len, off_t offset)
 {
   Pipe *pipe = inode->vi_private;
+  if (pipe->p_flags & PIPE_DATA_END)
+    return 0;
   while (pipe->p_readptr + len > pipe->p_writeptr)
     {
       /* Wait for enough data to be available, and check if the pipe
 	 has been closed while waiting */
       if (pipe->p_flags & PIPE_WRITE_CLOSED)
-	return 0;
+	{
+	  pipe->p_flags |= PIPE_DATA_END;
+	  len = pipe->p_writeptr - pipe->p_readptr;
+	  break;
+	}
     }
   memcpy (buffer, pipe->p_data + pipe->p_readptr, len);
   pipe->p_readptr += len;

@@ -142,11 +142,10 @@ sys_pipe (int fd[2])
   write_inode->vi_private = pipe;
 
   /* Allocate memory for pipe */
-  pipe->p_data = sys_mmap (NULL, PIPE_LENGTH, PROT_READ | PROT_WRITE,
-			   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (unlikely ((uintptr_t) pipe->p_data >= UINTPTR_MAX - __NR_errno))
+  pipe->p_data = kmalloc (PIPE_LENGTH);
+  if (unlikely (pipe->p_data == NULL))
     {
-      ret = UINTPTR_MAX - (uintptr_t) pipe->p_data;
+      ret = -ENOMEM;
       goto err;
     }
 
