@@ -231,7 +231,9 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 			  DEVFS_DEVICE_INODE (dev->sd_major, dev->sd_minor),
 			  dev->sd_type == DEVICE_TYPE_BLOCK ? DT_BLK : DT_CHR,
 			  i, private);
-	      if (ret != 0)
+	      if (ret > 0)
+		return 0;
+	      if (ret < 0)
 		return ret;
 	    }						
 	}
@@ -240,7 +242,9 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 	  ret = func (devfs_links[i].name, strlen (devfs_links[i].name),
 		      DEVFS_LINK_INODE (i), DT_LNK, i + DEVICE_TABLE_SIZE,
 		      private);
-	  if (ret != 0)
+	  if (ret > 0)
+	    return 0;
+	  if (ret < 0)
 	    return ret;
 	}
       return func ("fd", 2, 1, DT_DIR, DEVICE_TABLE_SIZE, private);
@@ -253,7 +257,9 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 	      itoa (i, buffer, 10);
 	      ret = func (buffer, strlen (buffer), DEVFS_FD_INODE (i), DT_BLK,
 			  i, private);
-	      if (ret != 0)
+	      if (ret > 0)
+		return 0;
+	      if (ret < 0)
 		return ret;
 	    }
 	}
