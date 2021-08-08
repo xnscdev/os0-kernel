@@ -27,7 +27,7 @@
 #define __END_DECLS
 #endif
 
-#if __STDC_VERSION__ >= 199901L || defined __cplusplus
+#if __STDC_VERSION__ >= 199901L && !defined __cplusplus
 #define __inline inline
 #define __restrict restrict
 #else

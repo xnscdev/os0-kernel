@@ -61,6 +61,18 @@
 #define ELOOP           40
 #define EWOULDBLOCK     EAGAIN
 #define EDEADLOCK       EDEADLK
+#define ENOMSG          42
+#define EIDRM           43
+#define ECHRNG          44
+#define ELNRNG          48
+#define EUNATCH         49
+#define ENOCSI          50
+#define EBADE           52
+#define EBADR           53
+#define EXFULL          54
+#define EBADRQC         56
+#define EBADSLT         57
+#define EBFONT          59
 #define ENOSTR          60
 #define ENODATA         61
 #define ETIME           62
@@ -74,12 +86,15 @@
 #define ECOMM           70
 #define EPROTO          71
 #define EMULTIHOP       72
+#define EDOTDOT         73
+#define EBADMSG         74
 #define EOVERFLOW       75
 #define ENOTUNIQ        76
 #define EBADFD          77
 #define EREMCHG         78
 #define ELIBACC         79
 #define ELIBBAD         80
+#define ELIBSCN         81
 #define ELIBMAX         82
 #define ELIBEXEC        83
 #define EILSEQ          84
@@ -117,6 +132,7 @@
 #define EINPROGRESS     115
 #define ESTALE          116
 #define EUCLEAN         117
+#define EISNAM          120
 #define EREMOTEIO       121
 #define EDQUOT          122
 
