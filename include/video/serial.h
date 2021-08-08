@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * serial.h -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,20 +16,36 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDIO_H
-#define _STDIO_H
+#ifndef _VIDEO_SERIAL_H
+#define _VIDEO_SERIAL_H
 
 #include <sys/cdefs.h>
-#include <stdarg.h>
 #include <stddef.h>
+
+#define SERIAL_COM1 0x3f8
+#define SERIAL_COM2 0x2f8
+#define SERIAL_COM3 0x3e8
+#define SERIAL_COM4 0x2e8
+
+#define SERIAL_REG_DATA          0
+#define SERIAL_REG_INTERRUPT     1
+#define SERIAL_REG_CONTROL       2
+#define SERIAL_REG_LINE_CONTROL  3
+#define SERIAL_REG_MODEM_CONTROL 4
+#define SERIAL_REG_LINE_STATUS   5
+#define SERIAL_REG_MODEM_STATUS  6
+#define SERIAL_REG_SCRATCH       7
+
+#define SERIAL_REG(com, reg) (SERIAL_COM ## com + (reg))
 
 __BEGIN_DECLS
 
-int __vprintk (void (*write) (const char *, size_t), const char *fmt,
-	       va_list args);
-int printk (const char *__restrict fmt, ...)
+void serial_init (void);
+char serial_read_byte (void);
+void serial_write_byte (char c);
+void serial_write_data (const void *data, size_t len);
+int serial_printf (const char *fmt, ...)
   __attribute__ ((format (printf, 1, 2)));
-int vprintk (const char *fmt, va_list args);
 
 __END_DECLS
 

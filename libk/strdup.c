@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * strdup.c -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,16 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDIO_H
-#define _STDIO_H
+#include <libk/libk.h>
+#include <vm/heap.h>
 
-#include <sys/cdefs.h>
-#include <stdarg.h>
-#include <stddef.h>
-
-__BEGIN_DECLS
-
-int __vprintk (void (*write) (const char *, size_t), const char *fmt,
-	       va_list args);
-int printk (const char *__restrict fmt, ...)
-  __attribute__ ((format (printf, 1, 2)));
-int vprintk (const char *fmt, va_list args);
-
-__END_DECLS
-
-#endif
+char *
+strdup (const char *s)
+{
+  size_t len = strlen (s);
+  char *buffer = kmalloc (len + 1);
+  if (unlikely (buffer == NULL))
+    return NULL;
+  strcpy (buffer, s);
+  return buffer;
+}

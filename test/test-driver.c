@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * test-driver.c -- This file is part of OS/0.                           *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,31 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDIO_H
-#define _STDIO_H
+#include <err.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include <sys/cdefs.h>
-#include <stdarg.h>
-#include <stddef.h>
+static char buffer[BUFSIZ];
 
-__BEGIN_DECLS
+int
+main (int argc, char **argv)
+{
+  FILE *stream;
+  if (argc != 3)
+    {
+      fprintf (stderr, "usage: test-driver <QEMU> <FILE>\n");
+      exit (1);
+    }
+  sprintf (buffer, "%s -kernel %s -serial stdio -monitor null -nographic",
+	   argv[1], argv[2]);
 
-int __vprintk (void (*write) (const char *, size_t), const char *fmt,
-	       va_list args);
-int printk (const char *__restrict fmt, ...)
-  __attribute__ ((format (printf, 1, 2)));
-int vprintk (const char *fmt, va_list args);
-
-__END_DECLS
-
-#endif
+  stream = popen (buffer, "r");
+  while (fgets (buffer, BUFSIZ, stream) != NULL)
+    ;
+  fclose (stream);
+  if (strcmp (buffer, "PASS\n") != 0)
+    exit (1);
+  return 0;
+}

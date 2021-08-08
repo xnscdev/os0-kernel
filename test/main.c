@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * main.c -- This file is part of OS/0.                                  *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,32 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDIO_H
-#define _STDIO_H
+#include "test.h"
 
-#include <sys/cdefs.h>
-#include <stdarg.h>
-#include <stddef.h>
+#include <sys/io.h>
+#include <video/serial.h>
 
-__BEGIN_DECLS
+void run_test (void);
 
-int __vprintk (void (*write) (const char *, size_t), const char *fmt,
-	       va_list args);
-int printk (const char *__restrict fmt, ...)
-  __attribute__ ((format (printf, 1, 2)));
-int vprintk (const char *fmt, va_list args);
+void
+test_fail (void)
+{
+  serial_write_data ("FAIL\n", 5);
+  outw (0x2000, 0x604);
+}
 
-__END_DECLS
+void
+test_pass (void)
+{
+  serial_write_data ("PASS\n", 5);
+  outw (0x2000, 0x604);
+}
 
-#endif
+void
+test_main (void)
+{
+  serial_init ();
+  serial_write_byte ('\n');
+  run_test ();
+  test_pass ();
+}

@@ -17,7 +17,6 @@
  *************************************************************************/
 
 #include <libk/libk.h>
-#include <vm/heap.h>
 
 static char strtok_save;
 static char *strtok_ptr;
@@ -209,17 +208,6 @@ strnlen (const char *s, size_t len)
   while (s[i] != '\0' && i < len)
     i++;
   return i;
-}
-
-char *
-strdup (const char *s)
-{
-  size_t len = strlen (s);
-  char *buffer = kmalloc (len + 1);
-  if (unlikely (buffer == NULL))
-    return NULL;
-  strcpy (buffer, s);
-  return buffer;
 }
 
 char *

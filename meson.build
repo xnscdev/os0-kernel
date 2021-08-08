@@ -15,8 +15,6 @@ if cc.has_argument('-Wformat')
   add_project_arguments('-Wno-format', language: 'c')
 endif
 
-grub_file = find_program('grub-file', required: false)
-
 includedir = include_directories('.', 'include')
 
 kernel_conf = configuration_data()
@@ -49,3 +47,5 @@ subdir('uapi')
 
 subdir('kernel')
 subdir('include')
+
+subdir('test')

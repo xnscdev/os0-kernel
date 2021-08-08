@@ -1,5 +1,5 @@
 /*************************************************************************
- * stdio.h -- This file is part of OS/0.                                 *
+ * start.S -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,21 +16,37 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _STDIO_H
-#define _STDIO_H
+#define _ASM
 
-#include <sys/cdefs.h>
-#include <stdarg.h>
-#include <stddef.h>
+#include <sys/multiboot.h>
 
-__BEGIN_DECLS
+	.set ALIGN, 1 << 0
+	.set MEMINFO, 1 << 1
+	.set FLAGS, ALIGN | MEMINFO
+	.set MAGIC, MULTIBOOT_MAGIC
+	.set CHECKSUM, -(MAGIC + FLAGS)
 
-int __vprintk (void (*write) (const char *, size_t), const char *fmt,
-	       va_list args);
-int printk (const char *__restrict fmt, ...)
-  __attribute__ ((format (printf, 1, 2)));
-int vprintk (const char *fmt, va_list args);
+	.section .multiboot, "a", @progbits
+	.align 4
+	.long MAGIC
+	.long FLAGS
+	.long CHECKSUM
 
-__END_DECLS
+	.section .bss
+	.align 16
+stack_bottom:
+	.skip 16384
+stack_top:
 
-#endif
+	.section .text
+	.global _start
+	.type _start, @function
+_start:
+	mov	$stack_top, %esp
+	call	test_main
+	cli
+1:
+	hlt
+	jmp	1b
+
+	.size _start, . - _start

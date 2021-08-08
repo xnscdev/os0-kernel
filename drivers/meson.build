@@ -6,6 +6,7 @@ drivers_src = [
   'device.c',
   'kbd.c',
   'pci.c',
+  'serial.c',
   'terminal.c',
   'vga.c',
   'vga-dev.c'

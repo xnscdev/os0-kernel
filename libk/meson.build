@@ -14,6 +14,7 @@ libk_src = [
   'sha256.c',
   'signal.c',
   'stack.c',
+  'strdup.c',
   'string.c'
 ]
 

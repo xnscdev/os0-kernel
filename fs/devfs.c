@@ -217,6 +217,7 @@ int
 devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 {
   Process *proc = &process_table[task_getpid ()];
+  off64_t n = 0;
   int ret;
   int i;
   switch (inode->vi_ino)
@@ -230,7 +231,7 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
 	      ret = func (dev->sd_name, strlen (dev->sd_name),
 			  DEVFS_DEVICE_INODE (dev->sd_major, dev->sd_minor),
 			  dev->sd_type == DEVICE_TYPE_BLOCK ? DT_BLK : DT_CHR,
-			  i, private);
+			  n++, private);
 	      if (ret > 0)
 		return 0;
 	      if (ret < 0)
@@ -240,14 +241,16 @@ devfs_readdir (VFSInode *inode, VFSDirEntryFillFunc func, void *private)
       for (i = 0; devfs_links[i].name != NULL; i++)
 	{
 	  ret = func (devfs_links[i].name, strlen (devfs_links[i].name),
-		      DEVFS_LINK_INODE (i), DT_LNK, i + DEVICE_TABLE_SIZE,
-		      private);
+		      DEVFS_LINK_INODE (i), DT_LNK, n++, private);
 	  if (ret > 0)
 	    return 0;
 	  if (ret < 0)
 	    return ret;
 	}
-      return func ("fd", 2, 1, DT_DIR, DEVICE_TABLE_SIZE, private);
+      ret = func ("fd", 2, 1, DT_DIR, n, private);
+      if (ret > 0)
+	ret = 0;
+      break;
     case DEVFS_FDS_INODE:
       for (i = 0; i < PROCESS_FILE_LIMIT; i++)
 	{

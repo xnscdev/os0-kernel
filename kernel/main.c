@@ -29,6 +29,7 @@
 #include <sys/sysmacros.h>
 #include <sys/timer.h>
 #include <sys/wait.h>
+#include <video/serial.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
@@ -179,6 +180,7 @@ kmain (MultibootInfo *info)
 
   timer_set_freq (1000);
   vga_init ();
+  serial_init ();
   splash ();
   if (info->mi_flags & MULTIBOOT_FLAG_CMDLINE)
     cmdline_init ((char *) (info->mi_cmdline + RELOC_VADDR));

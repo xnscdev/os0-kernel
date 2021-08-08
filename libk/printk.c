@@ -22,19 +22,18 @@
 
 static char itoa_buffer[32];
 
-int
-printk (const char *__restrict fmt, ...)
+#ifndef TEST
+
+static void
+__vga_write (const char *str, size_t len)
 {
-  int ret;
-  va_list args;
-  va_start (args, fmt);
-  ret = vprintk (fmt, args);
-  va_end (args);
-  return ret;
+  vga_write (CURRENT_TERMINAL, str, len);
 }
 
+#endif
+
 int
-vprintk (const char *fmt, va_list args)
+__vprintk (void (*write) (const char *, size_t), const char *fmt, va_list args)
 {
   int written = 0;
   while (*fmt != '\0')
@@ -50,7 +49,7 @@ vprintk (const char *fmt, va_list args)
 	    amt++;
 	  if (maxrem < amt)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, fmt, amt);
+	  write (fmt, amt);
 	  fmt += amt;
 	  written += amt;
 	  continue;
@@ -62,7 +61,7 @@ vprintk (const char *fmt, va_list args)
 	  char c = (char) va_arg (args, int);
 	  if (maxrem == 0)
 	    return -1;
-	  vga_putchar (CURRENT_TERMINAL, c);
+	  write (&c, 1);
 	  fmt++;
 	}
       else if (*fmt == 's')
@@ -71,7 +70,7 @@ vprintk (const char *fmt, va_list args)
 	  size_t len = strlen (s);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, s, len);
+	  write (s, len);
 	  fmt++;
 	}
       else if (*fmt == 'd' || *fmt == 'i')
@@ -82,7 +81,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'o')
@@ -93,7 +92,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'p')
@@ -105,8 +104,8 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len + 2)
 	    return -1;
-	  vga_puts (CURRENT_TERMINAL, "0x");
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write ("0x", 2);
+	  write (itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'u')
@@ -117,7 +116,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt++;
 	}
       else if (*fmt == 'x' || *fmt == 'X')
@@ -131,7 +130,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt++;
 	}
       else if (strncmp (fmt, "ld", 2) == 0 || strncmp (fmt, "li", 2) == 0)
@@ -142,7 +141,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lo", 2) == 0)
@@ -153,7 +152,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lu", 2) == 0)
@@ -164,7 +163,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt += 2;
 	}
       else if (strncmp (fmt, "lx", 2) == 0)
@@ -178,7 +177,7 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (itoa_buffer);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, itoa_buffer, len);
+	  write (itoa_buffer, len);
 	  fmt += 2;
 	}
       else
@@ -188,10 +187,31 @@ vprintk (const char *fmt, va_list args)
 	  len = strlen (fmt);
 	  if (maxrem < len)
 	    return -1;
-	  vga_write (CURRENT_TERMINAL, fmt, len);
+	  write (fmt, len);
 	  written += len;
 	  fmt += len;
 	}
     }
   return written;
 }
+
+#ifndef TEST
+
+int
+printk (const char *__restrict fmt, ...)
+{
+  int ret;
+  va_list args;
+  va_start (args, fmt);
+  ret = vprintk (fmt, args);
+  va_end (args);
+  return ret;
+}
+
+int
+vprintk (const char *fmt, va_list args)
+{
+  return __vprintk (__vga_write, fmt, args);
+}
+
+#endif
