@@ -233,11 +233,24 @@ task_exec:
 	add	$4, %esp
 
 	cmp	$SYSCALL_STACK_ADDR, %esp
-	jna	2f
-	ret
+	jna	3f
 
+	/* It is now time to begin execution at the executable entry point.
+	   Before doing so, we should reset the stack pointer to the top of
+	   the stack. Since doing this might clobber the dynamic linker
+	   structure needed for dynamic linking, we only set the stack pointer
+	   now if we are not doing dynamic linking. */
+	mov	(%esp), %ecx
+	cmp	$rtld_setup_dynamic_linker, %ecx
+	je	2f
+	mov	$SYSCALL_STACK_ADDR, %esp
 2:
-	/* Switch to user mode and reenable interrupts */
+	jmp	*%ecx
+
+3:
+	/* Switch to user mode and reenable interrupts. We could also reset
+	   the stack pointer here, but since this will only be called once
+	   (kernel -> init) there is no need. */
 	pop	%ecx
 	mov	$0x23, %ax
 	mov	%ax, %ds
@@ -316,7 +329,8 @@ rtld_setup_dynamic_linker:
 	/* Set task finalizer functions */
 	int	$0x81
 
-	/* Begin execution at real entry point */
+	/* Begin execution at real entry point and reset the stack pointer */
+	mov	$SYSCALL_STACK_ADDR, %esp
 	jmp	*8(%ebx)
 
 	.size rtld_setup_dynamic_linker, . - rtld_setup_dynamic_linker
