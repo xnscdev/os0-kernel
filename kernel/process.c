@@ -22,6 +22,7 @@
 #include <bits/mount.h>
 #include <libk/libk.h>
 #include <sys/process.h>
+#include <sys/wait.h>
 #include <video/vga.h>
 #include <vm/heap.h>
 #include <vm/paging.h>
@@ -653,6 +654,7 @@ int
 process_send_signal (pid_t pid, int sig)
 {
   int exit = sig == SIGKILL;
+  int stop = sig == SIGSTOP;
   struct sigaction *sigaction = &process_table[pid].p_sigactions[sig];
   task_switch_enabled = 0;
   if (!exit)
@@ -692,8 +694,6 @@ process_send_signal (pid_t pid, int sig)
     case SIGSYS:
     case SIGTERM:
     case SIGTRAP:
-    case SIGTTIN:
-    case SIGTTOU:
     case SIGUSR1:
     case SIGUSR2:
     case SIGVTALRM:
@@ -702,6 +702,21 @@ process_send_signal (pid_t pid, int sig)
       if (!(sigaction->sa_flags & SA_SIGINFO)
 	  && sigaction->sa_handler == SIG_DFL)
 	exit = 1; /* Default action is to terminate process */
+      break;
+    case SIGTTIN:
+    case SIGTTOU:
+    case SIGTSTP:
+      if (!(sigaction->sa_flags & SA_SIGINFO)
+	  && sigaction->sa_handler == SIG_DFL)
+        stop = 1; /* Default action is to stop process */
+      break;
+    case SIGCONT:
+      if (WIFSTOPPED (process_table[pid].p_waitstat))
+	{
+	  /* Continue process if stopped */
+	  process_table[pid].p_term = 0;
+	  process_table[pid].p_waitstat = 0;
+	}
       break;
     }
 
@@ -713,6 +728,17 @@ process_send_signal (pid_t pid, int sig)
       exit_task = pid;
       if (ppid != 0)
 	process_send_signal (ppid, SIGCHLD);
+    }
+  else if (stop)
+    {
+      process_table[pid].p_term = 1;
+      process_table[pid].p_waitstat = (sig << 8) | 0x7f;
+      if (!(sigaction->sa_flags & SA_NOCLDSTOP))
+	{
+	  pid_t ppid = process_table[pid].p_task->t_ppid;
+	  if (ppid != 0)
+	    process_send_signal (ppid, SIGCHLD);
+	}
     }
 
   process_table[pid].p_sig = sig;

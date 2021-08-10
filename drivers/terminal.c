@@ -412,8 +412,8 @@ vga_init (void)
   default_terminal.vt_termios.c_cc[VSTOP] = '\23';
   default_terminal.vt_termios.c_cc[VSUSP] = '\32';
   default_terminal.vt_termios.c_cc[VEOL] = 0xff;
-  default_terminal.vt_termios.c_ispeed = B9600;
-  default_terminal.vt_termios.c_ospeed = B9600;
+  default_terminal.vt_termios.c_ispeed = B38400;
+  default_terminal.vt_termios.c_ospeed = B38400;
 }
 
 void

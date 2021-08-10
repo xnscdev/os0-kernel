@@ -30,8 +30,7 @@ static uint32_t timer_freq;
 void
 timer_tick (void)
 {
-  tick++;
-  if (tick % timer_freq == 0)
+  if (++tick % timer_freq == 0)
     rtc_time++;
   task_timer_tick ();
 }
@@ -61,8 +60,8 @@ timer_get_rem_ms (void)
 void
 msleep (uint32_t ms)
 {
-  tick = 0;
-  while (tick < ms)
+  long start = tick;
+  while (tick < start + ms)
     ;
 }
 
