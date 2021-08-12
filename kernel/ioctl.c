@@ -30,8 +30,8 @@ static struct winsize vga_display_winsize = {
 static int
 ioctl_isatty (Process *proc, int fd)
 {
-  return terminals[proc->p_sid] != NULL
-    && proc->p_files[fd]->pf_inode->vi_sb == &vga_tty_sb;
+  return ttys[proc->p_sid] != NULL
+    && proc->p_files[fd]->pf_inode->vi_sb == &tty_sb;
 }
 
 static int
@@ -39,7 +39,7 @@ ioctl_tcgets (Process *proc, int fd, struct termios *data)
 {
   if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
-  memcpy (data, &terminals[proc->p_sid]->vt_termios, sizeof (struct termios));
+  memcpy (data, &ttys[proc->p_sid]->t_termios, sizeof (struct termios));
   return 0;
 }
 
@@ -48,7 +48,7 @@ ioctl_tcsets (Process *proc, int fd, struct termios *data)
 {
   if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
-  memcpy (&terminals[proc->p_sid]->vt_termios, data, sizeof (struct termios));
+  memcpy (&ttys[proc->p_sid]->t_termios, data, sizeof (struct termios));
   return 0;
 }
 
@@ -57,9 +57,9 @@ ioctl_tcsetsf (Process *proc, int fd, struct termios *data)
 {
   if (!ioctl_isatty (proc, fd))
     return -ENOTTY;
-  terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos = 0;
-  terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos = 0;
-  memcpy (&terminals[proc->p_sid]->vt_termios, data, sizeof (struct termios));
+  ttys[proc->p_sid]->t_inbuf.tb_start = 0;
+  ttys[proc->p_sid]->t_inbuf.tb_end = 0;
+  memcpy (&ttys[proc->p_sid]->t_termios, data, sizeof (struct termios));
   return 0;
 }
 
@@ -74,8 +74,8 @@ ioctl_tcflush (Process *proc, int fd, int arg)
       return 0;
     case TCIFLUSH:
     case TCIOFLUSH:
-      terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos = 0;
-      terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos = 0;
+      ttys[proc->p_sid]->t_inbuf.tb_start = 0;
+      ttys[proc->p_sid]->t_inbuf.tb_end = 0;
       return 0;
     default:
       return -EINVAL;
@@ -119,8 +119,8 @@ ioctl (int fd, unsigned long req, void *data)
     case TIOCINQ:
       if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
-      *((int *) data) = terminals[proc->p_sid]->vt_kbdbuf.kbd_bufpos -
-	terminals[proc->p_sid]->vt_kbdbuf.kbd_currpos;
+      *((int *) data) = ttys[proc->p_sid]->t_inbuf.tb_end -
+	ttys[proc->p_sid]->t_inbuf.tb_start;
     case TIOCOUTQ:
       if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
@@ -133,12 +133,12 @@ ioctl (int fd, unsigned long req, void *data)
     case TIOCGPGRP:
       if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
-      *((pid_t *) data) = terminals[proc->p_sid]->vt_fgpgid;
+      *((pid_t *) data) = ttys[proc->p_sid]->t_fg_pgid;
       break;
     case TIOCSPGRP:
       if (!ioctl_isatty (proc, fd))
 	return -ENOTTY;
-      terminals[proc->p_sid]->vt_fgpgid = *((pid_t *) data);
+      ttys[proc->p_sid]->t_fg_pgid = *((pid_t *) data);
       break;
     case TIOCGSID:
       if (!ioctl_isatty (proc, fd))

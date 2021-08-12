@@ -472,7 +472,7 @@ process_setup_std_streams (pid_t pid)
 
   /* Create stdin */
   assert (process_alloc_fd (proc, STDIN_FILENO) == STDIN_FILENO);
-  proc->p_files[STDIN_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDIN_FILENO]->pf_inode = vfs_alloc_inode (&tty_sb);
   proc->p_files[STDIN_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDIN_FILENO);
   proc->p_files[STDIN_FILENO]->pf_path = strdup ("/dev/stdin");
@@ -483,7 +483,7 @@ process_setup_std_streams (pid_t pid)
 
   /* Create stdout */
   assert (process_alloc_fd (proc, STDOUT_FILENO) == STDOUT_FILENO);
-  proc->p_files[STDOUT_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDOUT_FILENO]->pf_inode = vfs_alloc_inode (&tty_sb);
   proc->p_files[STDOUT_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDOUT_FILENO);
   proc->p_files[STDOUT_FILENO]->pf_path = strdup ("/dev/stdout");
@@ -494,7 +494,7 @@ process_setup_std_streams (pid_t pid)
 
   /* Create stderr */
   assert (process_alloc_fd (proc, STDERR_FILENO) == STDERR_FILENO);
-  proc->p_files[STDERR_FILENO]->pf_inode = vfs_alloc_inode (&vga_tty_sb);
+  proc->p_files[STDERR_FILENO]->pf_inode = vfs_alloc_inode (&tty_sb);
   proc->p_files[STDERR_FILENO]->pf_inode->vi_private =
     device_lookup (1, STDERR_FILENO);
   proc->p_files[STDERR_FILENO]->pf_path = strdup ("/dev/stderr");

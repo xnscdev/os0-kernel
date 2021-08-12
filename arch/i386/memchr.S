@@ -1,5 +1,5 @@
 /*************************************************************************
- * timer.h -- This file is part of OS/0.                                 *
+ * memchr.S -- This file is part of OS/0.                                *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,22 +16,50 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#ifndef _SYS_TIMER_H
-#define _SYS_TIMER_H
+	.section .text
+	.global memchr
+	.type memchr, @function
+memchr:
+	push	%edi
+	mov	8(%esp), %edi
+	movzb	12(%esp), %eax
+	mov	16(%esp), %ecx
+	repne
+	scasb
+	jne	1f
 
-#include <sys/cdefs.h>
-#include <sys/time.h>
-#include <stdint.h>
+	lea	-1(%edi), %eax
+	pop	%edi
+	ret
 
-__BEGIN_DECLS
+1:
+	xor	%eax, %eax
+	pop	%edi
+	ret
 
-void timer_set_freq (uint32_t freq);
-uint32_t timer_get_freq (void);
-uint32_t timer_get_rem_ms (void);
+	.size memchr, . - memchr
 
-void msleep (uint32_t ms);
-unsigned long timer_poll (void);
+	.global memrchr
+	.type memrchr, @function
+memrchr:
+	push	%edi
+	mov	8(%esp), %edi
+	movzb	12(%esp), %eax
+	mov	16(%esp), %ecx
+	lea	-1(%edi,%ecx,1), %edi
+	std
+	repne
+	scasb
+	cld
+	jne	1f
 
-__END_DECLS
+	lea	1(%edi), %eax
+	pop	%edi
+	ret
 
-#endif
+1:
+	xor	%eax, %eax
+	pop	%edi
+	ret
+
+	.size memrchr, . - memrchr

@@ -27,7 +27,7 @@ static char itoa_buffer[32];
 static void
 __vga_write (const char *str, size_t len)
 {
-  vga_write (CURRENT_TERMINAL, str, len);
+  vga_write (CURRENT_TTY, str, len);
 }
 
 #endif

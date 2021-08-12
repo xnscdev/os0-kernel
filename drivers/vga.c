@@ -3,7 +3,7 @@
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
- * it under the terms of the GNU General Public License as published by  *
+ * it under the ttys of the GNU General Public License as published by  *
  * the Free Software Foundation, either version 3 of the License, or     *
  * (at your option) any later version.                                   *
  *                                                                       *
@@ -16,103 +16,101 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
+#include <libk/libk.h>
 #include <sys/io.h>
 #include <sys/task.h>
 #include <video/vga.h>
-#include <string.h>
 
 uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
 
 void
-vga_putentry (Terminal *term, char c, size_t x, size_t y)
+vga_putentry (TTY *tty, char c, size_t x, size_t y)
 {
-  unsigned char color = term->vt_color;
-  if (term->vt_flags & VT_FLAG_REVERSE)
+  unsigned char color = tty->t_color;
+  if (tty->t_flags & TTY_REVERSE_VIDEO)
     color = ((color & 0xf0) >> 4) | ((color & 0x0f) << 4);
-  term->vt_data[vga_getindex (x, y)] = vga_mkentry (c, color);
-  if (term == CURRENT_TERMINAL)
+  tty->t_screenbuf[vga_getindex (x, y)] = vga_mkentry (c, color);
+  if (tty == CURRENT_TTY)
     vga_hdw_buf[vga_getindex (x, y)] = vga_mkentry (c, color);
 }
 
 void
-vga_putchar (Terminal *term, char c)
+vga_putchar (TTY *tty, char c)
 {
-  if (parsing_escseq)
-    vga_terminal_parse_escseq (term, c);
-  else if (c == '\033')
-    parsing_escseq = 1;
-  else
-    vga_display_putchar (term, c);
+  vga_display_putchar (tty, c);
 }
 
 void
-vga_delchar (Terminal *term)
+vga_erase_char (TTY *tty)
 {
-  if (term->vt_column > 0)
+  if (tty->t_column > 0)
     {
-      if (term->vt_termios.c_lflag & ECHOE)
-	{
-	  term->vt_column--;
-	  vga_putentry (term, ' ', term->vt_column, term->vt_row);
-	  vga_setcurs (term->vt_column, term->vt_row);
-	}
-      else
-	{
-	  char c = term->vt_data[vga_getindex (term->vt_column - 1,
-					       term->vt_row)] & 0xff;
-	  vga_display_putchar (term, c);
-	}
+      tty->t_column--;
+      vga_putentry (tty, ' ', tty->t_column, tty->t_row);
+      vga_setcurs (tty->t_column, tty->t_row);
     }
 }
 
 void
-vga_delline (Terminal *term, size_t len)
+vga_erase_word (TTY *tty)
 {
-  tcflag_t lflag = term->vt_termios.c_lflag;
-  if (lflag & ECHOKE)
+  char eof = tty->t_termios.c_cc[VEOF];
+  size_t i = tty->t_column - 1;
+  size_t j;
+  char c;
+  while (c = tty->t_screenbuf[vga_getindex (i, tty->t_row)],
+	 isspace (c) && c != eof)
     {
-      size_t i;
-      if (len > term->vt_column)
-	len = term->vt_column;
-      for (i = 0; i < len; i++)
-	{
-	  term->vt_column--;
-	  vga_putentry (term, ' ', term->vt_column, term->vt_row);
-	}
-      vga_setcurs (term->vt_column, term->vt_row);
+      if (--i == 0)
+	break;
     }
-  else
+  while (c = tty->t_screenbuf[vga_getindex (i, tty->t_row)],
+	 !isspace (c) && c != eof)
     {
-      vga_display_putchar (term, term->vt_termios.c_cc[VKILL]);
-      if (lflag & ECHOK)
-	vga_display_putchar (term, '\n');
+      if (--i == 0)
+	break;
     }
+  for (j = i == 0 ? 0 : i + 1; j <= tty->t_column; j++)
+    vga_putentry (tty, ' ', j, tty->t_row);
+  tty->t_column = i == 0 ? 0 : i + 1;
+  vga_setcurs (tty->t_column, tty->t_row);
 }
 
 void
-vga_write (Terminal *term, const char *s, size_t size)
+vga_erase_line (TTY *tty, size_t len)
+{
+  size_t i;
+  if (len > tty->t_column)
+    len = tty->t_column;
+  for (i = 0; i < len; i++)
+    vga_putentry (tty, ' ', --tty->t_column, tty->t_row);
+  vga_setcurs (tty->t_column, tty->t_row);
+}
+
+void
+vga_write (TTY *tty, const char *s, size_t size)
 {
   int i;
   for (i = 0; i < size; i++)
-    vga_putchar (term, s[i]);
+    vga_putchar (tty, s[i]);
 }
 
 void
-vga_puts (Terminal *term, const char *s)
+vga_puts (TTY *tty, const char *s)
 {
   int written = 0;
   for (; *s != '\0'; s++, written++)
-    vga_putchar (term, *s);
+    vga_putchar (tty, *s);
 }
 
 void
-vga_display_putchar (Terminal *term, char c)
+vga_display_putchar (TTY *tty, char c)
 {
-  tcflag_t iflag = CURRENT_TERMINAL->vt_termios.c_iflag;
+  tcflag_t iflag = CURRENT_TTY->t_termios.c_iflag;
   int active;
   if (c == '\0')
     return;
-  active = term == CURRENT_TERMINAL;
+  active = tty == CURRENT_TTY;
   DISABLE_TASK_SWITCH;
 
   switch (c)
@@ -120,7 +118,7 @@ vga_display_putchar (Terminal *term, char c)
     case '\a':
       goto end; /* TODO Sound the system bell */
     case '\n':
-      term->vt_column = 0;
+      tty->t_column = 0;
       if (iflag & INLCR)
 	goto end;
     case '\v':
@@ -129,60 +127,57 @@ vga_display_putchar (Terminal *term, char c)
     case '\r':
       if (iflag & IGNCR)
 	goto end;
-      term->vt_column = 0;
+      tty->t_column = 0;
       if (iflag & ICRNL)
 	goto wrap;
       else
 	goto end;
     case '\t':
-      term->vt_column |= 7;
+      tty->t_column |= 7;
       break;
-    case '\b':
-      vga_delchar (term);
-      goto end;
     default:
-      vga_putentry (term, c, term->vt_column, term->vt_row);
+      vga_putentry (tty, c, tty->t_column, tty->t_row);
     }
 
-  if (++term->vt_column == VGA_SCREEN_WIDTH)
+  if (++tty->t_column == VGA_SCREEN_WIDTH)
     {
-      term->vt_column = 0;
+      tty->t_column = 0;
     wrap:
-      if (++term->vt_row == VGA_SCREEN_HEIGHT)
+      if (++tty->t_row == VGA_SCREEN_HEIGHT)
 	{
 	  size_t i;
 	  for (i = VGA_SCREEN_WIDTH; i < VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT;
 	       i++)
-	    term->vt_data[i - VGA_SCREEN_WIDTH] = term->vt_data[i];
+	    tty->t_screenbuf[i - VGA_SCREEN_WIDTH] = tty->t_screenbuf[i];
 	  for (i = 0; i < VGA_SCREEN_WIDTH; i++)
-	    vga_putentry (term, ' ', i, VGA_SCREEN_HEIGHT - 1);
-	  term->vt_row--;
+	    vga_putentry (tty, ' ', i, VGA_SCREEN_HEIGHT - 1);
+	  tty->t_row--;
 	  if (active)
-	    memcpy (vga_hdw_buf, term->vt_data,
+	    memcpy (vga_hdw_buf, tty->t_screenbuf,
 		    2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 	}
     }
 
  end:
-  vga_setcurs (term->vt_column, term->vt_row);
+  vga_setcurs (tty->t_column, tty->t_row);
   ENABLE_TASK_SWITCH;
 }
 
 void
-vga_clear (Terminal *term)
+vga_clear (TTY *tty)
 {
   size_t y;
   size_t x;
   for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
     {
       for (x = 0; x < VGA_SCREEN_WIDTH; x++)
-	term->vt_data[vga_getindex (x, y)] =
-	  vga_mkentry (' ', term->vt_color);
+	tty->t_screenbuf[vga_getindex (x, y)] =
+	  vga_mkentry (' ', tty->t_color);
     }
-  if (term == CURRENT_TERMINAL)
+  if (tty == CURRENT_TTY)
     {
       DISABLE_TASK_SWITCH;
-      memcpy (vga_hdw_buf, term->vt_data,
+      memcpy (vga_hdw_buf, tty->t_screenbuf,
 	      2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
       ENABLE_TASK_SWITCH;
     }

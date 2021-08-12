@@ -9,6 +9,7 @@ arch_src = [
   'isr.c',
   'isr.S',
   'memcmp.S',
+  'memchr.S',
   'memcpy.S',
   'memmove.S',
   'memset.S',

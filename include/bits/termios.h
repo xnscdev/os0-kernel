@@ -52,6 +52,11 @@ struct termios
 #define VSTOP    8
 #define VSUSP    9
 #define VEOL     10
+#define VREPRINT 11
+#define VDISCARD 12
+#define VWERASE  13
+#define VLNEXT   14
+#define VEOL2    15
 
 #define IGNBRK   0x0001
 #define BRKINT   0x0002

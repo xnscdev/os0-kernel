@@ -24,7 +24,7 @@
 
 extern time_t rtc_time;
 
-static long tick;
+static unsigned long tick;
 static uint32_t timer_freq;
 
 void
@@ -65,7 +65,7 @@ msleep (uint32_t ms)
     ;
 }
 
-long
+unsigned long
 timer_poll (void)
 {
   return tick;
