@@ -70,8 +70,8 @@ extern VFSSuperblock tty_sb;
 
 void tty_input_buffer_add_char (TTY *tty, char c);
 void tty_flush_input_line (TTY *tty, char delim);
-void tty_erase_input (TTY *tty);
-void tty_erase_input_word (TTY *tty);
+size_t tty_erase_input (TTY *tty);
+size_t tty_erase_input_word (TTY *tty);
 size_t tty_kill_input (TTY *tty);
 void tty_reprint_input (TTY *tty);
 void tty_process_input (TTY *tty, char c);

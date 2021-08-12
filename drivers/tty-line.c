@@ -117,7 +117,7 @@ tty_flush_input_line (TTY *tty, char delim)
   tty->t_flags |= TTY_INPUT_READY;
 }
 
-void
+size_t
 tty_erase_input (TTY *tty)
 {
   /* Erase the last character in the input buffer if there is one and it is
@@ -126,23 +126,35 @@ tty_erase_input (TTY *tty)
   if (buffer->tb_end > 0
       && (buffer->tb_data[buffer->tb_end - 1] != tty->t_termios.c_cc[VEOF]
 	  || tty->t_termios.c_cc[VEOF] == 0xff))
-    buffer->tb_end--;
+    {
+      buffer->tb_end--;
+      return 1;
+    }
+  else
+    return 0;
 }
 
-void
+size_t
 tty_erase_input_word (TTY *tty)
 {
   /* Erase input to the start of the previous word or EOF character */
   TTYInputBuffer *buffer = &tty->t_inbuf;
   char eof = tty->t_termios.c_cc[VEOF];
-  size_t i = buffer->tb_end - 1;
+  long i = buffer->tb_end - 1;
+  size_t len;
   while (i >= buffer->tb_start && isspace (buffer->tb_data[i])
 	 && (buffer->tb_data[i] != eof || eof == 0xff))
     i--;
   while (i >= buffer->tb_start && !isspace (buffer->tb_data[i])
 	 && (buffer->tb_data[i] != eof || eof == 0xff))
     i--;
-  buffer->tb_end = i + 1;
+  if (i < 0)
+    i = 0;
+  else
+    i++;
+  len = buffer->tb_end - i;
+  buffer->tb_end = i;
+  return len;
 }
 
 size_t
@@ -199,13 +211,13 @@ tty_process_input (TTY *tty, char c)
       else if (CHAR_MATCH (VEOF) && tty->t_inbuf.tb_end == 0)
 	DO_END (tty_flush_input_line (tty, '\0'));
       else if (CHAR_MATCH (VERASE))
-	DO_END (tty_erase_input (tty));
+	DO_END (arg = tty_erase_input (tty));
       else if (CHAR_MATCH (VKILL))
 	DO_END (arg = tty_kill_input (tty));
       else if (term->c_lflag & IEXTEN)
 	{
 	  if (CHAR_MATCH (VWERASE))
-	    DO_END (tty_erase_input_word (tty));
+	    DO_END (arg = tty_erase_input_word (tty));
 	  else if (CHAR_MATCH (VREPRINT))
 	    DO_END (tty_reprint_input (tty));
 	  else if (CHAR_MATCH (VLNEXT))
@@ -230,9 +242,13 @@ tty_process_output (TTY *tty, char c, size_t arg)
   if (term->c_lflag & ICANON)
     {
       if (CHAR_MATCH (VERASE) && (term->c_lflag & ECHOE))
-	DO_RET (vga_erase_char (tty));
+	{
+	  if (arg)
+	    vga_erase_char (tty);
+	  return;
+	}
       else if (CHAR_MATCH (VWERASE) && (term->c_lflag & ECHOE))
-	DO_RET (vga_erase_word (tty));
+	DO_RET (vga_erase_line (tty, arg));
       else if (CHAR_MATCH (VKILL) && (term->c_lflag & (ECHOK | ECHOKE)))
 	DO_RET (vga_erase_line (tty, arg));
     }

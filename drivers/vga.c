@@ -52,31 +52,6 @@ vga_erase_char (TTY *tty)
 }
 
 void
-vga_erase_word (TTY *tty)
-{
-  char eof = tty->t_termios.c_cc[VEOF];
-  size_t i = tty->t_column - 1;
-  size_t j;
-  char c;
-  while (c = tty->t_screenbuf[vga_getindex (i, tty->t_row)],
-	 isspace (c) && c != eof)
-    {
-      if (--i == 0)
-	break;
-    }
-  while (c = tty->t_screenbuf[vga_getindex (i, tty->t_row)],
-	 !isspace (c) && c != eof)
-    {
-      if (--i == 0)
-	break;
-    }
-  for (j = i == 0 ? 0 : i + 1; j <= tty->t_column; j++)
-    vga_putentry (tty, ' ', j, tty->t_row);
-  tty->t_column = i == 0 ? 0 : i + 1;
-  vga_setcurs (tty->t_column, tty->t_row);
-}
-
-void
 vga_erase_line (TTY *tty, size_t len)
 {
   size_t i;

@@ -72,7 +72,6 @@ void vga_init (void);
 void vga_putentry (TTY *tty, char c, size_t x, size_t y);
 void vga_putchar (TTY *tty, char c);
 void vga_erase_char (TTY *tty);
-void vga_erase_word (TTY *tty);
 void vga_erase_line (TTY *tty, size_t len);
 void vga_write (TTY *tty, const char *s, size_t size);
 void vga_puts (TTY *tty, const char *s);
