@@ -178,7 +178,8 @@ kmain (MultibootInfo *info)
 {
   assert (info->mi_flags & MULTIBOOT_FLAG_MEMORY);
 
-  timer_set_freq (1000);
+  timer_set_freq (TIMER_PORT_CHANNEL0, 1000);
+  speaker_init ();
   vga_init ();
   serial_init ();
   splash ();

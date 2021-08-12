@@ -1,5 +1,5 @@
 /*************************************************************************
- * terminal.c -- This file is part of OS/0.                              *
+ * pcspk.c -- This file is part of OS/0.                                 *
  * Copyright (C) 2021 XNSC                                               *
  *                                                                       *
  * OS/0 is free software: you can redistribute it and/or modify          *
@@ -16,30 +16,21 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <video/vga.h>
-#include <ctype.h>
-#include <limits.h>
-#include <string.h>
+#include <sys/io.h>
+#include <sys/timer.h>
 
 void
-vga_init (void)
+speaker_init (void)
 {
-  size_t x;
-  size_t y;
-  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
-    {
-      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
-	default_tty.t_screenbuf[vga_getindex (x, y)] =
-	  vga_mkentry (' ', default_tty.t_color);
-    }
-  memcpy (vga_hdw_buf, default_tty.t_screenbuf,
-	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+  timer_set_freq (TIMER_PORT_CHANNEL2, PCSPK_FREQ);
 }
 
 void
-set_active_tty (int term)
+speaker_beep (void)
 {
-  active_tty = term;
-  memcpy ((void *) VGA_BUFFER, CURRENT_TTY->t_screenbuf,
-	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+  unsigned char c = inb (PCSPK_PORT);
+  if (c != (c | 3))
+    outb (c | 3, PCSPK_PORT);
+  msleep (PCSPK_DELAY);
+  outb (inb (PCSPK_PORT) & 0xfc, PCSPK_PORT);
 }

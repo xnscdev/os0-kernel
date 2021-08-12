@@ -7,7 +7,7 @@ drivers_src = [
   'kbd.c',
   'pci.c',
   'serial.c',
-  'terminal.c',
+  'pcspk.c',
   'tty-line.c',
   'vga.c'
 ]

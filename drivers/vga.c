@@ -19,9 +19,25 @@
 #include <libk/libk.h>
 #include <sys/io.h>
 #include <sys/task.h>
+#include <sys/timer.h>
 #include <video/vga.h>
 
 uint16_t *vga_hdw_buf = (uint16_t *) VGA_BUFFER;
+
+void
+vga_init (void)
+{
+  size_t x;
+  size_t y;
+  for (y = 0; y < VGA_SCREEN_HEIGHT; y++)
+    {
+      for (x = 0; x < VGA_SCREEN_WIDTH; x++)
+	default_tty.t_screenbuf[vga_getindex (x, y)] =
+	  vga_mkentry (' ', default_tty.t_color);
+    }
+  memcpy (vga_hdw_buf, default_tty.t_screenbuf,
+	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
+}
 
 void
 vga_putentry (TTY *tty, char c, size_t x, size_t y)
@@ -91,7 +107,8 @@ vga_display_putchar (TTY *tty, char c)
   switch (c)
     {
     case '\a':
-      goto end; /* TODO Sound the system bell */
+      speaker_beep ();
+      goto end;
     case '\n':
       tty->t_column = 0;
       if (iflag & INLCR)

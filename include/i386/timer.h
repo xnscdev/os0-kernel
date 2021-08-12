@@ -29,6 +29,13 @@
 #define TIMER_PORT_CHANNEL2 0x42
 #define TIMER_PORT_COMMAND  0x43
 
+#define TIMER_CHANNEL_COUNT 3
+#define TIMER_CHANNEL(n)    ((n) - TIMER_PORT_CHANNEL0)
+
+#define PCSPK_PORT  0x61
+#define PCSPK_FREQ  500
+#define PCSPK_DELAY 100
+
 __BEGIN_DECLS
 
 void timer_tick (void);

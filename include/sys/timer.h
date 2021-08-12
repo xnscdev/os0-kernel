@@ -19,18 +19,26 @@
 #ifndef _SYS_TIMER_H
 #define _SYS_TIMER_H
 
+#include <kconfig.h>
+
+#ifdef ARCH_I386
+#include <i386/timer.h>
+#endif
 #include <sys/cdefs.h>
 #include <sys/time.h>
 #include <stdint.h>
 
 __BEGIN_DECLS
 
-void timer_set_freq (uint32_t freq);
-uint32_t timer_get_freq (void);
+void timer_set_freq (unsigned char channel, uint32_t freq);
+uint32_t timer_get_freq (unsigned char channel);
 uint32_t timer_get_rem_ms (void);
 
 void msleep (uint32_t ms);
 unsigned long timer_poll (void);
+
+void speaker_init (void);
+void speaker_beep (void);
 
 __END_DECLS
 

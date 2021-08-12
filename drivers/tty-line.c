@@ -105,7 +105,12 @@ tty_input_buffer_add_char (TTY *tty, char c)
     }
   if (buffer->tb_end >= TTY_BUFFER_SIZE - 1
       && (!(tty->t_termios.c_lflag & ICANON) || c != '\n'))
-    return; /* Still not enough space, discard input */
+    {
+      /* Not enough space, discard input. Sound the system bell if desired. */
+      if (tty->t_termios.c_iflag & IMAXBEL)
+	speaker_beep ();
+      return;
+    }
   buffer->tb_data[buffer->tb_end++] = c;
 }
 
@@ -225,6 +230,27 @@ tty_process_input (TTY *tty, char c)
 	}
     }
 
+  if (term->c_lflag & ISIG)
+    {
+      int sig = 0;
+      if (CHAR_MATCH (VINTR))
+	sig = SIGINT;
+      else if (CHAR_MATCH (VSUSP))
+	sig = SIGTSTP;
+      else if (CHAR_MATCH (VQUIT))
+	sig = SIGQUIT;
+      if (sig != 0)
+	{
+	  int i;
+	  for (i = 1; i < PROCESS_LIMIT; i++)
+	    {
+	      if (process_table[i].p_pgid == tty->t_fg_pgid)
+		process_send_signal (i, sig);
+	    }
+	  return;
+	}
+    }
+
  raw:
   tty_input_buffer_add_char (tty, c);
 
@@ -278,6 +304,14 @@ tty_wait_input_ready (TTY *tty)
 {
   while (!(tty->t_flags & TTY_INPUT_READY))
     ;
+}
+
+void
+tty_set_active (int term)
+{
+  active_tty = term;
+  memcpy ((void *) VGA_BUFFER, CURRENT_TTY->t_screenbuf,
+	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 }
 
 int

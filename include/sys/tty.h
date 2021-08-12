@@ -76,6 +76,8 @@ size_t tty_kill_input (TTY *tty);
 void tty_reprint_input (TTY *tty);
 void tty_process_input (TTY *tty, char c);
 void tty_process_output (TTY *tty, char c, size_t arg);
+void tty_wait_input_ready (TTY *tty);
+void tty_set_active (int term);
 
 int tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);

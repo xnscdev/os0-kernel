@@ -79,8 +79,6 @@ void vga_display_putchar (TTY *tty, char c);
 void vga_clear (TTY *tty);
 void vga_setcurs (size_t x, size_t y);
 
-void set_active_tty (int term);
-
 __END_DECLS
 
 #endif

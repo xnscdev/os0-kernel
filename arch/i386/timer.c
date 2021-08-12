@@ -16,7 +16,6 @@
  * along with OS/0. If not, see <https://www.gnu.org/licenses/>.         *
  *************************************************************************/
 
-#include <i386/timer.h>
 #include <sys/io.h>
 #include <sys/process.h>
 #include <sys/timer.h>
@@ -25,30 +24,30 @@
 extern time_t rtc_time;
 
 static unsigned long tick;
-static uint32_t timer_freq;
+static uint32_t timer_freq[TIMER_CHANNEL_COUNT];
 
 void
 timer_tick (void)
 {
-  if (++tick % timer_freq == 0)
+  if (++tick % timer_freq[0] == 0)
     rtc_time++;
   task_timer_tick ();
 }
 
 void
-timer_set_freq (uint32_t freq)
+timer_set_freq (unsigned char channel, uint32_t freq)
 {
   uint32_t div = TIMER_FREQ / freq;
-  outb (0x36, TIMER_PORT_COMMAND);
-  outb ((unsigned char) (div & 0xff), TIMER_PORT_CHANNEL0);
-  outb ((unsigned char) ((div >> 8) & 0xff), TIMER_PORT_CHANNEL0);
-  timer_freq = freq;
+  outb (0x36 | (TIMER_CHANNEL (channel) << 6), TIMER_PORT_COMMAND);
+  outb ((unsigned char) (div & 0xff), channel);
+  outb ((unsigned char) ((div >> 8) & 0xff), channel);
+  timer_freq[TIMER_CHANNEL (channel)] = freq;
 }
 
 uint32_t
-timer_get_freq (void)
+timer_get_freq (unsigned char channel)
 {
-  return timer_freq;
+  return timer_freq[TIMER_CHANNEL (channel)];
 }
 
 uint32_t
