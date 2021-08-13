@@ -289,7 +289,10 @@ ext2_read_bitmap_start (VFSSuperblock *sb, int flags, unsigned int start,
     {
       block_bitmap = kmalloc (sb->sb_blksize);
       if (unlikely (block_bitmap == NULL))
-	goto end;
+	{
+	  ret = -ENOMEM;
+	  goto end;
+	}
     }
   else
     block_nbytes = 0;
@@ -298,7 +301,10 @@ ext2_read_bitmap_start (VFSSuperblock *sb, int flags, unsigned int start,
     {
       inode_bitmap = kmalloc (sb->sb_blksize);
       if (unlikely (inode_bitmap == NULL))
-	goto end;
+	{
+	  ret = -ENOMEM;
+	  goto end;
+	}
     }
   else
     inode_nbytes = 0;
@@ -466,7 +472,10 @@ ext2_write_bitmaps (VFSSuperblock *sb)
       block_nbytes = fs->f_super.s_clusters_per_group / 8;
       blockbuf = kmalloc (sb->sb_blksize);
       if (unlikely (blockbuf == NULL))
-	goto err;
+	{
+	  ret = -ENOMEM;
+	  goto err;
+	}
       memset (blockbuf, 0xff, sb->sb_blksize);
     }
   if (do_inode)
@@ -474,7 +483,10 @@ ext2_write_bitmaps (VFSSuperblock *sb)
       inode_nbytes = (size_t) ((fs->f_super.s_inodes_per_group + 7) / 8);
       inodebuf = kmalloc (sb->sb_blksize);
       if (unlikely (inodebuf == NULL))
-	goto err;
+	{
+	  ret = -ENOMEM;
+	  goto err;
+	}
       memset (inodebuf, 0xff, sb->sb_blksize);
     }
 

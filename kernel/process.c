@@ -162,7 +162,7 @@ int
 process_exec (VFSInode *inode, uint32_t *entry, char *const *argv,
 	      char *const *envp, DynamicLinkInfo *dlinfo)
 {
-  Elf32_Ehdr *ehdr;
+  Elf32_Ehdr *ehdr = NULL;
   SortedArray *mregions;
   Process *proc;
   char hashbang[2];

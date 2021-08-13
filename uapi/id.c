@@ -134,25 +134,25 @@ sys_setreuid (uid_t ruid, uid_t euid)
   Process *proc = &process_table[task_getpid ()];
   if (proc->p_euid != 0)
     {
-      if (ruid != -1)
+      if (ruid != (uid_t) -1)
 	{
 	  if (ruid != proc->p_uid && ruid != proc->p_euid)
 	    return -EPERM;
 	}
-      if (euid != -1)
+      if (euid != (uid_t) -1)
 	{
 	  if (euid != proc->p_uid && euid != proc->p_euid
 	      && euid != proc->p_suid)
 	    return -EPERM;
 	}
     }
-  if (euid != -1)
+  if (euid != (uid_t) -1)
     {
       if (proc->p_uid != euid)
 	proc->p_suid = euid;
       proc->p_euid = euid;
     }
-  if (ruid != -1)
+  if (ruid != (uid_t) -1)
     {
       proc->p_uid = ruid;
       proc->p_suid = proc->p_euid;
@@ -166,25 +166,25 @@ sys_setregid (gid_t rgid, gid_t egid)
   Process *proc = &process_table[task_getpid ()];
   if (proc->p_euid != 0)
     {
-      if (rgid != -1)
+      if (rgid != (gid_t) -1)
 	{
 	  if (rgid != proc->p_gid && rgid != proc->p_egid)
 	    return -EPERM;
 	}
-      if (egid != -1)
+      if (egid != (gid_t) -1)
 	{
 	  if (egid != proc->p_gid && egid != proc->p_egid
 	      && egid != proc->p_sgid)
 	    return -EPERM;
 	}
     }
-  if (egid != -1)
+  if (egid != (gid_t) -1)
     {
       if (proc->p_gid != egid)
 	proc->p_sgid = egid;
       proc->p_egid = egid;
     }
-  if (rgid != -1)
+  if (rgid != (gid_t) -1)
     {
       proc->p_gid = rgid;
       proc->p_sgid = proc->p_egid;
@@ -231,30 +231,30 @@ sys_setresuid (uid_t ruid, uid_t euid, uid_t suid)
   Process *proc = &process_table[task_getpid ()];
   if (proc->p_euid != 0)
     {
-      if (ruid != -1)
+      if (ruid != (uid_t) -1)
 	{
 	  if (ruid != proc->p_uid && ruid != proc->p_euid
 	      && ruid != proc->p_suid)
 	    return -EPERM;
 	}
-      if (euid != -1)
+      if (euid != (uid_t) -1)
 	{
 	  if (euid != proc->p_uid && euid != proc->p_euid
 	      && euid != proc->p_suid)
 	    return -EPERM;
 	}
-      if (suid != -1)
+      if (suid != (uid_t) -1)
 	{
 	  if (suid != proc->p_uid && suid != proc->p_euid
 	      && suid != proc->p_suid)
 	    return -EPERM;
 	}
     }
-  if (ruid != -1)
+  if (ruid != (uid_t) -1)
     proc->p_uid = ruid;
-  if (euid != -1)
+  if (euid != (uid_t) -1)
     proc->p_euid = euid;
-  if (suid != -1)
+  if (suid != (uid_t) -1)
     proc->p_suid = suid;
   return 0;
 }
@@ -278,30 +278,30 @@ sys_setresgid (gid_t rgid, gid_t egid, gid_t sgid)
   Process *proc = &process_table[task_getpid ()];
   if (proc->p_euid != 0)
     {
-      if (rgid != -1)
+      if (rgid != (gid_t) -1)
 	{
 	  if (rgid != proc->p_gid && rgid != proc->p_egid
 	      && rgid != proc->p_sgid)
 	    return -EPERM;
 	}
-      if (egid != -1)
+      if (egid != (gid_t) -1)
 	{
 	  if (egid != proc->p_gid && egid != proc->p_egid
 	      && egid != proc->p_sgid)
 	    return -EPERM;
 	}
-      if (sgid != -1)
+      if (sgid != (gid_t) -1)
 	{
 	  if (sgid != proc->p_gid && sgid != proc->p_egid
 	      && sgid != proc->p_sgid)
 	    return -EPERM;
 	}
     }
-  if (rgid != -1)
+  if (rgid != (gid_t) -1)
     proc->p_gid = rgid;
-  if (egid != -1)
+  if (egid != (gid_t) -1)
     proc->p_egid = egid;
-  if (sgid != -1)
+  if (sgid != (gid_t) -1)
     proc->p_sgid = sgid;
   return 0;
 }

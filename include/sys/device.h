@@ -52,7 +52,7 @@ struct _SpecDevice
   dev_t sd_major;
   dev_t sd_minor;
   unsigned char sd_type;
-  char sd_name[15];
+  char sd_name[16];
   void *sd_private;
   int (*sd_read) (SpecDevice *, void *, size_t, off_t);
   int (*sd_write) (SpecDevice *, const void *, size_t, off_t);

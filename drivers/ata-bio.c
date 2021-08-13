@@ -28,7 +28,7 @@ int
 ata_read_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		  void *buffer)
 {
-  int err;
+  int err = 0;
   if (drive > 3 || !ata_devices[drive].id_reserved
       || lba + nsects > ata_devices[drive].id_size)
     return -EINVAL;
@@ -48,7 +48,7 @@ int
 ata_write_sectors (unsigned char drive, unsigned char nsects, uint32_t lba,
 		   const void *buffer)
 {
-  int err;
+  int err = 0;
   if (drive > 3 || !ata_devices[drive].id_reserved
       || lba + nsects > ata_devices[drive].id_size)
     return -EINVAL;

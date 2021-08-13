@@ -190,7 +190,7 @@ ata_init (void)
 unsigned char
 ata_read (unsigned char channel, unsigned char reg)
 {
-  unsigned char result;
+  unsigned char result = 0;
   if (reg > 0x07 && reg < 0x0c)
     ata_write (channel, ATA_REG_CONTROL,
 	       0x80 | ata_channels[channel].icr_noint);

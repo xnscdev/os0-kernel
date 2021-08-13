@@ -144,7 +144,7 @@ tty_erase_input_word (TTY *tty)
 {
   /* Erase input to the start of the previous word or EOF character */
   TTYInputBuffer *buffer = &tty->t_inbuf;
-  char eof = tty->t_termios.c_cc[VEOF];
+  cc_t eof = tty->t_termios.c_cc[VEOF];
   long i = buffer->tb_end - 1;
   size_t len;
   while (i >= buffer->tb_start && isspace (buffer->tb_data[i])
@@ -202,13 +202,13 @@ tty_process_input (TTY *tty, char c)
   size_t arg = 0;
   if (tty == NULL)
     return;
+  term = &tty->t_termios;
   if (tty->t_flags & TTY_QUOTE_INPUT)
     {
       tty->t_flags &= ~TTY_QUOTE_INPUT;
       goto raw;
     }
 
-  term = &tty->t_termios;
   if (term->c_lflag & ICANON)
     {
       if (c == '\n' || CHAR_MATCH (VEOL) || CHAR_MATCH (VEOL2))
