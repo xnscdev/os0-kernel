@@ -29,6 +29,11 @@ endif
 
 subdir('arch' / machine_arch)
 kernel_conf.set10('ARCH_' + machine_arch.to_upper(), true)
+if host_machine.endian() == 'big'
+  kernel_conf.set('MACH_ENDIAN', 'BIG_ENDIAN')
+else
+  kernel_conf.set('MACH_ENDIAN', 'LITTLE_ENDIAN')
+endif
 
 kernel_conf.set('PROCESS_LIMIT', get_option('process_limit'))
 kernel_conf.set('PROCESS_FILE_LIMIT', get_option('fd_limit'))

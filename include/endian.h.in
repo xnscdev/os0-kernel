@@ -36,4 +36,8 @@
 #define be64toh(x) bswap_64 (x)
 #define le64toh(x) (x)
 
+#define LITTLE_ENDIAN 1234
+#define BIG_ENDIAN    4321
+#define BYTE_ORDER    @MACH_ENDIAN@
+
 #endif

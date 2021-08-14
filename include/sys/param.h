@@ -21,6 +21,7 @@
 
 #include <sys/syslimits.h>
 #include <sys/types.h>
+#include <endian.h>
 #include <limits.h>
 
 #ifndef HZ
