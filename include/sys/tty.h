@@ -19,10 +19,7 @@
 #ifndef _SYS_TTY_H
 #define _SYS_TTY_H
 
-#include <fs/vfs.h>
-#include <sys/cdefs.h>
-#include <sys/types.h>
-#include <termios.h>
+#include <sys/process.h>
 
 #define TTY_BUFFER_SIZE 4096
 
@@ -32,11 +29,14 @@
 #define TTY_INPUT_READY   0x0001
 #define TTY_REVERSE_VIDEO 0x0002
 #define TTY_QUOTE_INPUT   0x0004
+#define TTY_ALT_KEYPAD    0x0008
 
 #define DEFAULT_IFLAG (BRKINT | ISTRIP | ICRNL | IMAXBEL | IXON | IXANY)
 #define DEFAULT_OFLAG (OPOST | ONLCR | XTABS)
 #define DEFAULT_CFLAG (B38400 | CREAD | CS7 | PARENB | HUPCL)
 #define DEFAULT_LFLAG (ECHO | ICANON | ISIG | IEXTEN | ECHOE | ECHOKE | ECHOCTL)
+
+typedef struct _TTY TTY;
 
 typedef struct
 {
@@ -45,19 +45,23 @@ typedef struct
   size_t tb_end;
 } TTYInputBuffer;
 
-typedef struct
+struct _TTY
 {
   uint16_t t_screenbuf[VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT]; /* Screen data */
-  TTYInputBuffer t_inbuf;       /* Input buffer for terminal */
-  size_t t_row;                 /* Cursor row */
-  size_t t_column;              /* Cursor column */
-  size_t t_saved_row;           /* Saved cursor row */
-  size_t t_saved_col;           /* Saved cursor column */
-  pid_t t_fg_pgid;              /* Foreground process group ID */
-  unsigned char t_color;        /* Current color */
-  unsigned int t_flags;         /* Flags */
-  struct termios t_termios;     /* Termios structure */
-} TTY;
+  TTYInputBuffer t_inbuf;             /* Input buffer for terminal */
+  size_t t_row;                       /* Cursor row */
+  size_t t_column;                    /* Cursor column */
+  size_t t_saved_row;                 /* Saved cursor row */
+  size_t t_saved_col;                 /* Saved cursor column */
+  pid_t t_fg_pgid;                    /* Foreground process group ID */
+  unsigned char t_color;              /* Current color */
+  unsigned int t_flags;               /* Line discipline flags */
+  struct termios t_termios;           /* Termios structure */
+  int t_state;                        /* Terminal-specific state */
+  unsigned char t_statebuf[8];        /* Terminal-specific extra data */
+  size_t t_curritem;                  /* Current index in extra data */
+  void (*t_write_char) (TTY *, char); /* Terminal write structure */
+};
 
 #define CURRENT_TTY (ttys[active_tty])
 
@@ -77,11 +81,17 @@ void tty_reprint_input (TTY *tty);
 void tty_process_input (TTY *tty, char c);
 void tty_process_output (TTY *tty, char c, size_t arg);
 void tty_wait_input_ready (TTY *tty);
+void tty_write_data (TTY *tty, const void *data, size_t len);
+void tty_reset_state (TTY *tty);
+void tty_add_digit_char (TTY *tty, char c);
+void tty_set_alt_keypad (TTY *tty, int on);
 void tty_set_active (int term);
 
 int tty_read (VFSInode *inode, void *buffer, size_t len, off_t offset);
 int tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset);
 int tty_getattr (VFSInode *inode, struct stat64 *st);
+
+void vt100_write_char (TTY *tty, char c);
 
 __END_DECLS
 

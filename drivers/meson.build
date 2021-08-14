@@ -9,7 +9,8 @@ drivers_src = [
   'serial.c',
   'pcspk.c',
   'tty-line.c',
-  'vga.c'
+  'vga.c',
+  'vt100.c'
 ]
 
 drivers = static_library('drivers', drivers_src,

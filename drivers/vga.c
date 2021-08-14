@@ -81,7 +81,7 @@ vga_erase_line (TTY *tty, size_t len)
 void
 vga_write (TTY *tty, const char *s, size_t size)
 {
-  int i;
+  size_t i;
   for (i = 0; i < size; i++)
     vga_putchar (tty, s[i]);
 }
@@ -166,6 +166,12 @@ vga_clear (TTY *tty)
 	tty->t_screenbuf[vga_getindex (x, y)] =
 	  vga_mkentry (' ', tty->t_color);
     }
+  vga_update_display (tty);
+}
+
+void
+vga_update_display (TTY *tty)
+{
   if (tty == CURRENT_TTY)
     {
       DISABLE_TASK_SWITCH;

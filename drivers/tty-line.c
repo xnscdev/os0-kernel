@@ -22,9 +22,6 @@
 #include <video/vga.h>
 #include <vm/heap.h>
 
-#define DO_END(x) do { (x); goto end; } while (0)
-#define DO_RET(x) do { (x); return; } while (0)
-
 #define CHAR_MATCH(match) (c == term->c_cc[match] && term->c_cc[match] != 0xff)
 
 TTY default_tty = {
@@ -54,7 +51,8 @@ TTY default_tty = {
     .c_ispeed = B38400,
     .c_ospeed = B38400
   },
-  .t_color = VGA_DEFAULT_COLOR
+  .t_color = VGA_DEFAULT_COLOR,
+  .t_write_char = vt100_write_char /* Use VT100 emulation */
 };
 
 TTY *ttys[PROCESS_LIMIT] = {&default_tty};
@@ -283,19 +281,19 @@ tty_process_output (TTY *tty, char c, size_t arg)
     {
     case '\n':
     case '\t':
-      vga_putchar (tty, c);
+      tty->t_write_char (tty, c);
       break;
     default:
       if (iscntrl (c) && (term->c_lflag & ECHOCTL))
 	{
 	  if (!CHAR_MATCH (VEOF) || tty->t_column > 0)
 	    {
-	      vga_putchar (tty, '^');
-	      vga_putchar (tty, c + 0x40);
+	      tty->t_write_char (tty, '^');
+	      tty->t_write_char (tty, c + 0x40);
 	    }
 	}
       else
-	vga_putchar (tty, c);
+	tty->t_write_char (tty, c);
     }
 }
 
@@ -307,10 +305,44 @@ tty_wait_input_ready (TTY *tty)
 }
 
 void
+tty_write_data (TTY *tty, const void *data, size_t len)
+{
+  const char *buffer = data;
+  size_t i;
+  for (i = 0; i < len; i++)
+    tty->t_write_char (tty, buffer[i]);
+}
+
+void
+tty_reset_state (TTY *tty)
+{
+  tty->t_state = 0;
+  memset (tty->t_statebuf, 0, 8);
+  tty->t_curritem = 0;
+}
+
+void
+tty_add_digit_char (TTY *tty, char c)
+{
+  tty->t_statebuf[tty->t_curritem] =
+    tty->t_statebuf[tty->t_curritem] * 10 + c - '0';
+}
+
+void
+tty_set_alt_keypad (TTY *tty, int on)
+{
+  if (on)
+    tty->t_flags |= TTY_ALT_KEYPAD;
+  else
+    tty->t_flags &= ~TTY_ALT_KEYPAD;
+  tty_reset_state (tty);
+}
+
+void
 tty_set_active (int term)
 {
   active_tty = term;
-  memcpy ((void *) VGA_BUFFER, CURRENT_TTY->t_screenbuf,
+  memcpy (vga_hdw_buf, CURRENT_TTY->t_screenbuf,
 	  2 * VGA_SCREEN_WIDTH * VGA_SCREEN_HEIGHT);
 }
 
@@ -388,7 +420,7 @@ tty_write (VFSInode *inode, const void *buffer, size_t len, off_t offset)
       if (process_table[pid].p_pgid != CURRENT_TTY->t_fg_pgid)
 	process_send_signal (pid, SIGTTOU);
     }
-  vga_write (CURRENT_TTY, buffer, len);
+  tty_write_data (CURRENT_TTY, buffer, len);
   return len;
 }
 

@@ -25,6 +25,9 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
+#define DO_END(x) do { (x); goto end; } while (0)
+#define DO_RET(x) do { (x); return; } while (0)
+
 __BEGIN_DECLS
 
 static inline uint32_t
