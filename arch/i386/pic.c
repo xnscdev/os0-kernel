@@ -62,7 +62,7 @@ idt_init (void)
 
 #define EXC(x) idt_set_gate (x, (uint32_t) exc ## x, 0x08, 3, IDT_GATE_TRAP);
 #define IRQ(x) idt_set_gate (x + 32, (uint32_t) irq ## x, 0x08, 3, \
-			     IDT_GATE_INT);
+			     IDT_GATE_TRAP);
 #include "irq.inc"
 #undef EXC
 #undef IRQ
